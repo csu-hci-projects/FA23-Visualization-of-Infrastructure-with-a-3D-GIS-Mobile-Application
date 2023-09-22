@@ -125,12 +125,20 @@ class MainActivity : AppCompatActivity() {
                     }
                     locationDisplay.dataSource.start()
 
-                    graphicsOverlayOperations = GraphicsOverlayOperations(qGisClient, mapView, location)
+                    graphicsOverlayOperations = GraphicsOverlayOperations(qGisClient, mapView)
 
                     //Layer is hard coded for now but maybe we should let the user pick the layers they want shown?
                     var getFeaturesResponse = graphicsOverlayOperations.queryFeaturesFromLayer("phonelocation_z,test_lines,test_polys")
 
                     graphicsOverlayOperations.drawFeaturesInGraphicsOverlay(getFeaturesResponse)
+
+                    //Setup a 'FlowCollector' anytime an single tap event occurs on the map
+                    //this runs asynchronous of the UI thread.
+                    mapView.onSingleTapConfirmed.collect{ event ->
+                        event.screenCoordinate.let{ screenCoordinate -> graphicsOverlayOperations.selectGraphics(
+                            screenCoordinate
+                        )}
+                    }
                     Log.i("Test", getFeaturesResponse.toString())
                 }
 

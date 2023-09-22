@@ -1,6 +1,5 @@
 package com.example.cs567_3d_ui_project.arcgis_map_operations
 
-import android.location.Location
 import android.util.Log
 import com.arcgismaps.Color
 import com.arcgismaps.geometry.Point
@@ -16,7 +15,6 @@ import com.arcgismaps.mapping.symbology.SimpleMarkerSymbol
 import com.arcgismaps.mapping.symbology.SimpleMarkerSymbolStyle
 import com.arcgismaps.mapping.view.Graphic
 import com.arcgismaps.mapping.view.GraphicsOverlay
-import com.arcgismaps.mapping.view.IdentifyGraphicsOverlayResult
 import com.arcgismaps.mapping.view.MapView
 import com.arcgismaps.mapping.view.ScreenCoordinate
 import com.example.cs567_3d_ui_project.qgis_driver.QGisClient
@@ -27,15 +25,9 @@ import com.example.cs567_3d_ui_project.qgis_driver.resource_objects.wms_resource
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
-class GraphicsOverlayOperations(private var qGisClient: QGisClient, private var mapView: MapView, private var location: Location) {
+class GraphicsOverlayOperations(private var qGisClient: QGisClient, private var mapView: MapView) {
 
     private var graphicsOverlay = GraphicsOverlay()
-
-
-    /*private var identifyGraphicsOverlay : Result<IdentifyGraphicsOverlayResult> by lazy {
-        identifyGraphicsOverlay = setIdentifyGraphicsOverlay()
-    }*/
-
     init {
         mapView.graphicsOverlays.add(graphicsOverlay)
     }
@@ -73,6 +65,8 @@ class GraphicsOverlayOperations(private var qGisClient: QGisClient, private var 
 
         var polygonFeatures = features.filter { it.geometry.type == "Polygon" }
         drawPolygonFeaturesInGraphicsOverlay(polygonFeatures)
+
+
     }
 
     private fun drawPointFeaturesInGraphicsOverlay(features: List<Feature>){
@@ -128,21 +122,35 @@ class GraphicsOverlayOperations(private var qGisClient: QGisClient, private var 
         }
     }
 
-    private suspend fun setIdentifyGraphicsOverlay(): Result<IdentifyGraphicsOverlayResult> {
-        return withContext(Dispatchers.IO) {
+    suspend fun selectGraphics(screenCoordinate: ScreenCoordinate){
+        withContext(Dispatchers.IO) {
             try{
+                //Run a spatial query with a given buffer around the click point
+                //with a buffer of 25 and an unlimited number of maximum results
                 var idOverlay = mapView.identifyGraphicsOverlay(
                     graphicsOverlay = graphicsOverlay,
-                    screenCoordinate = ScreenCoordinate(location.latitude, location.longitude),
-                    tolerance = 0.25,
+                    screenCoordinate = screenCoordinate,
+                    tolerance = 25.0,
                     returnPopupsOnly = false,
                     maximumResults = -1
                 )
                 idOverlay.apply {
+                    onSuccess {
+                        val testGraphics = it.graphics
 
+                        //We are defaulting to a new selection anytime the event fires
+                        graphicsOverlay.graphics.forEach{ it ->
+                            it.isSelected = false
+                        }
+                        for(graphic in testGraphics){
+                            graphic.isSelected = true
+                        }
+                    }
+                    onFailure {
+                        val err = "Test"
+                        Log.e("Test", it.message, it)
+                    }
                 }
-
-                return@withContext idOverlay
             }
             catch (e: Exception){
                 Log.e("setIdentifyGraphicsOverlay", e.message, e)
