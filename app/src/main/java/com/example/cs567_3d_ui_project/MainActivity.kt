@@ -30,6 +30,7 @@ import com.example.cs567_3d_ui_project.qgis_driver.QGisClient
 import com.example.cs567_3d_ui_project.ui.theme.CS567_3D_UI_ProjectTheme
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationServices
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
 //@BindingMethods(value = [BindingMethod(type = ImageView::class, attribute = "android:baseMap", method = "getBaseMap")])
@@ -55,8 +56,8 @@ class MainActivity : AppCompatActivity() {
     }*/
 
     private val qGisClient: QGisClient by lazy {
-        QGisClient("http://192.168.1.24/cgi-bin/qgis_mapserv.fcgi")
-        //QGisClient("http://38.147.239.146/cgi-bin/qgis_mapserv.fcgi")
+        //QGisClient("http://192.168.1.24/cgi-bin/qgis_mapserv.fcgi")
+        QGisClient("http://38.147.239.146/cgi-bin/qgis_mapserv.fcgi")
     }
 
     private val locationDisplay: LocationDisplay by lazy { mapView.locationDisplay }
@@ -87,14 +88,6 @@ class MainActivity : AppCompatActivity() {
         //val ydpi = resources.displayMetrics.ydpi
         //val dpi = resources.displayMetrics.densityDpi
 
-       /* lifecycleScope.launch {
-            val getCapabilitiesResponse = qGisClient.wmts.getCapabilities(
-                GetCapabilitiesRequestAction()
-            )
-            Log.i("Test", getCapabilitiesResponse.getCapabilitiesResponseContent.toString())
-        }*/
-
-
         if (ActivityCompat.checkSelfPermission(
                 this,
                 ACCESS_FINE_LOCATION
@@ -115,7 +108,8 @@ class MainActivity : AppCompatActivity() {
                 Toast.makeText(this, "$latitude, $longitude, $altitude", Toast.LENGTH_LONG).show()
                 mapView.setViewpoint(Viewpoint(location.latitude, location.longitude, 500.0))
 
-                lifecycleScope.launch {
+
+                lifecycleScope.launch(Dispatchers.IO) {
                     //qGisMapView.loadBaseMap(location)
 
                     //This while loop ensures that the map is actually fully loaded
@@ -124,22 +118,21 @@ class MainActivity : AppCompatActivity() {
                         Thread.sleep(1000)
                     }
                     locationDisplay.dataSource.start()
-
                     graphicsOverlayOperations = GraphicsOverlayOperations(qGisClient, mapView)
 
                     //Layer is hard coded for now but maybe we should let the user pick the layers they want shown?
                     var getFeaturesResponse = graphicsOverlayOperations.queryFeaturesFromLayer("phonelocation_z,test_lines,test_polys")
-
+                    Log.i("Test", getFeaturesResponse.toString())
                     graphicsOverlayOperations.drawFeaturesInGraphicsOverlay(getFeaturesResponse)
-
-                    //Setup a 'FlowCollector' anytime an single tap event occurs on the map
-                    //this runs asynchronous of the UI thread.
+//
+//                    //Setup a 'FlowCollector' anytime an single tap event occurs on the map
+//                    //this runs asynchronous of the UI thread.
                     mapView.onSingleTapConfirmed.collect{ event ->
                         event.screenCoordinate.let{ screenCoordinate -> graphicsOverlayOperations.selectGraphics(
                             screenCoordinate
                         )}
                     }
-                    Log.i("Test", getFeaturesResponse.toString())
+
                 }
 
             }
@@ -188,6 +181,9 @@ class MainActivity : AppCompatActivity() {
 
             setupMap()
 
+//            lifecycleScope.launch {
+//                Log.i("Test", "Test")
+//            }
 
             //val imageView = ImageView(this)
 

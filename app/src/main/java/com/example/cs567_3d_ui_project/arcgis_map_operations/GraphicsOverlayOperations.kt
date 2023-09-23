@@ -65,8 +65,6 @@ class GraphicsOverlayOperations(private var qGisClient: QGisClient, private var 
 
         var polygonFeatures = features.filter { it.geometry.type == "Polygon" }
         drawPolygonFeaturesInGraphicsOverlay(polygonFeatures)
-
-
     }
 
     private fun drawPointFeaturesInGraphicsOverlay(features: List<Feature>){
