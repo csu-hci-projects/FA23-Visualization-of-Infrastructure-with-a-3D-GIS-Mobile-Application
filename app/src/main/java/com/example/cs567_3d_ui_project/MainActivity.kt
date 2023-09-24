@@ -5,6 +5,7 @@ import android.Manifest.permission.ACCESS_FINE_LOCATION
 import android.content.pm.PackageManager
 import android.location.Location
 import android.os.Bundle
+import android.os.Looper
 import android.util.Log
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
@@ -21,6 +22,7 @@ import com.arcgismaps.ArcGISEnvironment
 import com.arcgismaps.mapping.ArcGISMap
 import com.arcgismaps.mapping.BasemapStyle
 import com.arcgismaps.mapping.Viewpoint
+import com.arcgismaps.mapping.ViewpointType
 import com.arcgismaps.mapping.view.DrawStatus
 import com.arcgismaps.mapping.view.LocationDisplay
 import com.arcgismaps.mapping.view.MapView
@@ -29,6 +31,9 @@ import com.example.cs567_3d_ui_project.databinding.ActivityMainBinding
 import com.example.cs567_3d_ui_project.qgis_driver.QGisClient
 import com.example.cs567_3d_ui_project.ui.theme.CS567_3D_UI_ProjectTheme
 import com.google.android.gms.location.FusedLocationProviderClient
+import com.google.android.gms.location.LocationCallback
+import com.google.android.gms.location.LocationRequest
+import com.google.android.gms.location.LocationResult
 import com.google.android.gms.location.LocationServices
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -46,6 +51,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private lateinit var graphicsOverlayOperations: GraphicsOverlayOperations
+    private lateinit var locationCallBack: LocationCallback
 
     //private val zoomImageView:ZoomImageView by lazy {
     //    activityMainBinding.zoomImageView
@@ -87,7 +93,6 @@ class MainActivity : AppCompatActivity() {
         //val xdpi = resources.displayMetrics.xdpi
         //val ydpi = resources.displayMetrics.ydpi
         //val dpi = resources.displayMetrics.densityDpi
-
         if (ActivityCompat.checkSelfPermission(
                 this,
                 ACCESS_FINE_LOCATION
@@ -96,6 +101,7 @@ class MainActivity : AppCompatActivity() {
                 Manifest.permission.ACCESS_COARSE_LOCATION
             ) != PackageManager.PERMISSION_GRANTED
         ) ActivityCompat.requestPermissions(this, arrayOf(ACCESS_FINE_LOCATION), 1)
+
 
         //Set the maps location to the current gps location of the phone.
         fusedLocationClient.lastLocation.addOnSuccessListener(this) {
@@ -108,33 +114,8 @@ class MainActivity : AppCompatActivity() {
                 Toast.makeText(this, "$latitude, $longitude, $altitude", Toast.LENGTH_LONG).show()
                 mapView.setViewpoint(Viewpoint(location.latitude, location.longitude, 500.0))
 
-
-                lifecycleScope.launch(Dispatchers.IO) {
-                    //qGisMapView.loadBaseMap(location)
-
-                    //This while loop ensures that the map is actually fully loaded
-                    //before we try to query features in the extent of where the map loads
-                    while(mapView.drawStatus.value != DrawStatus.Completed){
-                        Thread.sleep(1000)
-                    }
-                    locationDisplay.dataSource.start()
-                    graphicsOverlayOperations = GraphicsOverlayOperations(qGisClient, mapView)
-
-                    //Layer is hard coded for now but maybe we should let the user pick the layers they want shown?
-                    var getFeaturesResponse = graphicsOverlayOperations.queryFeaturesFromLayer("phonelocation_z,test_lines,test_polys")
-                    Log.i("Test", getFeaturesResponse.toString())
-                    graphicsOverlayOperations.drawFeaturesInGraphicsOverlay(getFeaturesResponse)
-//
-//                    //Setup a 'FlowCollector' anytime an single tap event occurs on the map
-//                    //this runs asynchronous of the UI thread.
-                    mapView.onSingleTapConfirmed.collect{ event ->
-                        event.screenCoordinate.let{ screenCoordinate -> graphicsOverlayOperations.selectGraphics(
-                            screenCoordinate
-                        )}
-                    }
-
-                }
-
+                loadMap()
+                requestLocationUpdates()
             }
             else{
                 Toast.makeText(this, "Error Retrieving Device Location", Toast.LENGTH_LONG).show()
@@ -146,6 +127,63 @@ class MainActivity : AppCompatActivity() {
 
         Log.i("TestLoc", latitude.toString())
         Log.i("TestLoc", longitude.toString())
+    }
+
+    private fun loadMap(){
+        lifecycleScope.launch(Dispatchers.IO) {
+            //This while loop ensures that the map is actually fully loaded
+            //before we try to query features in the extent of where the map loads
+            while(mapView.drawStatus.value != DrawStatus.Completed){
+                Thread.sleep(1000)
+            }
+
+            //Start tracking the location of the device
+            locationDisplay.dataSource.start()
+
+            //Load the graphics at the user's start location
+            graphicsOverlayOperations = GraphicsOverlayOperations(qGisClient, mapView)
+
+            //Layer is hard coded for now but maybe we should let the user pick the layers they want shown?
+            var getFeaturesResponse = graphicsOverlayOperations.queryFeaturesFromLayer("phonelocation_z,test_lines,test_polys")
+            Log.i("Test", getFeaturesResponse.toString())
+            graphicsOverlayOperations.drawFeaturesInGraphicsOverlay(getFeaturesResponse)
+
+//                    //Setup a 'FlowCollector' anytime an single tap event occurs on the map
+//                    //this runs asynchronous of the UI thread.
+            mapView.onSingleTapConfirmed.collect{ event ->
+                event.screenCoordinate.let{ screenCoordinate -> graphicsOverlayOperations.selectGraphics(
+                    screenCoordinate
+                )}
+            }
+        }
+    }
+
+    private fun requestLocationUpdates(){
+        if (ActivityCompat.checkSelfPermission(
+                this,
+                ACCESS_FINE_LOCATION
+            ) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(
+                this,
+                Manifest.permission.ACCESS_COARSE_LOCATION
+            ) != PackageManager.PERMISSION_GRANTED
+        ) ActivityCompat.requestPermissions(this, arrayOf(ACCESS_FINE_LOCATION), 1)
+
+        lifecycleScope.launch(Dispatchers.IO) {
+            locationCallBack = object: LocationCallback(){
+                override fun onLocationResult(locationResult: LocationResult) {
+                    locationResult ?: return
+
+                    for(location in locationResult.locations){
+                        var viewPoint = mapView.getCurrentViewpoint(ViewpointType.CenterAndScale)
+                        mapView.setViewpoint(Viewpoint(location.latitude, location.longitude, viewPoint!!.targetScale))
+                    }
+
+                    super.onLocationResult(locationResult)
+                }
+            }
+            var locationRequest = LocationRequest.Builder(10000).build()
+            fusedLocationClient.requestLocationUpdates(locationRequest, locationCallBack, Looper.getMainLooper())
+        }
     }
 
     override fun onRequestPermissionsResult(
