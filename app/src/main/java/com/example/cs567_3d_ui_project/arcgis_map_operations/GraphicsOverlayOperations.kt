@@ -35,16 +35,11 @@ class GraphicsOverlayOperations(private var qGisClient: QGisClient, private var 
 
     suspend fun queryFeaturesFromLayer(layerName: String): GetFeatureResponse {
         return withContext(Dispatchers.IO){
-            //var capabilities = qGisClient.wfs.getCapabilities()
-            var viewPoint = mapView.getCurrentViewpoint(ViewpointType.BoundingGeometry)
-            var spatialReference = viewPoint?.targetGeometry?.spatialReference
-            var extent = viewPoint?.targetGeometry?.extent
+            val viewPoint = mapView.getCurrentViewpoint(ViewpointType.BoundingGeometry)
+            val spatialReference = viewPoint?.targetGeometry?.spatialReference
+            val extent = viewPoint?.targetGeometry?.extent
 
-            /*Log.i("Test", viewPoint.toString())
-            Log.i("Test", spatialReference?.wkid.toString())
-            Log.i("Test", extent.toString())*/
-
-            var getFeatureRequestAction = GetFeatureRequestAction(
+            val getFeatureRequestAction = GetFeatureRequestAction(
                 layer = layerName,
                 boundingBox = BoundingBox("EPSG:${spatialReference?.wkid}",
                     extent?.xMin, extent?.yMin, extent?.xMax, extent?.yMax),
@@ -56,25 +51,25 @@ class GraphicsOverlayOperations(private var qGisClient: QGisClient, private var 
     }
 
     fun drawFeaturesInGraphicsOverlay(getFeatureResponse: GetFeatureResponse){
-        var features = getFeatureResponse.getFeatureResponseContent.features
+        val features = getFeatureResponse.getFeatureResponseContent.features
 
-        var pointFeatures = features.filter { it.geometry.type == "Point" }
+        val pointFeatures = features.filter { it.geometry.type == "Point" }
         drawPointFeaturesInGraphicsOverlay(pointFeatures)
 
-        var lineFeatures = features.filter { it.geometry.type == "LineString" }
+        val lineFeatures = features.filter { it.geometry.type == "LineString" }
         drawLineFeaturesInGraphicsOverlay(lineFeatures)
 
-        var polygonFeatures = features.filter { it.geometry.type == "Polygon" }
+        val polygonFeatures = features.filter { it.geometry.type == "Polygon" }
         drawPolygonFeaturesInGraphicsOverlay(polygonFeatures)
     }
 
     private fun drawPointFeaturesInGraphicsOverlay(features: List<Feature>){
         //Query the collection of features for the point type features
-        var pointFeatures = features.filter { it -> it.geometry.type == "Point" }
+        val pointFeatures = features.filter { it -> it.geometry.type == "Point" }
 
         for(pointFeature in pointFeatures){
-            var pointGeometry = pointFeature.geometry.toPointGeometry()
-            var point = Point(pointGeometry!!.x, pointGeometry!!.y, SpatialReference.wgs84())
+            val pointGeometry = pointFeature.geometry.toPointGeometry()
+            val point = Point(pointGeometry!!.x, pointGeometry.y, SpatialReference.wgs84())
             val symbol = SimpleMarkerSymbol(SimpleMarkerSymbolStyle.Circle, Color.red, 10.0f)
             val pointGraphic = Graphic(point, symbol)
 
@@ -85,10 +80,10 @@ class GraphicsOverlayOperations(private var qGisClient: QGisClient, private var 
 
     private fun drawLineFeaturesInGraphicsOverlay(features: List<Feature>){
         //Query the collection of features for the line type features
-        var lineFeatures = features.filter { it.geometry.type == "LineString" }
+        val lineFeatures = features.filter { it.geometry.type == "LineString" }
 
         for(lineFeature in lineFeatures){
-            var lineGeometry = lineFeature.geometry.toLineGeometry()
+            val lineGeometry = lineFeature.geometry.toLineGeometry()
             val lineSymbol = SimpleLineSymbol(SimpleLineSymbolStyle.Solid, Color.black, 3f)
 
             val lineBuilder = PolylineBuilder(SpatialReference.wgs84()){
@@ -104,14 +99,14 @@ class GraphicsOverlayOperations(private var qGisClient: QGisClient, private var 
 
     private fun drawPolygonFeaturesInGraphicsOverlay(features: List<Feature>){
         //Query the collection of features for the polygon type features
-        var polygonFeatures = features.filter { it.geometry.type == "Polygon" }
+        val polygonFeatures = features.filter { it.geometry.type == "Polygon" }
 
         for(polygonFeature in polygonFeatures){
-            var polygonGeometry = polygonFeature.geometry.toPolygonGeometry()
-            var polygonSymbol = SimpleFillSymbol(SimpleFillSymbolStyle.Solid, Color.green, SimpleLineSymbol(SimpleLineSymbolStyle.Solid, Color.black))
+            val polygonGeometry = polygonFeature.geometry.toPolygonGeometry()
+            val polygonSymbol = SimpleFillSymbol(SimpleFillSymbolStyle.Solid, Color.green, SimpleLineSymbol(SimpleLineSymbolStyle.Solid, Color.black))
 
             for(ring in polygonGeometry!!.rings){
-                var polygonBuilder = PolygonBuilder(SpatialReference.wgs84()){
+                val polygonBuilder = PolygonBuilder(SpatialReference.wgs84()){
                     for(vertex in ring){
                         addPoint(vertex.x, vertex.y)
                     }
@@ -122,13 +117,13 @@ class GraphicsOverlayOperations(private var qGisClient: QGisClient, private var 
             }
         }
     }
-
+    //The 'suspend' keyword indicates that the method is async
     suspend fun selectGraphics(screenCoordinate: ScreenCoordinate){
         withContext(Dispatchers.IO) {
             try{
                 //Run a spatial query with a given buffer around the click point
                 //with a buffer of 25 and an unlimited number of maximum results
-                var idOverlay = mapView.identifyGraphicsOverlay(
+                val idOverlay = mapView.identifyGraphicsOverlay(
                     graphicsOverlay = graphicsOverlay,
                     screenCoordinate = screenCoordinate,
                     tolerance = 25.0,
@@ -148,7 +143,6 @@ class GraphicsOverlayOperations(private var qGisClient: QGisClient, private var 
                         }
                     }
                     onFailure {
-                        val err = "Test"
                         Log.e("Test", it.message, it)
                     }
                 }

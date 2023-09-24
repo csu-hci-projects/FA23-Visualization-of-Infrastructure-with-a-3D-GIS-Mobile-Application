@@ -71,6 +71,8 @@ class MainActivity : AppCompatActivity() {
     private lateinit var fusedLocationClient: FusedLocationProviderClient
 
 
+    //Sets up the map by getting the user's last location and centering the map there.
+    //It also queries for feature in the same extent of the user along with setting up a location update listener
     private fun setupMap() {
 
         val map = ArcGISMap(BasemapStyle.ArcGISTopographic)
@@ -79,20 +81,6 @@ class MainActivity : AppCompatActivity() {
         var latitude = 0.0
         var longitude = 0.0
         var altitude = 0.0
-
-
-
-        /*qGisClient.also { this.qGisMapView.setQgisClient(it) }
-        qGisMapView.setFusedLocationClient(fusedLocationClient)
-        qGisMapView.setDisplayMetrics(resources.displayMetrics)*/
-
-        //val height = resources.displayMetrics.heightPixels
-        //val width = resources.displayMetrics.widthPixels
-        //val diagonal = sqrt(height.toFloat().pow(2) + width.toFloat().pow(2))
-
-        //val xdpi = resources.displayMetrics.xdpi
-        //val ydpi = resources.displayMetrics.ydpi
-        //val dpi = resources.displayMetrics.densityDpi
         if (ActivityCompat.checkSelfPermission(
                 this,
                 ACCESS_FINE_LOCATION
@@ -110,12 +98,16 @@ class MainActivity : AppCompatActivity() {
                 latitude = location.latitude
                 longitude = location.longitude
                 altitude = location.altitude
-                //Toast.makeText(this, "Received Location", Toast.LENGTH_LONG).show()
-                Toast.makeText(this, "$latitude, $longitude, $altitude", Toast.LENGTH_LONG).show()
+                //Set the map view to the same location of the device with a scale of 500
                 mapView.setViewpoint(Viewpoint(location.latitude, location.longitude, 500.0))
 
+                //Query and load the features in the same extent as the device
                 loadMap()
+
+                //Listen to location update events
                 requestLocationUpdates()
+
+                //Toast.makeText(this, "$latitude, $longitude, $altitude", Toast.LENGTH_LONG).show()
             }
             else{
                 Toast.makeText(this, "Error Retrieving Device Location", Toast.LENGTH_LONG).show()
@@ -123,12 +115,9 @@ class MainActivity : AppCompatActivity() {
 
         }
 
-
-
-        Log.i("TestLoc", latitude.toString())
-        Log.i("TestLoc", longitude.toString())
     }
 
+    //Loads the basemap and queries for the features in the extent
     private fun loadMap(){
         lifecycleScope.launch(Dispatchers.IO) {
             //This while loop ensures that the map is actually fully loaded
@@ -144,7 +133,7 @@ class MainActivity : AppCompatActivity() {
             graphicsOverlayOperations = GraphicsOverlayOperations(qGisClient, mapView)
 
             //Layer is hard coded for now but maybe we should let the user pick the layers they want shown?
-            var getFeaturesResponse = graphicsOverlayOperations.queryFeaturesFromLayer("phonelocation_z,test_lines,test_polys")
+            val getFeaturesResponse = graphicsOverlayOperations.queryFeaturesFromLayer("phonelocation_z,test_lines,test_polys")
             Log.i("Test", getFeaturesResponse.toString())
             graphicsOverlayOperations.drawFeaturesInGraphicsOverlay(getFeaturesResponse)
 
@@ -158,6 +147,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    //Creates a separate thread to listen to location updates
     private fun requestLocationUpdates(){
         if (ActivityCompat.checkSelfPermission(
                 this,
@@ -168,20 +158,19 @@ class MainActivity : AppCompatActivity() {
             ) != PackageManager.PERMISSION_GRANTED
         ) ActivityCompat.requestPermissions(this, arrayOf(ACCESS_FINE_LOCATION), 1)
 
+        //lifecycleScope.launch runs the task asynchronously
         lifecycleScope.launch(Dispatchers.IO) {
             locationCallBack = object: LocationCallback(){
                 override fun onLocationResult(locationResult: LocationResult) {
-                    locationResult ?: return
-
                     for(location in locationResult.locations){
-                        var viewPoint = mapView.getCurrentViewpoint(ViewpointType.CenterAndScale)
+                        val viewPoint = mapView.getCurrentViewpoint(ViewpointType.CenterAndScale)
                         mapView.setViewpoint(Viewpoint(location.latitude, location.longitude, viewPoint!!.targetScale))
                     }
 
                     super.onLocationResult(locationResult)
                 }
             }
-            var locationRequest = LocationRequest.Builder(10000).build()
+            val locationRequest = LocationRequest.Builder(10000).build()
             fusedLocationClient.requestLocationUpdates(locationRequest, locationCallBack, Looper.getMainLooper())
         }
     }
@@ -219,43 +208,14 @@ class MainActivity : AppCompatActivity() {
 
             setupMap()
 
-//            lifecycleScope.launch {
-//                Log.i("Test", "Test")
-//            }
-
-            //val imageView = ImageView(this)
-
-            //lifecycleScope.launch{
-                //val getMapResponse = getBaseMap()
-                //zoomImageView.setImageBitmap(getBaseMap())
-                //imageView.setImageBitmap(getMapResponse.bitmap.asAndroidBitmap())
-            //    setContentView(imageView)
-            //}
-
         }
         catch(e: Exception){
             Log.e("Error During onCreate", e.message, e)
-            //val alertDialogBuilder = AlertDialog.Builder(this)
-            //    .setTitle(e.message)
-            //    .setNegativeButton("Cancel", null)
-
-            //alertDialogBuilder.show()
             showError(e.message.toString())
 
 
             throw e
         }
-
-        /*
-        setContent {
-            CS567_3D_UI_ProjectTheme {
-                // A surface container using the 'background' color from the theme
-                Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-                    Greeting("Android")
-                }
-            }
-        }
-         */
     }
 
     private fun setApiKey() {
@@ -264,107 +224,7 @@ class MainActivity : AppCompatActivity() {
         ArcGISEnvironment.apiKey = ApiKey.create("AAPK5765e56473df40e88e5b67060f23c50dZBL9XDYTJyBFAz9VIhUjp4YzVHVZzFfDC860MQFqpMr9Ji1tJtYZtP-d370P5FLs")
 
     }
-    //The 'suspend' keyword indicates that the method is async
-    //lifecycleScope.launch runs the task asynchronously
-    //lifecycleScope.launch
 
-    //TODO: Very hardcoded method in nature, need to determine how we can signal
-    //which layer we want to target.
-
-    //GetMapResponse
-
-    /*private suspend fun getBaseMap(): Bitmap {
-        return withContext(Dispatchers.IO){
-            try {
-                val getSchemaExtensionResponse = qGisClient.wms.getSchemaExtensionAsync()
-                val schema = getSchemaExtensionResponse.getSchemaExtensionResponseContent.schema
-
-                Log.i("Test", schema.toString())
-
-                val getCapabilitiesResponse = qGisClient.wms.getCapabilities()
-                val wmsCapabilities =
-                    getCapabilitiesResponse.getCapabilitiesResponseContent.wmsCapabilities
-
-                //val countriesLayer = wmsCapabilities.capability.layer.layer.first {it.name.equals("countries", true)}
-                val esriBasemapLayer = wmsCapabilities.capability.layer.layer.first{it.name.equals("ESRI Topo", true)}
-
-                Log.i("Test2", getCapabilitiesResponse.responseCode.toString())
-                //Log.i("Test2", firstSpatialReference.toString())
-                Log.i("Test2", wmsCapabilities.toString())
-
-                //val getMapResponse: GetMapResponse = qGisClient.wms.getMap(countriesLayer)
-                val getMapResponse: GetMapResponse = qGisClient.wms.getMap(esriBasemapLayer, req=null)
-                //val test = getMapResponse.getMapResponseContent
-                Log.i("Test3", getMapResponse.toString())
-                //var xmlToJson = XmlToJson.Builder(test).build()
-
-                val getWfsCapabilitiesResponse = qGisClient.wfs.getCapabilities()
-                Log.i("Test4", getWfsCapabilitiesResponse.getCapabilitiesResponse.toString())
-
-                val airportsLayer = wmsCapabilities.capability.layer.layer.first{it.name.equals("airports", true)}
-
-                val getFeatureResponse = qGisClient.wfs.getFeature(airportsLayer.name)
-
-                Log.i("Test5", getFeatureResponse.getFeatureResponseContent.toString())
-
-                return@withContext getMapResponse.bitmap.asAndroidBitmap()
-                //return@withContext getMapResponse
-                //var jsonObject = xmlToJson.toJson()
-                //Log.i("Output", test)
-            } catch (e: Exception) {
-                Log.e("Error During Coroutine", e.message, e)
-                throw e
-            }
-        }
-    }*//*private suspend fun getBaseMap(): Bitmap {
-        return withContext(Dispatchers.IO){
-            try {
-                val getSchemaExtensionResponse = qGisClient.wms.getSchemaExtensionAsync()
-                val schema = getSchemaExtensionResponse.getSchemaExtensionResponseContent.schema
-
-                Log.i("Test", schema.toString())
-
-                val getCapabilitiesResponse = qGisClient.wms.getCapabilities()
-                val wmsCapabilities =
-                    getCapabilitiesResponse.getCapabilitiesResponseContent.wmsCapabilities
-
-                //val countriesLayer = wmsCapabilities.capability.layer.layer.first {it.name.equals("countries", true)}
-                val esriBasemapLayer = wmsCapabilities.capability.layer.layer.first{it.name.equals("ESRI Topo", true)}
-
-                Log.i("Test2", getCapabilitiesResponse.responseCode.toString())
-                //Log.i("Test2", firstSpatialReference.toString())
-                Log.i("Test2", wmsCapabilities.toString())
-
-                //val getMapResponse: GetMapResponse = qGisClient.wms.getMap(countriesLayer)
-                val getMapResponse: GetMapResponse = qGisClient.wms.getMap(esriBasemapLayer, req=null)
-                //val test = getMapResponse.getMapResponseContent
-                Log.i("Test3", getMapResponse.toString())
-                //var xmlToJson = XmlToJson.Builder(test).build()
-
-                val getWfsCapabilitiesResponse = qGisClient.wfs.getCapabilities()
-                Log.i("Test4", getWfsCapabilitiesResponse.getCapabilitiesResponse.toString())
-
-                val airportsLayer = wmsCapabilities.capability.layer.layer.first{it.name.equals("airports", true)}
-
-                val getFeatureResponse = qGisClient.wfs.getFeature(airportsLayer.name)
-
-                Log.i("Test5", getFeatureResponse.getFeatureResponseContent.toString())
-
-                return@withContext getMapResponse.bitmap.asAndroidBitmap()
-                //return@withContext getMapResponse
-                //var jsonObject = xmlToJson.toJson()
-                //Log.i("Output", test)
-            } catch (e: Exception) {
-                Log.e("Error During Coroutine", e.message, e)
-                throw e
-            }
-        }
-    }*/
-    /*private fun getLocation(callback: Callback){
-        fusedLocationClient!!.lastLocation.addOnSuccessListener(this) {
-
-        }
-    }*/
 
     private fun showError(message: String) {
         Toast.makeText(applicationContext, message, Toast.LENGTH_LONG).show()
