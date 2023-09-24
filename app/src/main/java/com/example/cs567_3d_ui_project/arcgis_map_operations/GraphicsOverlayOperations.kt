@@ -25,6 +25,7 @@ import com.example.cs567_3d_ui_project.qgis_driver.resource_objects.wms_resource
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
+@Suppress("NAME_SHADOWING")
 class GraphicsOverlayOperations(private var qGisClient: QGisClient, private var mapView: MapView) {
 
     private var graphicsOverlay = GraphicsOverlay()
@@ -68,13 +69,13 @@ class GraphicsOverlayOperations(private var qGisClient: QGisClient, private var 
     }
 
     private fun drawPointFeaturesInGraphicsOverlay(features: List<Feature>){
-
+        //Query the collection of features for the point type features
         var pointFeatures = features.filter { it -> it.geometry.type == "Point" }
 
         for(pointFeature in pointFeatures){
             var pointGeometry = pointFeature.geometry.toPointGeometry()
             var point = Point(pointGeometry!!.x, pointGeometry!!.y, SpatialReference.wgs84())
-            val symbol = SimpleMarkerSymbol(SimpleMarkerSymbolStyle.Circle, Color.cyan, 10.0f)
+            val symbol = SimpleMarkerSymbol(SimpleMarkerSymbolStyle.Circle, Color.red, 10.0f)
             val pointGraphic = Graphic(point, symbol)
 
             pointGraphic.attributes["id"] = pointFeature.id
@@ -83,6 +84,7 @@ class GraphicsOverlayOperations(private var qGisClient: QGisClient, private var 
     }
 
     private fun drawLineFeaturesInGraphicsOverlay(features: List<Feature>){
+        //Query the collection of features for the line type features
         var lineFeatures = features.filter { it.geometry.type == "LineString" }
 
         for(lineFeature in lineFeatures){
@@ -101,6 +103,7 @@ class GraphicsOverlayOperations(private var qGisClient: QGisClient, private var 
     }
 
     private fun drawPolygonFeaturesInGraphicsOverlay(features: List<Feature>){
+        //Query the collection of features for the polygon type features
         var polygonFeatures = features.filter { it.geometry.type == "Polygon" }
 
         for(polygonFeature in polygonFeatures){
@@ -155,7 +158,5 @@ class GraphicsOverlayOperations(private var qGisClient: QGisClient, private var 
                 throw e
             }
         }
-
-
     }
 }
