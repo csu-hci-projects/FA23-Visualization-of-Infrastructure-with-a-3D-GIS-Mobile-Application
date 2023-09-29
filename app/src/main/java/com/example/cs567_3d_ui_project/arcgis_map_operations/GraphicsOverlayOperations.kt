@@ -42,7 +42,7 @@ class GraphicsOverlayOperations(private var qGisClient: QGisClient, private var 
             val getFeatureRequestAction = GetFeatureRequestAction(
                 layer = layerName,
                 boundingBox = BoundingBox("EPSG:${spatialReference?.wkid}",
-                    extent?.xMin, extent?.yMin, extent?.xMax, extent?.yMax),
+                    extent!!.xMin, extent.yMin, extent.xMax, extent.yMax),
                 srs = "EPSG:${spatialReference?.wkid}"
             )
 

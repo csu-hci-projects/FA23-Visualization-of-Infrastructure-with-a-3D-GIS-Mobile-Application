@@ -72,6 +72,7 @@ class WFS(private val qgisUrl: String) {
             }
 
             val url = URL("$qgisUrl?$reqParam")
+            Log.i("Request", url.toString())
             try{
                 with(url.openConnection() as HttpURLConnection) {
                     requestMethod = "GET"
