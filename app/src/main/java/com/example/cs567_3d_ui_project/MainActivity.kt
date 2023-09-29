@@ -107,6 +107,9 @@ class MainActivity : AppCompatActivity() {
                 //Listen to location update events
                 requestLocationUpdates()
 
+                //Listen to pan events on the map view
+                listenToOnUpEvents()
+
                 //Toast.makeText(this, "$latitude, $longitude, $altitude", Toast.LENGTH_LONG).show()
             }
             else{
@@ -134,11 +137,10 @@ class MainActivity : AppCompatActivity() {
 
             //Layer is hard coded for now but maybe we should let the user pick the layers they want shown?
             val getFeaturesResponse = graphicsOverlayOperations.queryFeaturesFromLayer("phonelocation_z,test_lines,test_polys")
-            Log.i("Test", getFeaturesResponse.toString())
             graphicsOverlayOperations.drawFeaturesInGraphicsOverlay(getFeaturesResponse)
 
-//                    //Setup a 'FlowCollector' anytime an single tap event occurs on the map
-//                    //this runs asynchronous of the UI thread.
+            //Setup a 'FlowCollector' anytime an single tap event occurs on the map
+            //this runs asynchronous of the UI thread.
             mapView.onSingleTapConfirmed.collect{ event ->
                 event.screenCoordinate.let{ screenCoordinate -> graphicsOverlayOperations.selectGraphics(
                     screenCoordinate
@@ -160,13 +162,22 @@ class MainActivity : AppCompatActivity() {
 
         //lifecycleScope.launch runs the task asynchronously
         lifecycleScope.launch(Dispatchers.IO) {
+
             locationCallBack = object: LocationCallback(){
                 override fun onLocationResult(locationResult: LocationResult) {
-                    for(location in locationResult.locations){
-                        val viewPoint = mapView.getCurrentViewpoint(ViewpointType.CenterAndScale)
-                        mapView.setViewpoint(Viewpoint(location.latitude, location.longitude, viewPoint!!.targetScale))
+
+                    //If the map hasn't finished drawing, return
+                    if(mapView.drawStatus.value != DrawStatus.Completed){
+                        return
                     }
 
+                    //Update the center point of the map based on the user's location
+                    for(location in locationResult.locations){
+                        //TODO: Make a new fragment to turn off setting the map to the new location
+                        val viewPoint = mapView.getCurrentViewpoint(ViewpointType.CenterAndScale)
+                        mapView.setViewpoint(Viewpoint(location.latitude, location.longitude, viewPoint!!.targetScale))
+                        drawGraphicsOnEventRaised()
+                    }
                     super.onLocationResult(locationResult)
                 }
             }
@@ -175,6 +186,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    //Presents the user with the option to allow location tracking
     override fun onRequestPermissionsResult(
         requestCode: Int,
         permissions: Array<out String>,
@@ -212,9 +224,23 @@ class MainActivity : AppCompatActivity() {
         catch(e: Exception){
             Log.e("Error During onCreate", e.message, e)
             showError(e.message.toString())
-
-
             throw e
+        }
+    }
+
+    //Draw any spatially collocated features that are near the user's location
+    private fun drawGraphicsOnEventRaised(){
+        lifecycleScope.launch(Dispatchers.IO) {
+            val getFeaturesResponse = graphicsOverlayOperations.queryFeaturesFromLayer("phonelocation_z,test_lines,test_polys")
+            graphicsOverlayOperations.drawFeaturesInGraphicsOverlay(getFeaturesResponse)
+        }
+    }
+
+    private fun listenToOnUpEvents(){
+        lifecycleScope.launch(Dispatchers.IO) {
+            mapView.onUp.collect{
+                drawGraphicsOnEventRaised()
+            }
         }
     }
 
@@ -222,7 +248,6 @@ class MainActivity : AppCompatActivity() {
         // It is not best practice to store API keys in source code. We have you insert one here
         // to streamline this tutorial.
         ArcGISEnvironment.apiKey = ApiKey.create("AAPK5765e56473df40e88e5b67060f23c50dZBL9XDYTJyBFAz9VIhUjp4YzVHVZzFfDC860MQFqpMr9Ji1tJtYZtP-d370P5FLs")
-
     }
 
 
