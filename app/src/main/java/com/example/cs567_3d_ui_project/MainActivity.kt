@@ -104,6 +104,9 @@ class MainActivity : AppCompatActivity() {
                 //Query and load the features in the same extent as the device
                 loadMap()
 
+                //Listen to single tap events to determine if the user clicked a feature
+                listenToOnSingleTapEvents()
+
                 //Listen to location update events
                 requestLocationUpdates()
 
@@ -138,7 +141,13 @@ class MainActivity : AppCompatActivity() {
             //Layer is hard coded for now but maybe we should let the user pick the layers they want shown?
             val getFeaturesResponse = graphicsOverlayOperations.queryFeaturesFromLayer("phonelocation_z,test_lines,test_polys")
             graphicsOverlayOperations.drawFeaturesInGraphicsOverlay(getFeaturesResponse)
+        }
 
+        listenToOnSingleTapEvents()
+    }
+
+    private fun listenToOnSingleTapEvents(){
+        lifecycleScope.launch(Dispatchers.IO) {
             //Setup a 'FlowCollector' anytime an single tap event occurs on the map
             //this runs asynchronous of the UI thread.
             mapView.onSingleTapConfirmed.collect{ event ->
