@@ -1,0 +1,7 @@
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <group android:checkableBehavior="single">
+        <item
+            android:id="@+id/center_map_on_location_update"
+            android:title="@string/re_center_map_on_location_update"/>
+    </group>
+</menu>

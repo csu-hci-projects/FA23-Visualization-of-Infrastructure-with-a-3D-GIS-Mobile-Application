@@ -7,15 +7,20 @@ import android.location.Location
 import android.os.Bundle
 import android.os.Looper
 import android.util.Log
+import android.view.MenuItem
 import android.widget.Toast
+import androidx.appcompat.app.ActionBarDrawerToggle
 import androidx.appcompat.app.AppCompatActivity
+import androidx.appcompat.widget.Toolbar
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import androidx.core.view.GravityCompat
 import androidx.databinding.DataBindingUtil
+import androidx.drawerlayout.widget.DrawerLayout
 import androidx.lifecycle.lifecycleScope
 import com.arcgismaps.ApiKey
 import com.arcgismaps.ArcGISEnvironment
@@ -35,11 +40,13 @@ import com.google.android.gms.location.LocationCallback
 import com.google.android.gms.location.LocationRequest
 import com.google.android.gms.location.LocationResult
 import com.google.android.gms.location.LocationServices
+import com.google.android.material.navigation.NavigationView
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
 //@BindingMethods(value = [BindingMethod(type = ImageView::class, attribute = "android:baseMap", method = "getBaseMap")])
 class MainActivity : AppCompatActivity() {
+
 
 
     private val activityMainBinding: ActivityMainBinding by lazy {
@@ -52,6 +59,10 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var graphicsOverlayOperations: GraphicsOverlayOperations
     private lateinit var locationCallBack: LocationCallback
+    private lateinit var drawerLayout: DrawerLayout
+    private lateinit var toolBar: Toolbar
+    private lateinit var navigationView: NavigationView
+    private lateinit var drawerToggle: ActionBarDrawerToggle
 
     //private val zoomImageView:ZoomImageView by lazy {
     //    activityMainBinding.zoomImageView
@@ -220,8 +231,29 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
         try{
+            setContentView(R.layout.activity_main)
+
+            toolBar = findViewById(R.id.toolbar)
+            setSupportActionBar(toolBar)
+            supportActionBar!!.setDisplayHomeAsUpEnabled(true)
+
+            navigationView = findViewById(R.id.navigationView)
+            navigationView.inflateHeaderView(R.layout.nav_header)
+
+            drawerLayout = findViewById(R.id.drawer_layout)
+            drawerToggle = setupDrawerToggle()
+            drawerToggle.isDrawerIndicatorEnabled = true
+            drawerToggle.syncState()
+            drawerLayout.addDrawerListener(drawerToggle)
+
+//
+//            var headerLayout =
+
+
+
+
+
             fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
             lifecycle.addObserver(mapView)
 
@@ -237,12 +269,26 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    override fun onOptionsItemSelected(item: MenuItem): Boolean {
+        when(item.itemId){
+            android.R.id.home -> {
+                drawerLayout.openDrawer(GravityCompat.START)
+                return true
+            }
+        }
+        return super.onOptionsItemSelected(item)
+    }
+
     //Draw any spatially collocated features that are near the user's location
     private fun drawGraphicsOnEventRaised(){
         lifecycleScope.launch(Dispatchers.IO) {
             val getFeaturesResponse = graphicsOverlayOperations.queryFeaturesFromLayer("phonelocation_z,test_lines,test_polys")
             graphicsOverlayOperations.drawFeaturesInGraphicsOverlay(getFeaturesResponse)
         }
+    }
+
+    private fun setupDrawerToggle(): ActionBarDrawerToggle{
+        return ActionBarDrawerToggle(this,  drawerLayout, toolBar!!, R.string.drawer_open, R.string.drawer_close)
     }
 
     private fun listenToOnUpEvents(){

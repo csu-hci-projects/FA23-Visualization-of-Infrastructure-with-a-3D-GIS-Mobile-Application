@@ -7,7 +7,6 @@ plugins {
 android {
     namespace 'com.example.cs567_3d_ui_project'
     compileSdk 33
-
     defaultConfig {
         applicationId "com.example.cs567_3d_ui_project"
         minSdk 26
