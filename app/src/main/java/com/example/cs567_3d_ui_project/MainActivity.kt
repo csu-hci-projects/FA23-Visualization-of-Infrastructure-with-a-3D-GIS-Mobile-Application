@@ -47,8 +47,6 @@ import kotlinx.coroutines.launch
 //@BindingMethods(value = [BindingMethod(type = ImageView::class, attribute = "android:baseMap", method = "getBaseMap")])
 class MainActivity : AppCompatActivity() {
 
-
-
     private val activityMainBinding: ActivityMainBinding by lazy {
         DataBindingUtil.setContentView(this, R.layout.activity_main)
     }
