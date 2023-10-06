@@ -6,7 +6,7 @@ plugins {
 
 android {
     namespace 'com.example.cs567_3d_ui_project'
-    compileSdk 33
+    compileSdk 34
     defaultConfig {
         applicationId "com.example.cs567_3d_ui_project"
         minSdk 26
@@ -58,6 +58,8 @@ android {
 }
 
 dependencies {
+    implementation 'androidx.navigation:navigation-fragment-ktx:2.7.4'
+    implementation 'androidx.navigation:navigation-ui-ktx:2.7.4'
     def appcompat_version = "1.6.1"
 
     implementation 'androidx.core:core-ktx:1.10.1'
