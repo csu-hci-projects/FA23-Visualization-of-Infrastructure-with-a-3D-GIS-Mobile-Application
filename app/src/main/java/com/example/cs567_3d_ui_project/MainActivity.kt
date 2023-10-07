@@ -2,6 +2,8 @@ package com.example.cs567_3d_ui_project
 
 import android.os.Bundle
 import android.util.Log
+import android.view.Menu
+import android.view.MenuItem
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.Toolbar
@@ -10,10 +12,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.navigation.NavController
-import androidx.navigation.findNavController
 import androidx.navigation.fragment.NavHostFragment
 import androidx.navigation.ui.AppBarConfiguration
-import androidx.navigation.ui.navigateUp
+import androidx.navigation.ui.onNavDestinationSelected
 import androidx.navigation.ui.setupWithNavController
 import com.example.cs567_3d_ui_project.ui.theme.CS567_3D_UI_ProjectTheme
 
@@ -39,7 +40,9 @@ class MainActivity : AppCompatActivity() {
             toolBar = findViewById(R.id.toolbar)
             navController = navHostFragment.navController
             appBarConfiguration = AppBarConfiguration(navController.graph)
+            //findViewById<NavigationView>(R.id.navigationView).setupWithNavController(navController)
             toolBar.setupWithNavController(navController, appBarConfiguration)
+            toolBar.inflateMenu(R.menu.drawer_view)
 
 //
 //            drawerLayout = findViewById(R.id.drawer_layout)
@@ -56,21 +59,21 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    override fun onSupportNavigateUp(): Boolean {
-        val navController = findNavController(R.id.nav_host_container)
-        return navController.navigateUp(appBarConfiguration)
-                || super.onSupportNavigateUp()
+//    override fun onSupportNavigateUp(): Boolean {
+//        val navController = findNavController(R.id.nav_host_container)
+//        return navController.navigateUp(appBarConfiguration)
+//                || super.onSupportNavigateUp()
+//    }
+
+    override fun onOptionsItemSelected(item: MenuItem): Boolean {
+        return item.onNavDestinationSelected(navController) || super.onOptionsItemSelected(item)
     }
 
-//    override fun onOptionsItemSelected(item: MenuItem): Boolean {
-//        when(item.itemId){
-//            android.R.id.home -> {
-//                drawerLayout.openDrawer(GravityCompat.START)
-//                return true
-//            }
-//        }
-//        return super.onOptionsItemSelected(item)
-//    }
+    override fun onCreateOptionsMenu(menu: Menu?): Boolean {
+        menuInflater.inflate(R.menu.drawer_view, menu)
+        return true
+//        return super.onCreateOptionsMenu(menu)
+    }
 
 
     private fun showError(message: String) {

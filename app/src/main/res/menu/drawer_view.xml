@@ -1,9 +1,8 @@
 <menu xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
     tools:context="com.example.cs567_3d_ui_project.MainActivity">
-    <group android:checkableBehavior="single">
-        <item
-            android:id="@+id/center_map_on_location_update"
-            android:title="@string/re_center_map_on_location_update"/>
-    </group>
+    <item
+        android:icon="@drawable/com_arcgismaps_location_display_acquiring_symbol"
+        android:id="@+id/center_map_on_location_update"
+        android:title="@string/re_center_map_on_location_update"/>
 </menu>
