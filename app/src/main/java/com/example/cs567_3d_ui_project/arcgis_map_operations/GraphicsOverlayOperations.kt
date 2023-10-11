@@ -69,7 +69,7 @@ class GraphicsOverlayOperations(private var qGisClient: QGisClient, private var 
 
         for(pointFeature in pointFeatures){
             val pointGeometry = pointFeature.geometry.toPointGeometry()
-            val point = Point(pointGeometry!!.x, pointGeometry.y, SpatialReference.wgs84())
+            val point = Point(pointGeometry!!.x, pointGeometry.y, SpatialReference.webMercator())
             val symbol = SimpleMarkerSymbol(SimpleMarkerSymbolStyle.Circle, Color.red, 10.0f)
             val pointGraphic = Graphic(point, symbol)
 
@@ -86,7 +86,7 @@ class GraphicsOverlayOperations(private var qGisClient: QGisClient, private var 
             val lineGeometry = lineFeature.geometry.toLineGeometry()
             val lineSymbol = SimpleLineSymbol(SimpleLineSymbolStyle.Solid, Color.black, 3f)
 
-            val lineBuilder = PolylineBuilder(SpatialReference.wgs84()){
+            val lineBuilder = PolylineBuilder(SpatialReference.webMercator()){
                 lineGeometry!!.lineRoute.forEach{
                     addPoint(it.x, it.y)
                 }
@@ -106,7 +106,7 @@ class GraphicsOverlayOperations(private var qGisClient: QGisClient, private var 
             val polygonSymbol = SimpleFillSymbol(SimpleFillSymbolStyle.Solid, Color.green, SimpleLineSymbol(SimpleLineSymbolStyle.Solid, Color.black))
 
             for(ring in polygonGeometry!!.rings){
-                val polygonBuilder = PolygonBuilder(SpatialReference.wgs84()){
+                val polygonBuilder = PolygonBuilder(SpatialReference.webMercator()){
                     for(vertex in ring){
                         addPoint(vertex.x, vertex.y)
                     }

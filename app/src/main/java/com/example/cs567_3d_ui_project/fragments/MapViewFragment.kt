@@ -50,7 +50,8 @@ class MapViewFragment: Fragment(R.layout.fragment_map_view) {
 
     private val qGisClient: QGisClient by lazy {
         //QGisClient("http://192.168.1.24/cgi-bin/qgis_mapserv.fcgi")
-        QGisClient("http://38.147.239.146/cgi-bin/qgis_mapserv.fcgi")
+        //QGisClient("http://38.147.239.146/cgi-bin/qgis_mapserv.fcgi")
+        QGisClient("http://38.147.239.146:8080/geoserver/cs567/ows")
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
@@ -137,7 +138,8 @@ class MapViewFragment: Fragment(R.layout.fragment_map_view) {
             graphicsOverlayOperations = GraphicsOverlayOperations(qGisClient, mapView)
 
             //Layer is hard coded for now but maybe we should let the user pick the layers they want shown?
-            val getFeaturesResponse = graphicsOverlayOperations.queryFeaturesFromLayer("phonelocation_z,test_lines,test_polys")
+            //"phonelocation_z,test_lines,test_polys"
+            val getFeaturesResponse = graphicsOverlayOperations.queryFeaturesFromLayer("lines,points,polygons")
             graphicsOverlayOperations.drawFeaturesInGraphicsOverlay(getFeaturesResponse)
         }
 
@@ -147,7 +149,7 @@ class MapViewFragment: Fragment(R.layout.fragment_map_view) {
     //Draw any spatially collocated features that are near the user's location
     private fun drawGraphicsOnEventRaised(){
         lifecycleScope.launch(Dispatchers.IO) {
-            val getFeaturesResponse = graphicsOverlayOperations.queryFeaturesFromLayer("phonelocation_z,test_lines,test_polys")
+            val getFeaturesResponse = graphicsOverlayOperations.queryFeaturesFromLayer("lines,points,polygons")
             graphicsOverlayOperations.drawFeaturesInGraphicsOverlay(getFeaturesResponse)
         }
     }
