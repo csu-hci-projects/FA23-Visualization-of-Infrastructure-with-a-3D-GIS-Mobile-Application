@@ -29,7 +29,13 @@ data class Geometry (
         }
     }
     private fun transformCoordinateToPointGeometry(coordinates: ArrayList<Double>): PointGeometry {
-        return PointGeometry(coordinates[0], coordinates[1], coordinates[2])
+        return when(coordinates.size){
+            3 -> PointGeometry(coordinates[0], coordinates[1], coordinates[2])
+            2 -> PointGeometry(coordinates[0], coordinates[1], 0.0)
+            else -> throw Exception("Point Geometries must have at least an X and a Y coordinate and no more than 3 dimensions (M is not supported)")
+        }
+
+
     }
 
     fun toLineGeometry(): LineGeometry?{
@@ -72,7 +78,7 @@ data class Geometry (
 class PointGeometry(
     var x: Double,
     var y: Double,
-    var z: Double)
+    var z: Double? = 0.0)
 
 
 class LineGeometry(
