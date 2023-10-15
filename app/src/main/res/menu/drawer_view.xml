@@ -1,9 +1,12 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <menu xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:tools="http://schemas.android.com/tools">
+    xmlns:tools="http://schemas.android.com/tools"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
     <item
         android:icon="@drawable/com_arcgismaps_location_display_acquiring_symbol"
         android:id="@+id/center_map_on_location_update"
-        android:title="@string/re_center_map_on_location_update"/>
+        android:title="@string/re_center_map_on_location_update"
+        app:actionViewClass="android.widget.Switch"
+        app:showAsAction="always"/>
 </menu>
 
