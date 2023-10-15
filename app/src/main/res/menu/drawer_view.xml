@@ -1,8 +1,9 @@
+<?xml version="1.0" encoding="utf-8" ?>
 <menu xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:tools="http://schemas.android.com/tools"
-    tools:context="com.example.cs567_3d_ui_project.MainActivity">
+    xmlns:tools="http://schemas.android.com/tools">
     <item
         android:icon="@drawable/com_arcgismaps_location_display_acquiring_symbol"
         android:id="@+id/center_map_on_location_update"
         android:title="@string/re_center_map_on_location_update"/>
 </menu>
+

@@ -1,6 +1,6 @@
 <resources>
     <string name="app_name">CS567_3D_UI_Project</string>
-    <string name="re_center_map_on_location_update">Re-Center Map on Location Update</string>
+    <string name="re_center_map_on_location_update">Center Map on Device Location</string>
     <string name="drawer_open">Open navigation drawer</string>
     <string name="drawer_close">Close navigation drawer</string>
 </resources>
