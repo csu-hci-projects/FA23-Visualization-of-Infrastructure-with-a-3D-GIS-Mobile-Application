@@ -3,23 +3,27 @@ package com.example.cs567_3d_ui_project
 import android.os.Bundle
 import android.util.Log
 import android.view.MenuItem
+import android.view.View
 import android.widget.Toast
 import androidx.appcompat.app.ActionBarDrawerToggle
 import androidx.appcompat.app.AppCompatActivity
+import androidx.appcompat.widget.SwitchCompat
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.drawerlayout.widget.DrawerLayout
 import com.example.cs567_3d_ui_project.ui.theme.CS567_3D_UI_ProjectTheme
+import com.google.android.material.navigation.NavigationView
 
 class MainActivity : AppCompatActivity() {
 
     private lateinit var drawerLayout: DrawerLayout
     private lateinit var drawerToggle: ActionBarDrawerToggle
+    private lateinit var navigationView: NavigationView
 
 //    private lateinit var toolBar: Toolbar
-//    private lateinit var navigationView: NavigationView
+
 //    private lateinit var navController: NavController
 //    private lateinit var appBarConfiguration: AppBarConfiguration
 
@@ -29,7 +33,7 @@ class MainActivity : AppCompatActivity() {
             setContentView(R.layout.activity_main)
 //            val navHostFragment = supportFragmentManager.findFragmentById(
 //                R.id.nav_host_container) as NavHostFragment
-
+            navigationView = findViewById(R.id.navigationView)
             drawerLayout = findViewById(R.id.main_drawer_layout)
             drawerToggle = ActionBarDrawerToggle(this, drawerLayout, R.string.drawer_open, R.string.drawer_close)
 
@@ -37,6 +41,15 @@ class MainActivity : AppCompatActivity() {
             drawerToggle.syncState()
 
             supportActionBar!!.setDisplayHomeAsUpEnabled(true)
+
+            val centerMapOnLocationUpdate = navigationView.menu.findItem(R.id.center_map_on_location_update)
+            val centerMapOnLocationUpdateSwitch = centerMapOnLocationUpdate.actionView as SwitchCompat
+            centerMapOnLocationUpdateSwitch.isChecked = true
+            centerMapOnLocationUpdateSwitch.setOnClickListener(View.OnClickListener {
+                onCenterMapOnLocationUpdate(it)
+            })
+
+
 
 //            toolBar = findViewById(R.id.toolbar)
 //            navController = navHostFragment.navController
@@ -66,11 +79,18 @@ class MainActivity : AppCompatActivity() {
 //                || super.onSupportNavigateUp()
 //    }
 
+    private fun onCenterMapOnLocationUpdate(view: View){
+        val toast = Toast.makeText(this, "OK", Toast.LENGTH_LONG)
+        toast.show()
+    }
+
+
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         if(drawerToggle.onOptionsItemSelected(item)){
             return true
         }
         return super.onOptionsItemSelected(item)
+
 //        return item.onNavDestinationSelected(navController) || super.onOptionsItemSelected(item)
     }
 
