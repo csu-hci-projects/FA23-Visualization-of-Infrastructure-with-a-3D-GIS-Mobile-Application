@@ -42,6 +42,8 @@ class MapViewFragment: Fragment(R.layout.fragment_map_view) {
     private lateinit var locationCallBack: LocationCallback
     private lateinit var fusedLocationClient: FusedLocationProviderClient
 
+    var centerMapOnLocationUpdate: Boolean = true
+
     private val mapView: MapView by lazy {
         binding!!.mapView
     }
@@ -189,11 +191,12 @@ class MapViewFragment: Fragment(R.layout.fragment_map_view) {
                     }
 
                     //Update the center point of the map based on the user's location
-                    for(location in locationResult.locations){
-                        //TODO: Make a new fragment to turn off setting the map to the new location
-                        val viewPoint = mapView.getCurrentViewpoint(ViewpointType.CenterAndScale)
-                        mapView.setViewpoint(Viewpoint(location.latitude, location.longitude, viewPoint!!.targetScale))
-                        drawGraphicsOnEventRaised()
+                    if(centerMapOnLocationUpdate){
+                        for(location in locationResult.locations){
+                            val viewPoint = mapView.getCurrentViewpoint(ViewpointType.CenterAndScale)
+                            mapView.setViewpoint(Viewpoint(location.latitude, location.longitude, viewPoint!!.targetScale))
+                            drawGraphicsOnEventRaised()
+                        }
                     }
                     super.onLocationResult(locationResult)
                 }

@@ -13,6 +13,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.drawerlayout.widget.DrawerLayout
+import androidx.fragment.app.Fragment
+import androidx.navigation.fragment.NavHostFragment
+import com.example.cs567_3d_ui_project.fragments.MapViewFragment
 import com.example.cs567_3d_ui_project.ui.theme.CS567_3D_UI_ProjectTheme
 import com.google.android.material.navigation.NavigationView
 
@@ -23,7 +26,6 @@ class MainActivity : AppCompatActivity() {
     private lateinit var navigationView: NavigationView
 
 //    private lateinit var toolBar: Toolbar
-
 //    private lateinit var navController: NavController
 //    private lateinit var appBarConfiguration: AppBarConfiguration
 
@@ -31,8 +33,8 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         try{
             setContentView(R.layout.activity_main)
-//            val navHostFragment = supportFragmentManager.findFragmentById(
-//                R.id.nav_host_container) as NavHostFragment
+//           val navHostContainer = supportFragmentManager.findFragmentById(R.id.nav_host_container) as NavHostFragment
+
             navigationView = findViewById(R.id.navigationView)
             drawerLayout = findViewById(R.id.main_drawer_layout)
             drawerToggle = ActionBarDrawerToggle(this, drawerLayout, R.string.drawer_open, R.string.drawer_close)
@@ -57,8 +59,6 @@ class MainActivity : AppCompatActivity() {
             //findViewById<NavigationView>(R.id.navigationView).setupWithNavController(navController)
 //            toolBar.setupWithNavController(navController, appBarConfiguration)
 //            toolBar.inflateMenu(R.menu.drawer_view)
-
-//
 //            drawerLayout = findViewById(R.id.drawer_layout)
 //            drawerToggle = setupDrawerToggle()
 //            drawerToggle.isDrawerIndicatorEnabled = true
@@ -80,8 +80,19 @@ class MainActivity : AppCompatActivity() {
 //    }
 
     private fun onCenterMapOnLocationUpdate(view: View){
-        val toast = Toast.makeText(this, "OK", Toast.LENGTH_LONG)
-        toast.show()
+        try{
+            val switchButton = view as SwitchCompat
+            val navHostFragment = supportFragmentManager.findFragmentById(R.id.nav_host_container) as NavHostFragment
+            var mapViewFragment: Fragment? = navHostFragment.childFragmentManager.fragments.first{
+                it is MapViewFragment
+            } ?: return
+            mapViewFragment = mapViewFragment as MapViewFragment
+            mapViewFragment.centerMapOnLocationUpdate = switchButton.isChecked
+        }
+        catch(e: Exception){
+            Log.e("Error Setting Centering Option", e.message.toString())
+        }
+
     }
 
 
@@ -91,7 +102,6 @@ class MainActivity : AppCompatActivity() {
         }
         return super.onOptionsItemSelected(item)
 
-//        return item.onNavDestinationSelected(navController) || super.onOptionsItemSelected(item)
     }
 
 //    override fun onCreateOptionsMenu(menu: Menu?): Boolean {
