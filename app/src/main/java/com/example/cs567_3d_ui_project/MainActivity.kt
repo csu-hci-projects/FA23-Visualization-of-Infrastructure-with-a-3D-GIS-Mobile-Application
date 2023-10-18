@@ -87,7 +87,7 @@ class MainActivity : AppCompatActivity() {
                 it is MapViewFragment
             } ?: return
             mapViewFragment = mapViewFragment as MapViewFragment
-            mapViewFragment.centerMapOnLocationUpdate = switchButton.isChecked
+            mapViewFragment.updateMapReactionToLocationUpdate(switchButton.isChecked)
         }
         catch(e: Exception){
             Log.e("Error Setting Centering Option", e.message.toString())

@@ -14,10 +14,9 @@ import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import com.arcgismaps.ApiKey
 import com.arcgismaps.ArcGISEnvironment
+import com.arcgismaps.location.LocationDisplayAutoPanMode
 import com.arcgismaps.mapping.ArcGISMap
 import com.arcgismaps.mapping.BasemapStyle
-import com.arcgismaps.mapping.Viewpoint
-import com.arcgismaps.mapping.ViewpointType
 import com.arcgismaps.mapping.view.DrawStatus
 import com.arcgismaps.mapping.view.LocationDisplay
 import com.arcgismaps.mapping.view.MapView
@@ -42,7 +41,7 @@ class MapViewFragment: Fragment(R.layout.fragment_map_view) {
     private lateinit var locationCallBack: LocationCallback
     private lateinit var fusedLocationClient: FusedLocationProviderClient
 
-    var centerMapOnLocationUpdate: Boolean = true
+    private var fusedLocationListening: Boolean = false
 
     private val mapView: MapView by lazy {
         binding!!.mapView
@@ -63,6 +62,8 @@ class MapViewFragment: Fragment(R.layout.fragment_map_view) {
         try {
             fusedLocationClient = LocationServices.getFusedLocationProviderClient(requireActivity())
             lifecycle.addObserver(mapView)
+            locationDisplay.setAutoPanMode(LocationDisplayAutoPanMode.Recenter)
+
             setApiKey()
             setupMap()
         }catch (e: Exception){
@@ -90,12 +91,6 @@ class MapViewFragment: Fragment(R.layout.fragment_map_view) {
         fusedLocationClient.lastLocation.addOnSuccessListener(requireActivity()) {
                 location: Location? ->
             if (location != null) {
-//                val latitude = location.latitude
-//                val longitude = location.longitude
-//                val altitude = location.altitude
-                //Set the map view to the same location of the device with a scale of 500
-                mapView.setViewpoint(Viewpoint(location.latitude, location.longitude, 500.0))
-
                 //Query and load the features in the same extent as the device
                 loadMap()
 
@@ -127,11 +122,14 @@ class MapViewFragment: Fragment(R.layout.fragment_map_view) {
     //Loads the basemap and queries for the features in the extent
     private fun loadMap(){
         lifecycleScope.launch(Dispatchers.IO) {
+
             //This while loop ensures that the map is actually fully loaded
             //before we try to query features in the extent of where the map loads
             while(mapView.drawStatus.value != DrawStatus.Completed){
                 Thread.sleep(1000)
             }
+
+            mapView.setViewpointScale(500.0)
 
             //Start tracking the location of the device
             locationDisplay.dataSource.start()
@@ -144,15 +142,20 @@ class MapViewFragment: Fragment(R.layout.fragment_map_view) {
             val getFeaturesResponse = graphicsOverlayOperations.queryFeaturesFromLayer("lines,points,polygons")
             graphicsOverlayOperations.drawFeaturesInGraphicsOverlay(getFeaturesResponse)
         }
-
         listenToOnSingleTapEvents()
     }
 
     //Draw any spatially collocated features that are near the user's location
     private fun drawGraphicsOnEventRaised(){
         lifecycleScope.launch(Dispatchers.IO) {
-            val getFeaturesResponse = graphicsOverlayOperations.queryFeaturesFromLayer("lines,points,polygons")
-            graphicsOverlayOperations.drawFeaturesInGraphicsOverlay(getFeaturesResponse)
+            try{
+                val getFeaturesResponse = graphicsOverlayOperations.queryFeaturesFromLayer("lines,points,polygons")
+                graphicsOverlayOperations.drawFeaturesInGraphicsOverlay(getFeaturesResponse)
+            }
+            catch (e: Exception){
+                Log.e("Graphics Overlay Issue", e.message.toString())
+            }
+
         }
     }
 
@@ -184,25 +187,20 @@ class MapViewFragment: Fragment(R.layout.fragment_map_view) {
 
             locationCallBack = object: LocationCallback(){
                 override fun onLocationResult(locationResult: LocationResult) {
-
                     //If the map hasn't finished drawing, return
                     if(mapView.drawStatus.value != DrawStatus.Completed){
                         return
                     }
-
-                    //Update the center point of the map based on the user's location
-                    if(centerMapOnLocationUpdate){
-                        for(location in locationResult.locations){
-                            val viewPoint = mapView.getCurrentViewpoint(ViewpointType.CenterAndScale)
-                            mapView.setViewpoint(Viewpoint(location.latitude, location.longitude, viewPoint!!.targetScale))
-                            drawGraphicsOnEventRaised()
-                        }
-                    }
+                    drawGraphicsOnEventRaised()
                     super.onLocationResult(locationResult)
                 }
             }
+        }
+
+        if(!fusedLocationListening){
             val locationRequest = LocationRequest.Builder(10000).build()
             fusedLocationClient.requestLocationUpdates(locationRequest, locationCallBack, Looper.getMainLooper())
+            fusedLocationListening = true
         }
     }
 
@@ -225,8 +223,6 @@ class MapViewFragment: Fragment(R.layout.fragment_map_view) {
                 return
             }
         }
-        //super.
-        //super.onRequestPermissionsResult(requestCode, permissions, grantResults)
     }
 
     private fun listenToOnUpEvents(){
@@ -234,6 +230,13 @@ class MapViewFragment: Fragment(R.layout.fragment_map_view) {
             mapView.onUp.collect{
                 drawGraphicsOnEventRaised()
             }
+        }
+    }
+
+    fun updateMapReactionToLocationUpdate(recenterOnUpdate: Boolean){
+        when(recenterOnUpdate){
+            true -> locationDisplay.setAutoPanMode(LocationDisplayAutoPanMode.Recenter)
+            false -> locationDisplay.setAutoPanMode(LocationDisplayAutoPanMode.Off)
         }
     }
 
