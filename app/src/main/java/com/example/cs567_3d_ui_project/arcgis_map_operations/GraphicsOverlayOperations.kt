@@ -39,6 +39,8 @@ class GraphicsOverlayOperations(private var qGisClient: QGisClient, private var 
             val spatialReference = viewPoint?.targetGeometry?.spatialReference
             val extent = viewPoint?.targetGeometry?.extent
 
+            Log.i("WKID: ", spatialReference!!.wkid.toString())
+
             val getFeatureRequestAction = GetFeatureRequestAction(
                 layer = layerName,
                 boundingBox = BoundingBox("EPSG:${spatialReference?.wkid}",
