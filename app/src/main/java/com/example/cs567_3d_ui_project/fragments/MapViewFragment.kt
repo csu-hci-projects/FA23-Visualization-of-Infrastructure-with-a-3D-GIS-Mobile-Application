@@ -52,7 +52,7 @@ class MapViewFragment: Fragment(R.layout.fragment_map_view) {
     private val qGisClient: QGisClient by lazy {
         //QGisClient("http://192.168.1.24/cgi-bin/qgis_mapserv.fcgi")
         //QGisClient("http://38.147.239.146/cgi-bin/qgis_mapserv.fcgi")
-        QGisClient("http://38.147.239.146:8080/geoserver/cs567/ows")
+        QGisClient("http://38.147.239.146/geoserver/cs567/ows")
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
@@ -198,9 +198,15 @@ class MapViewFragment: Fragment(R.layout.fragment_map_view) {
         }
 
         if(!fusedLocationListening){
-            val locationRequest = LocationRequest.Builder(10000).build()
-            fusedLocationClient.requestLocationUpdates(locationRequest, locationCallBack, Looper.getMainLooper())
-            fusedLocationListening = true
+            try{
+                val locationRequest = LocationRequest.Builder(10000).build()
+                fusedLocationClient.requestLocationUpdates(locationRequest, locationCallBack, Looper.getMainLooper())
+                fusedLocationListening = true
+            }
+            catch (e: Exception){
+                Log.e("Error Trying to listen to location updates", e.message.toString())
+            }
+
         }
     }
 
