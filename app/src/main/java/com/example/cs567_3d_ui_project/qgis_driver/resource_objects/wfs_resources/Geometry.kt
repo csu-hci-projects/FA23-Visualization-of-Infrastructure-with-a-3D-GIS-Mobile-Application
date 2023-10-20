@@ -35,7 +35,6 @@ data class Geometry (
             else -> throw Exception("Point Geometries must have at least an X and a Y coordinate and no more than 3 dimensions (M is not supported)")
         }
 
-
     }
 
     fun toLineGeometry(): LineGeometry?{

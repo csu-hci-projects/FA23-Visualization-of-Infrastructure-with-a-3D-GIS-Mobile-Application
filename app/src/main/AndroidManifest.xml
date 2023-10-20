@@ -23,13 +23,10 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-
-
     </application>
-
-
-
 </manifest>
 
 
     <!-- android:theme="@style/Theme.CS567_3D_UI_Project" -->
+<!--    android:theme="@style/Theme.KotlinApp"-->
+    <!--    android:theme="@style/AppFullScreenTheme"-->

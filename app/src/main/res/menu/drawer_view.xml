@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+    <item
+        android:id="@+id/center_map_on_location_update"
+        android:title="@string/re_center_map_on_location_update"
+        app:actionViewClass="androidx.appcompat.widget.SwitchCompat"
+        app:showAsAction="always"/>
+</menu>
+<!--    android:onClick="onCenterMapOnLocationUpdate"-->
+    <!--app:actionViewClass="android.widget.Switch"        -->
+<!--    android:actionLayout="@layout/menu_switch"-->
+
