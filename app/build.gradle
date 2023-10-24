@@ -1,7 +1,7 @@
 plugins {
     id 'com.android.application'
     id 'org.jetbrains.kotlin.android'
-    //id 'kotlin-kapt'
+    id 'kotlin-kapt'
 }
 
 android {
@@ -38,6 +38,7 @@ android {
         //Viewbinding does some magic where a view gets an auto-generated binding class compiled with it
         //this is needed to actually work with fragments
         viewBinding true
+        dataBinding true
     }
 
     composeOptions {
@@ -49,14 +50,6 @@ android {
             exclude 'META-INF/DEPENDENCIES'
         }
     }
-    dataBinding{
-        enabled = true
-    }
-
-    buildFeatures {
-         dataBinding true
-     }
-
 }
 
 dependencies {

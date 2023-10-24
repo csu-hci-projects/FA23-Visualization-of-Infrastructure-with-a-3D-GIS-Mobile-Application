@@ -1,5 +1,6 @@
 package com.example.cs567_3d_ui_project.arcgis_map_operations
 
+import android.location.Location
 import android.util.Log
 import com.arcgismaps.Color
 import com.arcgismaps.geometry.Point
@@ -153,6 +154,14 @@ class GraphicsOverlayOperations(private var qGisClient: QGisClient, private var 
                 Log.e("setIdentifyGraphicsOverlay", e.message, e)
                 throw e
             }
+        }
+    }
+
+    suspend fun determineIfFeaturesAreInBuffer(location: Location): Boolean{
+        return withContext(Dispatchers.IO){
+            //graphicsOverlay.graphics.
+
+            return@withContext false
         }
     }
 }

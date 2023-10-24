@@ -10,6 +10,8 @@ import android.view.View
 import android.widget.Toast
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import androidx.databinding.Bindable
+import androidx.databinding.Observable
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import com.arcgismaps.ApiKey
@@ -32,7 +34,8 @@ import com.google.android.gms.location.LocationServices
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
-class MapViewFragment: Fragment(R.layout.fragment_map_view) {
+@Suppress("OverrideDeprecatedMigration")
+class MapViewFragment: Fragment(R.layout.fragment_map_view), Observable {
 
     private var binding: FragmentMapViewBinding? = null
 
@@ -46,6 +49,17 @@ class MapViewFragment: Fragment(R.layout.fragment_map_view) {
     private val mapView: MapView by lazy {
         binding!!.mapView
     }
+
+    private var buttonEnabledState = true
+
+    var buttonEnabled: Boolean
+        @Bindable get(){
+            return buttonEnabledState
+        }
+        set(value){
+            buttonEnabledState = true
+        }
+
 
     private val locationDisplay: LocationDisplay by lazy { mapView.locationDisplay }
 
@@ -244,6 +258,14 @@ class MapViewFragment: Fragment(R.layout.fragment_map_view) {
             true -> locationDisplay.setAutoPanMode(LocationDisplayAutoPanMode.Recenter)
             false -> locationDisplay.setAutoPanMode(LocationDisplayAutoPanMode.Off)
         }
+    }
+
+    override fun addOnPropertyChangedCallback(callback: Observable.OnPropertyChangedCallback?) {
+        TODO("Not yet implemented")
+    }
+
+    override fun removeOnPropertyChangedCallback(callback: Observable.OnPropertyChangedCallback?) {
+        TODO("Not yet implemented")
     }
 
 
