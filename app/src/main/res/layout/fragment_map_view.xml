@@ -16,21 +16,19 @@
     android:layout_height="match_parent"
     tools:context="com.example.cs567_3d_ui_project.fragments.MapViewFragment">
 
-    <Button
-        android:id="@+id/arExperienceButton"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:enabled="@{mapViewFragment.buttonEnabled}"
-        app:layout_constraintBottom_toBottomOf="parent"
-        android:text="@string/enter_ar_experience" />
-
     <com.arcgismaps.mapping.view.MapView
         android:id="@+id/mapView"
         android:layout_width="match_parent"
         android:layout_height="match_parent">
     </com.arcgismaps.mapping.view.MapView>
 
-
+    <Button
+        android:id="@+id/arExperienceButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:enabled="false"
+        app:layout_constraintBottom_toBottomOf="parent"
+        android:text="@string/enter_ar_experience" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>
 

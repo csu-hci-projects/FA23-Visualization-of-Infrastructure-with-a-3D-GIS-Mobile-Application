@@ -25,6 +25,7 @@ import com.example.cs567_3d_ui_project.qgis_driver.resource_objects.wfs_resource
 import com.example.cs567_3d_ui_project.qgis_driver.resource_objects.wms_resources.BoundingBox
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlin.random.Random
 
 @Suppress("NAME_SHADOWING")
 class GraphicsOverlayOperations(private var qGisClient: QGisClient, private var mapView: MapView) {
@@ -159,9 +160,9 @@ class GraphicsOverlayOperations(private var qGisClient: QGisClient, private var 
 
     suspend fun determineIfFeaturesAreInBuffer(location: Location): Boolean{
         return withContext(Dispatchers.IO){
-            //graphicsOverlay.graphics.
-
-            return@withContext false
+            //Test random function to see if the button can enable and disable
+            val random = Random(42)
+            return@withContext random.nextBoolean()
         }
     }
 }
