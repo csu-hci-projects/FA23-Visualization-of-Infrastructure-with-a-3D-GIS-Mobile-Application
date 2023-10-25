@@ -52,7 +52,7 @@ class MapViewFragment: Fragment(R.layout.fragment_map_view) {
     private val qGisClient: QGisClient by lazy {
         //QGisClient("http://192.168.1.24/cgi-bin/qgis_mapserv.fcgi")
         //QGisClient("http://38.147.239.146/cgi-bin/qgis_mapserv.fcgi")
-        QGisClient("http://38.147.239.146/geoserver/cs567/ows")
+        QGisClient("http://38.147.239.145/geoserver/cs567/ows")
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
