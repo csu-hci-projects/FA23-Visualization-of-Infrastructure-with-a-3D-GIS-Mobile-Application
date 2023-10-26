@@ -30,9 +30,16 @@ import kotlin.random.Random
 @Suppress("NAME_SHADOWING")
 class GraphicsOverlayOperations(private var qGisClient: QGisClient, private var mapView: MapView) {
 
-    private var graphicsOverlay = GraphicsOverlay()
+    private var lineGraphicsOverlay = GraphicsOverlay()
+
+    private var pointGraphicsOverlay = GraphicsOverlay()
+
+    private var polygonGraphicsOverlay = GraphicsOverlay()
+
     init {
-        mapView.graphicsOverlays.add(graphicsOverlay)
+        mapView.graphicsOverlays.add(lineGraphicsOverlay)
+        mapView.graphicsOverlays.add(pointGraphicsOverlay)
+        mapView.graphicsOverlays.add(polygonGraphicsOverlay)
     }
 
     suspend fun queryFeaturesFromLayer(layerName: String): GetFeatureResponse {
@@ -78,7 +85,7 @@ class GraphicsOverlayOperations(private var qGisClient: QGisClient, private var 
             val pointGraphic = Graphic(point, symbol)
 
             pointGraphic.attributes["id"] = pointFeature.id
-            graphicsOverlay.graphics.add(pointGraphic)
+            pointGraphicsOverlay.graphics.add(pointGraphic)
         }
     }
 
@@ -97,7 +104,7 @@ class GraphicsOverlayOperations(private var qGisClient: QGisClient, private var 
             }
 
             val lineGraphic = Graphic(lineBuilder.toGeometry(), lineSymbol)
-            graphicsOverlay.graphics.add(lineGraphic)
+            lineGraphicsOverlay.graphics.add(lineGraphic)
         }
     }
 
@@ -117,7 +124,7 @@ class GraphicsOverlayOperations(private var qGisClient: QGisClient, private var 
                 }
                 val polygon = polygonBuilder.toGeometry()
                 val polygonGraphic = Graphic(polygon, polygonSymbol)
-                graphicsOverlay.graphics.add(polygonGraphic)
+                polygonGraphicsOverlay.graphics.add(polygonGraphic)
             }
         }
     }
@@ -127,23 +134,40 @@ class GraphicsOverlayOperations(private var qGisClient: QGisClient, private var 
             try{
                 //Run a spatial query with a given buffer around the click point
                 //with a buffer of 25 and an unlimited number of maximum results
-                val idOverlay = mapView.identifyGraphicsOverlay(
-                    graphicsOverlay = graphicsOverlay,
+                val idOverlays = mapView.identifyGraphicsOverlays(
                     screenCoordinate = screenCoordinate,
                     tolerance = 25.0,
-                    returnPopupsOnly = false,
-                    maximumResults = -1
+                    returnPopupsOnly = false
                 )
-                idOverlay.apply {
-                    onSuccess {
-                        val testGraphics = it.graphics
 
-                        //We are defaulting to a new selection anytime the event fires
-                        graphicsOverlay.graphics.forEach{ it ->
-                            it.isSelected = false
+
+                idOverlays.apply {
+                    onSuccess {
+                        //If nothing was selected, clear all selections
+                        if(!it.any()){
+                            lineGraphicsOverlay.graphics.forEach{gr ->
+                                gr.isSelected = false
+                            }
+
+                            pointGraphicsOverlay.graphics.forEach{gr ->
+                                gr.isSelected = false
+                            }
+
+                            polygonGraphicsOverlay.graphics.forEach{gr ->
+                                gr.isSelected = false
+                            }
                         }
-                        for(graphic in testGraphics){
-                            graphic.isSelected = true
+
+                        it.forEach{gro ->
+                            val graphics = gro.graphics
+
+                            gro.graphicsOverlay.graphics.forEach{gr ->
+                                gr.isSelected = false
+                            }
+
+                            for (graphic in graphics){
+                                graphic.isSelected = true
+                            }
                         }
                     }
                     onFailure {
