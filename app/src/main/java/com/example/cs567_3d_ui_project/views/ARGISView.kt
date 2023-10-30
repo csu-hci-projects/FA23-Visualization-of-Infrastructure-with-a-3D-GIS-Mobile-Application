@@ -1,6 +1,7 @@
 package com.example.cs567_3d_ui_project.views
 
 import android.opengl.GLSurfaceView
+import android.util.Log
 import android.view.View
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
@@ -14,12 +15,34 @@ class ARGISView(val activity: ARGISActivity): DefaultLifecycleObserver {
 
     val session
         get() = activity.arGISSessionHelper.mySession
+    init {
+        surfaceView.setRenderer(activity.argisRenderer)
+    }
+
 
     override fun onResume(owner: LifecycleOwner) {
-        surfaceView.onResume()
+
+        try{
+            Log.i("SurfaceView", surfaceView!!.toString())
+            surfaceView.onResume()
+        }
+        catch (e:Exception){
+            Log.e("Surface View On Resume Failure", e.message.toString())
+            super.onResume(owner)
+        }
+
+
     }
 
     override fun onPause(owner: LifecycleOwner) {
-        surfaceView.onPause()
+
+        try{
+            Log.i("SurfaceView", surfaceView!!.toString())
+            surfaceView.onPause()
+        }
+        catch(e:Exception){
+            Log.e("Surface View On Pause Failure", e.message.toString())
+            super.onPause(owner)
+        }
     }
 }

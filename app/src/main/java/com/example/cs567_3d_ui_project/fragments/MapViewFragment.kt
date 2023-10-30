@@ -1,6 +1,7 @@
 package com.example.cs567_3d_ui_project.fragments
 
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.location.Location
 import android.os.Bundle
@@ -22,6 +23,7 @@ import com.arcgismaps.mapping.view.DrawStatus
 import com.arcgismaps.mapping.view.LocationDisplay
 import com.arcgismaps.mapping.view.MapView
 import com.example.cs567_3d_ui_project.R
+import com.example.cs567_3d_ui_project.activities.ARGISActivity
 import com.example.cs567_3d_ui_project.arcgis_map_operations.GraphicsOverlayOperations
 import com.example.cs567_3d_ui_project.databinding.FragmentMapViewBinding
 import com.example.cs567_3d_ui_project.qgis_driver.QGisClient
@@ -35,7 +37,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 
-@Suppress("OverrideDeprecatedMigration")
 class MapViewFragment: Fragment(R.layout.fragment_map_view) {
 
     private var binding: FragmentMapViewBinding? = null
@@ -77,6 +78,11 @@ class MapViewFragment: Fragment(R.layout.fragment_map_view) {
             setupMap()
 
             arExperienceButton = view.findViewById(R.id.arExperienceButton)
+
+            arExperienceButton.setOnClickListener{
+                val intent = Intent(requireActivity(), ARGISActivity::class.java)
+                startActivity(intent)
+            }
 
         }catch (e: Exception){
             Log.e("Error During onViewCreated", e.message, e)
@@ -288,4 +294,5 @@ class MapViewFragment: Fragment(R.layout.fragment_map_view) {
             arExperienceButton.isEnabled = getFeatureResponse.getFeatureResponseContent.features.any()
         }
     }
+
 }

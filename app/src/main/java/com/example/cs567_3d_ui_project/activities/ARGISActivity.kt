@@ -29,7 +29,7 @@ class ARGISActivity: AppCompatActivity() {
         setContentView(arGISSurfaceView.root)
     }
 
-    fun createSession(session: Session){
+    private fun createSession(session: Session){
         session.configure(session.config.apply {
             //Set light estimation mode to Environmental HDR
             lightEstimationMode = Config.LightEstimationMode.ENVIRONMENTAL_HDR
