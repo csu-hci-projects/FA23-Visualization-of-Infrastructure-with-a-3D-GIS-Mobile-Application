@@ -15,6 +15,7 @@ class ARGISView(val activity: ARGISActivity): DefaultLifecycleObserver {
 
     val session
         get() = activity.arGISSessionHelper.mySession
+
     init {
         surfaceView.setRenderer(activity.argisRenderer)
     }
@@ -30,8 +31,6 @@ class ARGISView(val activity: ARGISActivity): DefaultLifecycleObserver {
             Log.e("Surface View On Resume Failure", e.message.toString())
             super.onResume(owner)
         }
-
-
     }
 
     override fun onPause(owner: LifecycleOwner) {

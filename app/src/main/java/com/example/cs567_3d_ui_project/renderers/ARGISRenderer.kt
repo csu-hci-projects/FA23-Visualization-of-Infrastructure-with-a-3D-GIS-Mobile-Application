@@ -7,8 +7,10 @@ import com.example.cs567_3d_ui_project.activities.ARGISActivity
 import javax.microedition.khronos.egl.EGLConfig
 import javax.microedition.khronos.opengles.GL10
 
-class ARGISRenderer(val activity: ARGISActivity): GLSurfaceView.Renderer, DefaultLifecycleObserver {
-    override fun onSurfaceCreated(p0: GL10?, p1: EGLConfig?) {
+class ARGISRenderer(val activity: ARGISActivity):
+    GLSurfaceView.Renderer,
+    DefaultLifecycleObserver {
+    override fun onSurfaceCreated(p0: GL10?, p1: EGLConfig?){
         GLES20.glClearColor(1.0f, 1.0f, 0.4f, 0.4f)
     }
 
