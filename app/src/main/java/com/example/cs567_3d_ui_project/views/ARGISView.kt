@@ -17,7 +17,7 @@ class ARGISView(val activity: ARGISActivity): DefaultLifecycleObserver {
         get() = activity.arGISSessionHelper.mySession
 
     init {
-        surfaceView.setRenderer(activity.argisRenderer)
+//        surfaceView.setRenderer(activity.argisRenderer)
     }
 
 

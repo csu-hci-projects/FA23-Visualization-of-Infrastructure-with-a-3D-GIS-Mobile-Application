@@ -2,8 +2,8 @@ package com.example.cs567_3d_ui_project.activities
 
 import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
-import com.example.cs567_3d_ui_project.helpers.ARGISSessionLifecycleHelper
-import com.example.cs567_3d_ui_project.renderers.ARGISRenderer
+import com.example.cs567_3d_ui_project.argis.helpers.ARGISSessionLifecycleHelper
+import com.example.cs567_3d_ui_project.argis.renderers.ARGISRenderer
 import com.example.cs567_3d_ui_project.views.ARGISView
 import com.google.ar.core.Config
 import com.google.ar.core.Session

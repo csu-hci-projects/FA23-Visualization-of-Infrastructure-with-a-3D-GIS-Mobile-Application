@@ -1,4 +1,4 @@
-package com.example.cs567_3d_ui_project.helpers
+package com.example.cs567_3d_ui_project.argis.helpers
 
 import android.Manifest
 import android.app.Activity
