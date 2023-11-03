@@ -2,6 +2,7 @@ package com.example.cs567_3d_ui_project.qgis_driver
 
 import android.graphics.BitmapFactory
 import androidx.compose.ui.graphics.asImageBitmap
+import com.example.cs567_3d_ui_project.file_logging.LogFile
 import com.example.cs567_3d_ui_project.qgis_driver.resource_objects.wmts_resources.GetCapabilitiesResponse
 import com.example.cs567_3d_ui_project.qgis_driver.resource_objects.wmts_resources.GetTileResponse
 import com.example.cs567_3d_ui_project.qgis_driver.resource_objects.wmts_resources.wmts_request_actions.GetCapabilitiesRequestAction
@@ -86,6 +87,7 @@ class WMTS(private val qgisUrl: String) {
                     val bitmap = BitmapFactory.decodeStream(inputStream).asImageBitmap()
                     return@with GetTileResponse(bitmap, bitmap.toString(), responseCode)
                 }catch (e: Exception){
+                    LogFile().createLog(e.message.toString(), "WMTS: Error in get tile")
                     throw e
                 }
 

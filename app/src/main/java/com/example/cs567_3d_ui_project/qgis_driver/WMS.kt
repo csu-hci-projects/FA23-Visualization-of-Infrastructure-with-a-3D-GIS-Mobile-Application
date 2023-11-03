@@ -2,6 +2,7 @@ package com.example.cs567_3d_ui_project.qgis_driver
 
 import android.graphics.BitmapFactory
 import androidx.compose.ui.graphics.asImageBitmap
+import com.example.cs567_3d_ui_project.file_logging.LogFile
 import com.example.cs567_3d_ui_project.qgis_driver.resource_objects.wms_resources.GetCapabilitiesResponse
 import com.example.cs567_3d_ui_project.qgis_driver.resource_objects.wms_resources.GetFeatureInfoResponse
 import com.example.cs567_3d_ui_project.qgis_driver.resource_objects.wms_resources.GetMapResponse
@@ -83,6 +84,7 @@ class WMS(private val qgisUrl: String) {
                     }
                 }
             }catch (e: Exception){
+                LogFile().createLog(e.message.toString(), "WMS: Error in get capabilities")
                 throw e
             }
 

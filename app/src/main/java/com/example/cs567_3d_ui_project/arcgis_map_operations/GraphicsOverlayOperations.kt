@@ -151,7 +151,7 @@ class GraphicsOverlayOperations(private var qGisClient: QGisClient, private var 
                 }
             }
             catch (e: Exception){
-                LogFile().createLog(e.message.toString(), "GraphicsOverlayOperations")
+                LogFile().createLog(e.message.toString(), "GraphicsOverlayOperations: issue with set identify graphics overlay")
                 throw e
             }
         }

@@ -23,6 +23,7 @@ import com.arcgismaps.mapping.view.MapView
 import com.example.cs567_3d_ui_project.R
 import com.example.cs567_3d_ui_project.arcgis_map_operations.GraphicsOverlayOperations
 import com.example.cs567_3d_ui_project.databinding.FragmentMapViewBinding
+import com.example.cs567_3d_ui_project.file_logging.LogFile
 import com.example.cs567_3d_ui_project.qgis_driver.QGisClient
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationCallback
@@ -67,7 +68,7 @@ class MapViewFragment: Fragment(R.layout.fragment_map_view) {
             setApiKey()
             setupMap()
         }catch (e: Exception){
-            Log.e("Error During onViewCreated", e.message, e)
+            LogFile().createLog(e.message.toString(), "MapViewFragment: Error During onViewCreated")
             throw e
         }
 
@@ -153,7 +154,7 @@ class MapViewFragment: Fragment(R.layout.fragment_map_view) {
                 graphicsOverlayOperations.drawFeaturesInGraphicsOverlay(getFeaturesResponse)
             }
             catch (e: Exception){
-                Log.e("Graphics Overlay Issue", e.message.toString())
+                LogFile().createLog(e.message.toString(), "MapViewFragment: Graphics Overlay Issue")
             }
 
         }
@@ -204,7 +205,7 @@ class MapViewFragment: Fragment(R.layout.fragment_map_view) {
                 fusedLocationListening = true
             }
             catch (e: Exception){
-                Log.e("Error Trying to listen to location updates", e.message.toString())
+                LogFile().createLog(e.message.toString(), "MapViewFragment: Error Trying to listen to location updates")
             }
 
         }
