@@ -4,6 +4,7 @@ import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
 import com.example.cs567_3d_ui_project.argis.helpers.ARGISSessionLifecycleHelper
 import com.example.cs567_3d_ui_project.argis.renderers.ARGISRenderer
+import com.example.cs567_3d_ui_project.argis.renderers.ARRenderer
 import com.example.cs567_3d_ui_project.views.ARGISView
 import com.google.ar.core.Config
 import com.google.ar.core.Session
@@ -27,13 +28,14 @@ class ARGISActivity: AppCompatActivity() {
         arGISSurfaceView = ARGISView(this)
         lifecycle.addObserver(arGISSurfaceView)
         setContentView(arGISSurfaceView.root)
+
+        ARRenderer(arGISSurfaceView.surfaceView, argisRenderer, assets)
     }
 
     private fun createSession(session: Session){
         session.configure(session.config.apply {
             //Set light estimation mode to Environmental HDR
             lightEstimationMode = Config.LightEstimationMode.ENVIRONMENTAL_HDR
-
         })
     }
 

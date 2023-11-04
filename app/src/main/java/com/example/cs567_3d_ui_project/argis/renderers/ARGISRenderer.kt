@@ -1,22 +1,37 @@
 package com.example.cs567_3d_ui_project.argis.renderers
 
+import android.util.Log
 import androidx.lifecycle.DefaultLifecycleObserver
 import com.example.cs567_3d_ui_project.activities.ARGISActivity
 
 class ARGISRenderer(val activity: ARGISActivity):
     ARRenderer.Renderer,
     DefaultLifecycleObserver {
+
+    lateinit var render: ARRenderer
+    lateinit var backgroundRenderer: BackgroundRenderer
+
     override fun onSurfaceCreated(render: ARRenderer?) {
-        TODO("Not yet implemented")
+        try{
+            this.render = render!!
+            backgroundRenderer = BackgroundRenderer(render)
+        }
+        catch (e:Exception){
+
+        }
     }
 
     override fun onSurfaceChanged(render: ARRenderer?, width: Int, height: Int) {
-        TODO("Not yet implemented")
+        Log.i("OnSurfaceChanged", "Changed")
     }
 
     override fun onDrawFrame(render: ARRenderer?) {
-        TODO("Not yet implemented")
+        Log.i("OnDrawFrame", "Draw")
     }
+
+
+
+
 
 }
 
