@@ -3,6 +3,7 @@ package com.example.cs567_3d_ui_project.argis.renderers
 import android.content.res.AssetManager
 import android.opengl.GLES30
 import android.opengl.GLSurfaceView
+import com.example.cs567_3d_ui_project.argis.Shader
 import com.example.cs567_3d_ui_project.argis.buffers.FrameBuffer
 import javax.microedition.khronos.egl.EGLConfig
 import javax.microedition.khronos.opengles.GL10
@@ -13,7 +14,10 @@ class ARRenderer(glSurfaceView: GLSurfaceView, renderer: Renderer, assetManager:
     private var viewPortWidth: Int = 1
     private var viewPortHeight: Int = 1
 
+    private val assetManager: AssetManager
+
     init {
+        this.assetManager = assetManager
         glSurfaceView.preserveEGLContextOnPause = true
         glSurfaceView.setEGLContextClientVersion(3)
         glSurfaceView.setEGLConfigChooser(8, 8, 8, 8, 16, 0)
@@ -37,10 +41,36 @@ class ARRenderer(glSurfaceView: GLSurfaceView, renderer: Renderer, assetManager:
             }
 
         })
+
+        glSurfaceView.renderMode = GLSurfaceView.RENDERMODE_CONTINUOUSLY
+        glSurfaceView.setWillNotDraw(false)
+    }
+
+    fun draw(shader: Shader, frameBuffer: FrameBuffer){
+
     }
 
     fun clear(frameBuffer: FrameBuffer, r: Float, g: Float, b: Float, a: Float){
 
+    }
+
+    fun getAssets(): AssetManager{
+        return assetManager
+    }
+
+    private fun useFrameBuffer(frameBuffer: FrameBuffer?){
+        var frameBufferId: Int
+        var viewPortWidth: Int
+        var viewPortHeight: Int
+
+        if(frameBuffer == null){
+            frameBufferId = 0
+            viewPortHeight = this.viewPortHeight
+            viewPortWidth = this.viewPortWidth
+        }
+        else{
+
+        }
     }
 
     /** Interface to be implemented for rendering callbacks.  */

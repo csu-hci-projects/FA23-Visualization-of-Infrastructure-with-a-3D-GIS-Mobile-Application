@@ -11,7 +11,7 @@ class BackgroundRenderer(renderer: ARRenderer) {
     private var cameraColorTexture: Texture
     private lateinit var depthColorPaletteTexture: Texture
 
-    private lateinit var cameraTexCoordsVertexBuffer: VertexBuffer
+    private var cameraTexCoordsVertexBuffer: VertexBuffer
 
     companion object{
         private val COORDS_BUFFER_SIZE : Int = 2 * 4 * 4
