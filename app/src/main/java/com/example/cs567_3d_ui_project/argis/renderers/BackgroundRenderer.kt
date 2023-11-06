@@ -1,5 +1,6 @@
 package com.example.cs567_3d_ui_project.argis.renderers
 
+import com.example.cs567_3d_ui_project.argis.Shader
 import com.example.cs567_3d_ui_project.argis.Texture
 import com.example.cs567_3d_ui_project.argis.buffers.VertexBuffer
 import java.nio.ByteBuffer
@@ -8,12 +9,19 @@ import java.nio.ByteOrder
 class BackgroundRenderer(renderer: ARRenderer) {
 
     private var cameraDepthTexture : Texture
-    private var cameraColorTexture: Texture
+    var cameraColorTexture: Texture
     private lateinit var depthColorPaletteTexture: Texture
 
     private var cameraTexCoordsVertexBuffer: VertexBuffer
 
+    private var backgroundShader: Shader? = null
+
+    private var useDepthVisualization: Boolean = false
+
+
     companion object{
+        val TAG: String = BackgroundRenderer.javaClass.simpleName
+
         private val COORDS_BUFFER_SIZE : Int = 2 * 4 * 4
 
         private val NDC_QUAD_COORDS_BUFFER = ByteBuffer.allocateDirect(COORDS_BUFFER_SIZE)
@@ -28,7 +36,6 @@ class BackgroundRenderer(renderer: ARRenderer) {
         }
 
     }
-
 
     init {
         cameraDepthTexture = Texture(
@@ -52,6 +59,26 @@ class BackgroundRenderer(renderer: ARRenderer) {
 
         var vertexBuffers = arrayOf(screenCoordsVertexBuffer, cameraTexCoordsVertexBuffer ,virtualSceneTexCoordsVertexBuffer)
 
+    }
+
+    fun setUseDepthVisualization(renderer: ARRenderer, useDepthVisualization: Boolean){
+        if(backgroundShader != null){
+
+            backgroundShader!!.close()
+            backgroundShader = null
+            this.useDepthVisualization = useDepthVisualization
+        }
+
+        if(useDepthVisualization){
+            depthColorPaletteTexture = Texture.createFromAsset(
+                renderer,
+                "models/depth_color_palette.png",
+                Texture.WrapMode.CLAMP_TO_EDGE,
+                Texture.ColorFormat.LINEAR)
+        }
+        else{
+
+        }
     }
 
 }
