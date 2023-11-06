@@ -3,6 +3,7 @@ package com.example.cs567_3d_ui_project.activities
 import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
 import com.example.cs567_3d_ui_project.argis.helpers.ARGISSessionLifecycleHelper
+import com.example.cs567_3d_ui_project.argis.helpers.DepthSettings
 import com.example.cs567_3d_ui_project.argis.renderers.ARGISRenderer
 import com.example.cs567_3d_ui_project.argis.renderers.ARRenderer
 import com.example.cs567_3d_ui_project.views.ARGISView
@@ -14,6 +15,8 @@ class ARGISActivity: AppCompatActivity() {
     lateinit var arGISSurfaceView: ARGISView
     lateinit var arGISSessionHelper: ARGISSessionLifecycleHelper
     lateinit var argisRenderer: ARGISRenderer
+
+    val depthSettings = DepthSettings()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -30,6 +33,8 @@ class ARGISActivity: AppCompatActivity() {
         setContentView(arGISSurfaceView.root)
 
         ARRenderer(arGISSurfaceView.surfaceView, argisRenderer, assets)
+
+        depthSettings.onCreate(this)
     }
 
     private fun createSession(session: Session){

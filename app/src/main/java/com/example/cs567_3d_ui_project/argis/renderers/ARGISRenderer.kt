@@ -70,7 +70,7 @@ class ARGISRenderer(val activity: ARGISActivity):
         Log.i("OnSurfaceChanged", "Changed")
     }
 
-    override fun onDrawFrame(render: ARRenderer?) {
+    override fun onDrawFrame(renderer: ARRenderer?) {
         val session = session ?: return
 
         if(!hasSetTextureNames){
@@ -90,7 +90,8 @@ class ARGISRenderer(val activity: ARGISActivity):
         val camera = frame.camera
 
         try{
-            //backgroundRenderer.
+            backgroundRenderer.setUseDepthVisualization(renderer!!,
+                activity.depthSettings.depthColorVisualizationEnabled)
         }
         catch (e: IOException){
             Log.e(TAG, "Failed to read a required asset file", e)

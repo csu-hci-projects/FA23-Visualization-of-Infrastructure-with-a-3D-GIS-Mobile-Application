@@ -15,9 +15,11 @@ class BackgroundRenderer(renderer: ARRenderer) {
     private var cameraTexCoordsVertexBuffer: VertexBuffer
 
     private var backgroundShader: Shader? = null
+    private var occlusionShader: Shader? = null
 
     private var useDepthVisualization: Boolean = false
 
+    private var useOcclusion: Boolean = false
 
     companion object{
         val TAG: String = BackgroundRenderer.javaClass.simpleName
@@ -75,10 +77,55 @@ class BackgroundRenderer(renderer: ARRenderer) {
                 "models/depth_color_palette.png",
                 Texture.WrapMode.CLAMP_TO_EDGE,
                 Texture.ColorFormat.LINEAR)
-        }
-        else{
+
+            backgroundShader =
+                Shader.createFromAssets(renderer,
+                    "shaders/background_show_depth_color_visualization.vert",
+                    "shaders/background_show_depth_color_visualization.frag",
+                    null)
+                    .setTexture("u_CameraDepthTexture", cameraDepthTexture)
+                    .setTexture("u_ColorMap", depthColorPaletteTexture)
+                    .setDepthTest(false)
+                    .setDepthWrite(false)
 
         }
+        else{
+            backgroundShader =
+                Shader.createFromAssets(renderer,
+                    "shaders/background_show_camera.vert",
+                    "shaders/background_show_camera.frag",
+                    null)
+                    .setTexture("u_CameraColorTexture", cameraColorTexture)
+                    .setDepthTest(false)
+                    .setDepthWrite(false)
+        }
+    }
+
+    fun setUseOcclusion(renderer: ARRenderer, useOcclusion: Boolean){
+        if(occlusionShader != null){
+            if(this.useOcclusion == useOcclusion){
+                return
+            }
+
+            occlusionShader!!.close()
+            occlusionShader = null
+            this.useOcclusion = useOcclusion
+        }
+
+        val defines = HashMap<String, String>()
+        val useOccVal = when(useOcclusion){
+            true -> "1"
+            false -> "0"
+        }
+        defines["USE_OCCLUSION"] = useOccVal
+
+        occlusionShader =
+            Shader.createFromAssets(renderer,
+                "shaders/occlusion.vert",
+                "shaders/occlusion.frag",
+                defines)
+                .setDepthTest(false)
+                .setDepthWrite(false)
     }
 
 }

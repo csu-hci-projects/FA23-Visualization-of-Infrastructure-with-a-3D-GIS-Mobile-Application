@@ -13,9 +13,23 @@ import java.util.regex.Matcher
 class Shader(renderer: ARRenderer,
     vertexShaderCode: String,
     fragmentShaderCode: String,
-    defines: Map<String, String>): Closeable {
+    defines: Map<String, String>?): Closeable {
 
     private var programId: Int = 0
+
+    private val uniformLocations: HashMap<String, Int>
+        get() = HashMap()
+
+    private val uniformNames: HashMap<Int, String>
+        get() = HashMap()
+
+    private val uniforms: HashMap<Int, Uniform>
+        get() = HashMap()
+
+    private var maxTextureUnit = 0
+
+    private var depthTest: Boolean = true
+    private var depthWrite: Boolean = true
 
     companion object{
         val TAG: String = Shader.javaClass.simpleName
@@ -38,7 +52,7 @@ class Shader(renderer: ARRenderer,
                 )
                 GLES30.glDeleteShader(shaderId)
                 GLError.maybeLogGLError(Log.WARN, TAG, "Faield to free shader", "glDeleteShader")
-                throw GLException(0, "Shader compilation failed: " + infoLog)
+                throw GLException(0, "Shader compilation failed: $infoLog")
             }
 
             return shaderId
@@ -55,10 +69,10 @@ class Shader(renderer: ARRenderer,
             return builder.toString()
         }
 
-        private fun createFromAssets(renderer: ARRenderer,
+        fun createFromAssets(renderer: ARRenderer,
                              vertexShaderFileName: String,
                              fragmentShaderFileName: String,
-                             defines: Map<String, String>): Shader{
+                             defines: Map<String, String>?): Shader{
 
             val assets = renderer.getAssets()
             return Shader(
@@ -150,5 +164,79 @@ class Shader(renderer: ARRenderer,
         }
     }
 
+    fun setTexture(name: String, texture: Texture): Shader{
+        val location = getUniformLocation(name)
+        val uniform = uniforms.get(location)
+        var textureUnit: Int
+        if(uniform !is UniformTexture){
+            textureUnit = maxTextureUnit++
+        }
+        else{
+            val uniformTexture: UniformTexture = uniform as UniformTexture
+            textureUnit = uniformTexture.getTextureUnit()
+        }
+        uniforms[location] = UniformTexture(textureUnit, texture)
+        return this
+    }
+
+   private fun getUniformLocation(name: String): Int {
+        val locationObject = uniformLocations.get(name)
+        if(locationObject != null){
+            return locationObject
+        }
+
+        val location = GLES30.glGetUniformLocation(programId, name)
+        GLError.maybeThrowGLException("Failed to find uniform", "glGetUniformLocation")
+
+        if(location == -1){
+            throw IllegalStateException("Shader uniform does not exist: $name")
+        }
+
+        uniformLocations[name] = location
+        uniformNames[location] = name
+        return location
+    }
+
+    fun setDepthTest(depthTest: Boolean): Shader{
+        this.depthTest = depthTest
+        return this
+    }
+
+    fun setDepthWrite(depthWrite: Boolean): Shader{
+        this.depthWrite = depthWrite
+        return this
+    }
+
+    private interface Uniform{
+        fun use(location: Int)
+    }
+
+    class UniformTexture(textureUnit: Int, texture: Texture): Uniform {
+        private val textureUnit: Int
+        private val texture: Texture
+
+        init{
+            this.textureUnit = textureUnit
+            this.texture = texture
+        }
+
+        fun getTextureUnit(): Int{
+            return this.textureUnit
+        }
+
+        override fun use(location: Int) {
+            if(texture.getTextureId() == 0){
+                throw IllegalStateException("Tried to draw with freed texture")
+            }
+
+            GLES30.glActiveTexture(GLES30.GL_TEXTURE0 + textureUnit)
+            GLError.maybeThrowGLException("Failed to set active texture", "glActiveTexture")
+            GLES30.glBindTexture(texture.getTarget().ordinal, texture.getTextureId())
+            GLError.maybeThrowGLException("Failed to Bind Texture", "glBindTexture")
+            GLES30.glUniform1i(location, textureUnit)
+            GLError.maybeThrowGLException("Failed to set shader texture uniform", "glUniform1i")
+        }
+
+    }
 
 }
