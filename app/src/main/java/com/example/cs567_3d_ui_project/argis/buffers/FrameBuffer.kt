@@ -128,4 +128,12 @@ class FrameBuffer(render: ARRenderer, width: Int, height: Int): Closeable{
     fun getHeight(): Int{
         return height
     }
+
+    fun getColorTexture(): Texture{
+        return colorTexture
+    }
+
+    fun getDepthTexture(): Texture{
+        return depthTexture
+    }
 }

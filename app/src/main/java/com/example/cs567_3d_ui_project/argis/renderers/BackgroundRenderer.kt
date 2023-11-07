@@ -4,6 +4,7 @@ import android.media.Image
 import android.opengl.GLES30
 import com.example.cs567_3d_ui_project.argis.Shader
 import com.example.cs567_3d_ui_project.argis.Texture
+import com.example.cs567_3d_ui_project.argis.buffers.FrameBuffer
 import com.example.cs567_3d_ui_project.argis.buffers.VertexBuffer
 import com.google.ar.core.Coordinates2d
 import com.google.ar.core.Frame
@@ -175,6 +176,17 @@ class BackgroundRenderer(renderer: ARRenderer) {
 
     fun drawBackground(renderer: ARRenderer){
         renderer.draw(backgroundShader)
+    }
+
+    fun drawVirtualScene(renderer: ARRenderer, virtualSceneFrameBuffer: FrameBuffer, zNear: Float, zFar: Float){
+        occlusionShader!!.setTexture("u_VirtualSceneDepthTexture", virtualSceneFrameBuffer.getColorTexture())
+
+        if(useOcclusion){
+            occlusionShader!!.setTexture("use_VirtualSceneDepthTexture", virtualSceneFrameBuffer.getDepthTexture())
+                .setFloat("u_ZNear", zNear)
+                .setFloat("u_ZFar", zFar)
+        }
+        renderer.draw(occlusionShader)
     }
 
 }

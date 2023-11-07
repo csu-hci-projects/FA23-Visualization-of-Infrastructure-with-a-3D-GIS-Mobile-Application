@@ -6,6 +6,7 @@ import androidx.lifecycle.DefaultLifecycleObserver
 import com.example.cs567_3d_ui_project.activities.ARGISActivity
 import com.example.cs567_3d_ui_project.argis.GLError
 import com.example.cs567_3d_ui_project.argis.Texture
+import com.example.cs567_3d_ui_project.argis.buffers.FrameBuffer
 import com.google.ar.core.Anchor
 import com.google.ar.core.Trackable
 import com.google.ar.core.TrackingState
@@ -22,8 +23,12 @@ class ARGISRenderer(val activity: ARGISActivity):
     lateinit var backgroundRenderer: BackgroundRenderer
 
     lateinit var dfgTexture: Texture
+    lateinit var virtualSceneFrameBuffer: FrameBuffer
 
     var hasSetTextureNames = false
+
+    private val Z_Near = 0.1f
+    private val Z_Far = 100f
 
     companion object{
         val TAG: String = ARGISRenderer::class.java.simpleName
@@ -36,6 +41,7 @@ class ARGISRenderer(val activity: ARGISActivity):
         try{
             this.render = render!!
             backgroundRenderer = BackgroundRenderer(render)
+            virtualSceneFrameBuffer = FrameBuffer(render, 1, 1)
 
             dfgTexture = Texture(
                 render,
@@ -72,6 +78,7 @@ class ARGISRenderer(val activity: ARGISActivity):
 
     override fun onSurfaceChanged(render: ARRenderer?, width: Int, height: Int) {
         Log.i("OnSurfaceChanged", "Changed")
+        virtualSceneFrameBuffer.resize(width, height)
     }
 
     override fun onDrawFrame(renderer: ARRenderer?) {
@@ -135,6 +142,9 @@ class ARGISRenderer(val activity: ARGISActivity):
 
         //The rest of the code in Hello AR Kotlin is setting up shaders for the GL stuff
         //that it renders. There are good things to potentially crib from in there but we will skip for now.
+        render.clear(virtualSceneFrameBuffer, 0f,0f,0f,0f)
+        backgroundRenderer.drawVirtualScene(renderer, virtualSceneFrameBuffer, Z_Near, Z_Far)
+
     }
 
 }
