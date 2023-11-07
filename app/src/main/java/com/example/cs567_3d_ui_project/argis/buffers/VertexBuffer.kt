@@ -11,9 +11,11 @@ class VertexBuffer(render: ARRenderer, numberOfEntriesPerVertex: Int, entries: F
     private val gpuBuffer: GpuBuffer
 
     init{
-        if(entries!!.limit() % numberOfEntriesPerVertex != 0){
-            throw IllegalArgumentException("If non-null, " +
-                    "vertex buffer data must be divisible by the number of data points per vertex")
+        if(entries != null){
+            if(entries.limit() % numberOfEntriesPerVertex != 0){
+                throw IllegalArgumentException("If non-null, " +
+                        "vertex buffer data must be divisible by the number of data points per vertex")
+            }
         }
 
         this.numberOfEntriesPerVertex = numberOfEntriesPerVertex

@@ -31,8 +31,13 @@ class Shader(renderer: ARRenderer,
     private var depthTest: Boolean = true
     private var depthWrite: Boolean = true
 
+    private var sourceRgbBlend = BlendFactor.ONE
+    private var destRgbBlend = BlendFactor.ZERO
+    private var sourceAlphaBlend = BlendFactor.ONE
+    private var destAlphaBlend = BlendFactor.ZERO
+
     companion object{
-        val TAG: String = Shader.javaClass.simpleName
+        val TAG: String = Shader::class.java.simpleName
 
         private fun createShader(type: Int, code: String): Int {
             val shaderId = GLES30.glCreateShader(type)
@@ -207,7 +212,81 @@ class Shader(renderer: ARRenderer,
         return this
     }
 
-    private interface Uniform{
+    fun setBlend(sourceBlend: BlendFactor, destBlend: BlendFactor): Shader{
+        this.sourceRgbBlend = sourceBlend
+        this.sourceAlphaBlend = sourceBlend
+        this.destRgbBlend = destBlend
+        this.destAlphaBlend = destBlend
+        return this
+    }
+
+    fun setBlend(sourceRgbBlend: BlendFactor,
+                 destRgbBlend: BlendFactor,
+                 sourceAlphaBlend: BlendFactor,
+                 destAlphaBlend: BlendFactor): Shader{
+        this.sourceRgbBlend = sourceRgbBlend
+        this.sourceAlphaBlend = sourceAlphaBlend
+        this.destRgbBlend = destRgbBlend
+        this.destAlphaBlend = destAlphaBlend
+        return this
+    }
+
+    fun setFloat(name: String, v0: Float): Shader{
+        val values = floatArrayOf(v0)
+        uniforms[getUniformLocation(name)] = Uniform1f(values)
+        return this
+    }
+
+    fun lowLevelUse(){
+        if(programId == 0){
+            throw IllegalStateException("Attempted to use a freed shader")
+        }
+
+        GLES30.glUseProgram(programId)
+        GLError.maybeThrowGLException("Failed to use shader program", "glUseProgram")
+        GLES30.glBlendFuncSeparate(
+            sourceRgbBlend.ordinal,
+            destRgbBlend.ordinal,
+            sourceAlphaBlend.ordinal,
+            destAlphaBlend.ordinal)
+        GLError.maybeThrowGLException("Failed to set blend mode", "glBlendFuncSeparate")
+        GLES30.glDepthMask(depthWrite)
+        GLError.maybeThrowGLException("Failed to set depth write mask", "glDepthMask")
+
+        if(depthTest){
+            GLES30.glEnable(GLES30.GL_DEPTH_TEST)
+            GLError.maybeThrowGLException("Failed to enable depth test", "glEnable")
+        }
+        else{
+            GLES30.glDisable(GLES30.GL_DEPTH_TEST)
+            GLError.maybeThrowGLException("Failed to disable depth test", "glEnable")
+        }
+
+        try{
+            //Remove all non-texture uniforms from the map after setting them since they are stored as part of the program
+            val obsoleteEntries = ArrayList<Int>(uniforms.size)
+            for(entry in uniforms.entries.toSet()){
+                try{
+                    entry.value.use(entry.key)
+
+                    if(entry.value !is UniformTexture){
+                        obsoleteEntries.add(entry.key)
+                    }
+                } catch(e: GLException){
+                    val name = uniformNames[entry.key]
+                    throw IllegalStateException("Error setting uniform '$name'", e)
+                }
+            }
+            uniforms.keys.removeAll(obsoleteEntries.toSet())
+        }
+        finally {
+            GLES30.glActiveTexture(GLES30.GL_TEXTURE0)
+            GLError.maybeLogGLError(Log.WARN, TAG, "Failed to set active texture", "glActiveTexture")
+        }
+
+    }
+
+    private interface Uniform {
         fun use(location: Int)
     }
 
@@ -235,6 +314,44 @@ class Shader(renderer: ARRenderer,
             GLError.maybeThrowGLException("Failed to Bind Texture", "glBindTexture")
             GLES30.glUniform1i(location, textureUnit)
             GLError.maybeThrowGLException("Failed to set shader texture uniform", "glUniform1i")
+        }
+
+    }
+
+    enum class BlendFactor(glesEnum: Int){
+       ZERO(GLES30.GL_ZERO),
+        ONE(GLES30.GL_ONE),
+        SRC_COLOR(GLES30.GL_SRC_COLOR),
+        ONE_MINUS_SRC_COLOR(GLES30.GL_ONE_MINUS_SRC_COLOR),
+        DST_COLOR(GLES30.GL_DST_COLOR),
+        ONE_MINUS_DST_COLOR(GLES30.GL_ONE_MINUS_DST_COLOR),
+        SRC_ALPHA(GLES30.GL_SRC_ALPHA),
+        ONE_MINUS_SRC_ALPHA(GLES30.GL_ONE_MINUS_SRC_ALPHA),
+        DST_ALPHA(GLES30.GL_DST_ALPHA),
+        ONE_MINUS_DST_ALPHA(GLES30.GL_ONE_MINUS_DST_ALPHA),
+        CONSTANT_COLOR(GLES30.GL_CONSTANT_COLOR),
+        ONE_MINUS_CONSTANT_COLOR(GLES30.GL_ONE_MINUS_CONSTANT_COLOR),
+        CONSTANT_ALPHA(GLES30.GL_CONSTANT_ALPHA),
+        ONE_MINUS_CONSTANT_ALPHA(GLES30.GL_ONE_MINUS_CONSTANT_ALPHA);
+
+        val glesEnum: Int
+
+        init{
+            this.glesEnum = glesEnum
+        }
+
+    }
+
+    class Uniform1f(values: FloatArray): Uniform{
+        private val values: FloatArray
+
+        init{
+            this.values = values
+        }
+
+        override fun use(location: Int) {
+            GLES30.glUniform1fv(location, values.size, values, 0)
+            GLError.maybeThrowGLException("Failed to set shader uniform 1f", "glUniform1fv")
         }
 
     }

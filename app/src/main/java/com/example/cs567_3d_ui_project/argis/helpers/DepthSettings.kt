@@ -5,8 +5,8 @@ import android.content.SharedPreferences
 
 class DepthSettings {
 
-    var depthColorVisualizationEnabled = false
-    var useDepthForOcclusion = false
+    var depthColorVisualizationEnabled: Boolean = false
+    var useDepthForOcclusion: Boolean = false
 
     private lateinit var sharedPreferences: SharedPreferences
 
@@ -26,7 +26,7 @@ class DepthSettings {
         return this.useDepthForOcclusion
     }
 
-    fun setUseDepthForOcclusion(enable: Boolean){
+    fun setUseDepthForOcclusionDS(enable: Boolean){
         if(enable == useDepthForOcclusion){
             return
         }

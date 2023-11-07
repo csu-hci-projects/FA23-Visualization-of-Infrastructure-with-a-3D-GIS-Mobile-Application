@@ -17,7 +17,7 @@ class FrameBuffer(render: ARRenderer, width: Int, height: Int): Closeable{
     private var height: Int = -1
 
     companion object{
-        val TAG: String = FrameBuffer.javaClass.simpleName
+        val TAG: String = FrameBuffer::class.java.simpleName
     }
 
     init{
@@ -115,5 +115,17 @@ class FrameBuffer(render: ARRenderer, width: Int, height: Int): Closeable{
             GLES30.GL_FLOAT,
             null)
         GLError.maybeThrowGLException("Failed to specify depth texture format", "glTexImage2D")
+    }
+
+    fun getFrameBufferId(): Int{
+        return frameBufferId[0]
+    }
+
+    fun getWidth(): Int{
+        return width
+    }
+
+    fun getHeight(): Int{
+        return height
     }
 }

@@ -6,7 +6,11 @@ import androidx.lifecycle.DefaultLifecycleObserver
 import com.example.cs567_3d_ui_project.activities.ARGISActivity
 import com.example.cs567_3d_ui_project.argis.GLError
 import com.example.cs567_3d_ui_project.argis.Texture
+import com.google.ar.core.Anchor
+import com.google.ar.core.Trackable
+import com.google.ar.core.TrackingState
 import com.google.ar.core.exceptions.CameraNotAvailableException
+import com.google.ar.core.exceptions.NotYetAvailableException
 import java.io.IOException
 import java.nio.ByteBuffer
 
@@ -22,7 +26,7 @@ class ARGISRenderer(val activity: ARGISActivity):
     var hasSetTextureNames = false
 
     companion object{
-        val TAG: String = ARGISRenderer.javaClass.simpleName
+        val TAG: String = ARGISRenderer::class.java.simpleName
     }
 
     val session
@@ -92,20 +96,53 @@ class ARGISRenderer(val activity: ARGISActivity):
         try{
             backgroundRenderer.setUseDepthVisualization(renderer!!,
                 activity.depthSettings.depthColorVisualizationEnabled)
+
+            backgroundRenderer.setUseOcclusion(renderer, activity.depthSettings.useDepthForOcclusion())
         }
         catch (e: IOException){
             Log.e(TAG, "Failed to read a required asset file", e)
             return
         }
 
-        Log.i("OnDrawFrame", "Draw")
+        // BackgroundRenderer.updateDisplayGeometry must be called every frame to update the coordinates
+        // used to draw the background camera image.
+        backgroundRenderer.updateDisplayGeometry(frame)
+
+        val shouldGetDepthImage = activity.depthSettings.useDepthForOcclusion() ||
+        activity.depthSettings.depthColorVisualizationEnabled()
+
+        if(camera.trackingState == TrackingState.TRACKING && shouldGetDepthImage){
+            try{
+                val depthImage = frame.acquireDepthImage16Bits()
+                backgroundRenderer.updateCameraDepthTexture(depthImage)
+                depthImage.close()
+            }
+            catch (e: NotYetAvailableException){
+                Log.w("Update Camera Depth Texture", e.message.toString())
+            }
+        }
+
+
+        //Draw background
+        if(frame.timestamp != 0L){
+            //Suppress renderering if the camera did not produce the first frame yet.
+            backgroundRenderer.drawBackground(renderer)
+        }
+
+        if(camera.trackingState == TrackingState.PAUSED){
+            return
+        }
+
+        //The rest of the code in Hello AR Kotlin is setting up shaders for the GL stuff
+        //that it renders. There are good things to potentially crib from in there but we will skip for now.
     }
 
-
-
-
-
 }
+
+data class WrappedAnchor(
+    val anchor: Anchor,
+    val trackable: Trackable
+)
 
 //fun onSurfaceCreated(p0: GL10?, p1: EGLConfig?){
 //    GLES20.glClearColor(1.0f, 1.0f, 0.4f, 0.4f)

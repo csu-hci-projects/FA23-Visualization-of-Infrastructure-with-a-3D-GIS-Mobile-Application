@@ -16,7 +16,7 @@ class Texture(renderer: ARRenderer, target: Target, wrapMode: WrapMode, useMipMa
     private var textureId: IntArray = arrayOf(0).toIntArray()
 
     companion object{
-        val TAG = Texture.javaClass.simpleName
+        val TAG = Texture::class.java.simpleName
 
         fun createFromAsset(renderer: ARRenderer, assetFileName: String, wrapMode: WrapMode, colorFormat: ColorFormat): Texture{
             val texture = Texture(renderer, Target.TEXTURE_2D, wrapMode)
@@ -71,6 +71,10 @@ class Texture(renderer: ARRenderer, target: Target, wrapMode: WrapMode, useMipMa
     init {
         this.target = target
 
+        val test = target.glesEnum
+
+        Log.i("test", test.toString())
+
         GLES30.glGenTextures(1, textureId, 0)
         GLError.maybeThrowGLException("Texture creation failed", "glGenTextures")
 
@@ -80,22 +84,23 @@ class Texture(renderer: ARRenderer, target: Target, wrapMode: WrapMode, useMipMa
         }
 
         try{
-            GLES30.glBindTexture(this.target.ordinal, textureId[0])
+            GLES30.glBindTexture(target.glesEnum, textureId[0])
             GLError.maybeThrowGLException("Failed to bind texture", "glBindTexture")
 
-            GLES30.glTexParameteri(this.target.ordinal, GLES30.GL_TEXTURE_MIN_FILTER, minFilter)
+            GLES30.glTexParameteri(target.glesEnum, GLES30.GL_TEXTURE_MIN_FILTER, minFilter)
             GLError.maybeThrowGLException("Failed to set texture parameter", "glTexParameteri")
 
-            GLES30.glTexParameteri(this.target.ordinal, GLES30.GL_TEXTURE_MAG_FILTER, GLES30.GL_LINEAR)
+            GLES30.glTexParameteri(target.glesEnum, GLES30.GL_TEXTURE_MAG_FILTER, GLES30.GL_LINEAR)
             GLError.maybeThrowGLException("Failed to set texture parameter", "glTexParameteri")
 
-            GLES30.glTexParameteri(this.target.ordinal, GLES30.GL_TEXTURE_WRAP_S, wrapMode.ordinal)
+            GLES30.glTexParameteri(target.glesEnum, GLES30.GL_TEXTURE_WRAP_S, wrapMode.glesEnum)
             GLError.maybeThrowGLException("Failed to set texture parameter", "glTexParameteri")
 
-            GLES30.glTexParameteri(this.target.ordinal, GLES30.GL_TEXTURE_WRAP_T, wrapMode.ordinal)
+            GLES30.glTexParameteri(target.glesEnum, GLES30.GL_TEXTURE_WRAP_T, wrapMode.glesEnum)
             GLError.maybeThrowGLException("Failed to set texture parameter", "glTexParameteri")
         }
         catch (e: Exception){
+            close()
             Log.e("Error in Initializing Texture", e.message.toString())
         }
     }
@@ -103,18 +108,38 @@ class Texture(renderer: ARRenderer, target: Target, wrapMode: WrapMode, useMipMa
     enum class Target(glTexture2d: Int) {
         TEXTURE_2D(GLES30.GL_TEXTURE_2D),
         TEXTURE_EXTERNAL_OES(GLES11Ext.GL_TEXTURE_EXTERNAL_OES),
-        TEXTURE_CUBE_MAP(GLES30.GL_TEXTURE_CUBE_MAP)
+        TEXTURE_CUBE_MAP(GLES30.GL_TEXTURE_CUBE_MAP);
+
+        val glesEnum: Int
+
+        init{
+           glesEnum = glTexture2d
+        }
+
+
     }
 
     enum class WrapMode(glClampToEdge: Int) {
         CLAMP_TO_EDGE(GLES30.GL_CLAMP_TO_EDGE),
         MIRRORED_REPEAT(GLES30.GL_MIRRORED_REPEAT),
-        REPEAT(GLES30.GL_REPEAT)
+        REPEAT(GLES30.GL_REPEAT);
+
+        val glesEnum: Int
+
+        init{
+            glesEnum = glClampToEdge
+        }
     }
 
     enum class ColorFormat(glesEnum: Int){
         LINEAR(GLES30.GL_RGBA8),
-        SRGB(GLES30.GL_SRGB8_ALPHA8)
+        SRGB(GLES30.GL_SRGB8_ALPHA8);
+
+        val glesEnum: Int
+
+        init{
+            this.glesEnum = glesEnum
+        }
     }
 
     fun getTextureId(): Int{

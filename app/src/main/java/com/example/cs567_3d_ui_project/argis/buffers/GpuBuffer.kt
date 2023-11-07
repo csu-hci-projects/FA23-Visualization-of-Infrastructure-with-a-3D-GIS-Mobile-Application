@@ -6,9 +6,9 @@ import com.example.cs567_3d_ui_project.argis.GLError
 import java.nio.Buffer
 
 
-class GpuBuffer(target: Int, numberOfBytesPerEntry: Int, entries: Buffer?) {
+class GpuBuffer(target: Int, numberOfBytesPerEntry: Int, entries: Buffer? = null) {
 
-    private val entries: Buffer?
+    private var entries: Buffer?
     private val target: Int
     private val numberOfBytesPerEntry: Int
     private var size: Int
@@ -22,23 +22,27 @@ class GpuBuffer(target: Int, numberOfBytesPerEntry: Int, entries: Buffer?) {
 
 
     init{
+        this.entries = null
+        if(entries != null){
+            if(!entries.isDirect){
+                throw IllegalArgumentException("If Non-null, entries buffer must be a direct buffer")
+            }
 
-
-        if(!entries!!.isDirect){
-            throw IllegalArgumentException("If Non-null, entries buffer must be a direct buffer")
-        }
-        if(entries.limit() == 0){
-            this.entries = null
-        }
-        else{
-            this.entries = entries
+            if(entries.limit() > 0){
+                this.entries = entries
+            }
         }
 
         this.target = target
         this.numberOfBytesPerEntry = numberOfBytesPerEntry
 
-        this.size = entries.limit()
-        this.capacity = entries.limit()
+        if(this.entries == null){
+            this.size = 0
+            this.capacity = 0
+        }else{
+            this.size = this.entries!!.limit()
+            this.capacity = this.entries!!.limit()
+        }
 
         try{
             //Clear VertexArray0 to prevent unintended state change.

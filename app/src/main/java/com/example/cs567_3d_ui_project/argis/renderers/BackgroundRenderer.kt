@@ -1,8 +1,12 @@
 package com.example.cs567_3d_ui_project.argis.renderers
 
+import android.media.Image
+import android.opengl.GLES30
 import com.example.cs567_3d_ui_project.argis.Shader
 import com.example.cs567_3d_ui_project.argis.Texture
 import com.example.cs567_3d_ui_project.argis.buffers.VertexBuffer
+import com.google.ar.core.Coordinates2d
+import com.google.ar.core.Frame
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 
@@ -20,9 +24,13 @@ class BackgroundRenderer(renderer: ARRenderer) {
     private var useDepthVisualization: Boolean = false
 
     private var useOcclusion: Boolean = false
+    private var aspectRatio: Float = 0.0F
+
+    private val cameraTexCoords = ByteBuffer.allocateDirect(COORDS_BUFFER_SIZE)
+        .order(ByteOrder.nativeOrder()).asFloatBuffer()
 
     companion object{
-        val TAG: String = BackgroundRenderer.javaClass.simpleName
+        val TAG: String = BackgroundRenderer::class.java.simpleName
 
         private val COORDS_BUFFER_SIZE : Int = 2 * 4 * 4
 
@@ -126,6 +134,47 @@ class BackgroundRenderer(renderer: ARRenderer) {
                 defines)
                 .setDepthTest(false)
                 .setDepthWrite(false)
+                .setBlend(Shader.BlendFactor.SRC_ALPHA, Shader.BlendFactor.ONE_MINUS_SRC_ALPHA)
+
+        if(useOcclusion){
+            occlusionShader!!.setTexture("u_CameraDepthTexture", cameraDepthTexture)
+                .setFloat("u_DepthAspectRatio", aspectRatio)
+        }
+    }
+
+    fun updateDisplayGeometry(frame: Frame){
+        if(frame.hasDisplayGeometryChanged()){
+
+            frame.transformCoordinates2d(
+                Coordinates2d.OPENGL_NORMALIZED_DEVICE_COORDINATES,
+                NDC_QUAD_COORDS_BUFFER,
+                Coordinates2d.TEXTURE_NORMALIZED,
+                cameraTexCoords)
+
+            cameraTexCoordsVertexBuffer.set(cameraTexCoords)
+        }
+    }
+
+    fun updateCameraDepthTexture(image: Image){
+        GLES30.glBindTexture(GLES30.GL_TEXTURE_2D, cameraDepthTexture.getTextureId())
+        GLES30.glTexImage2D(GLES30.GL_TEXTURE_2D,
+            0,
+            GLES30.GL_RG8,
+            image.width,
+            image.height,
+            0,
+            GLES30.GL_RG,
+            GLES30.GL_UNSIGNED_BYTE,
+            image.planes[0].buffer)
+
+        if(useOcclusion){
+            aspectRatio = image.width.toFloat() / image.height.toFloat()
+            occlusionShader!!.setFloat("u_DepthAspectRatio", aspectRatio)
+        }
+    }
+
+    fun drawBackground(renderer: ARRenderer){
+        renderer.draw(backgroundShader)
     }
 
 }
