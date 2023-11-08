@@ -7,8 +7,12 @@ import com.example.cs567_3d_ui_project.activities.ARGISActivity
 import com.example.cs567_3d_ui_project.argis.GLError
 import com.example.cs567_3d_ui_project.argis.Texture
 import com.example.cs567_3d_ui_project.argis.buffers.FrameBuffer
+import com.example.cs567_3d_ui_project.argis.helpers.TrackingStateHelper
 import com.google.ar.core.Anchor
+import com.google.ar.core.Plane
+import com.google.ar.core.Session
 import com.google.ar.core.Trackable
+import com.google.ar.core.TrackingFailureReason
 import com.google.ar.core.TrackingState
 import com.google.ar.core.exceptions.CameraNotAvailableException
 import com.google.ar.core.exceptions.NotYetAvailableException
@@ -21,6 +25,7 @@ class ARGISRenderer(val activity: ARGISActivity):
 
     lateinit var render: ARRenderer
     lateinit var backgroundRenderer: BackgroundRenderer
+    lateinit var planeRenderer: PlaneRenderer
 
     lateinit var dfgTexture: Texture
     lateinit var virtualSceneFrameBuffer: FrameBuffer
@@ -30,6 +35,8 @@ class ARGISRenderer(val activity: ARGISActivity):
     private val Z_Near = 0.1f
     private val Z_Far = 100f
 
+    val projectionMatrix = FloatArray(16)
+
     companion object{
         val TAG: String = ARGISRenderer::class.java.simpleName
     }
@@ -37,9 +44,13 @@ class ARGISRenderer(val activity: ARGISActivity):
     val session
         get() = activity.arGISSessionHelper.mySession
 
+    private val trackingStateHelper = TrackingStateHelper(activity)
+    private val wrappedAnchors = mutableListOf<WrappedAnchor>()
+
     override fun onSurfaceCreated(render: ARRenderer?) {
         try{
             this.render = render!!
+            planeRenderer = PlaneRenderer(render)
             backgroundRenderer = BackgroundRenderer(render)
             virtualSceneFrameBuffer = FrameBuffer(render, 1, 1)
 
@@ -129,10 +140,27 @@ class ARGISRenderer(val activity: ARGISActivity):
             }
         }
 
+        trackingStateHelper.updateKeepScreenOnFlag(camera.trackingState)
+
+        val message: String? =
+            when{
+                camera.trackingState == TrackingState.PAUSED
+                        && camera.trackingFailureReason == TrackingFailureReason.NONE ->
+                    "Searching for Surfaces"
+                camera.trackingState == TrackingState.PAUSED ->
+                    TrackingStateHelper.getTrackingFailureReasonString(camera)
+                session.hasTrackingPlane() && wrappedAnchors.isEmpty() ->
+                    "Tap on a surface to place an object"
+                session.hasTrackingPlane() && wrappedAnchors.isNotEmpty() -> null
+                else -> "Searching for surfaces"
+            }
+
+        Log.i(TAG, message!!)
+
 
         //Draw background
         if(frame.timestamp != 0L){
-            //Suppress renderering if the camera did not produce the first frame yet.
+            //Suppress rendering if the camera did not produce the first frame yet.
             backgroundRenderer.drawBackground(renderer)
         }
 
@@ -140,12 +168,24 @@ class ARGISRenderer(val activity: ARGISActivity):
             return
         }
 
+        camera.getProjectionMatrix(projectionMatrix, 0, Z_Near, Z_Far)
+
+        planeRenderer.drawPlanes(
+            renderer,
+            session.getAllTrackables(Plane::class.java),
+            camera.displayOrientedPose,
+            projectionMatrix
+        )
+
         //The rest of the code in Hello AR Kotlin is setting up shaders for the GL stuff
         //that it renders. There are good things to potentially crib from in there but we will skip for now.
-        render.clear(virtualSceneFrameBuffer, 0f,0f,0f,0f)
-        backgroundRenderer.drawVirtualScene(renderer, virtualSceneFrameBuffer, Z_Near, Z_Far)
+//        render.clear(virtualSceneFrameBuffer, 0f,0f,0f,0f)
+//        backgroundRenderer.drawVirtualScene(renderer, virtualSceneFrameBuffer, Z_Near, Z_Far)
 
     }
+
+    private fun Session.hasTrackingPlane() =
+        getAllTrackables(Plane::class.java).any{it.trackingState == TrackingState.TRACKING}
 
 }
 

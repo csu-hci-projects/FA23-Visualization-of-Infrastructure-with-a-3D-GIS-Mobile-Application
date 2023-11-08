@@ -184,6 +184,59 @@ class Shader(renderer: ARRenderer,
         return this
     }
 
+    /** Sets a `vec3` uniform.  */
+    fun setVec3(
+        name: String?,
+        values: FloatArray
+    ): Shader? {
+        require(values.size == 3) { "Value array length must be 3" }
+        uniforms[getUniformLocation(name!!)] = Uniform3f(values.clone())
+        return this
+    }
+
+    fun setVec4(
+        name: String?,
+        values: FloatArray
+    ): Shader {
+        require(values.size == 4) { "Value array length must be 4" }
+        uniforms[getUniformLocation(name!!)] =
+            Uniform4f(values.clone())
+        return this
+    }
+
+    /** Sets a `mat2` uniform.  */
+    fun setMat2(
+        name: String?,
+        values: FloatArray
+    ): Shader? {
+        require(values.size == 4) { "Value array length must be 4 (2x2)" }
+        uniforms[getUniformLocation(name!!)] =
+            UniformMatrix2f(values.clone())
+        return this
+    }
+
+    /** Sets a `mat3` uniform.  */
+    fun setMat3(
+        name: String?,
+        values: FloatArray
+    ): Shader? {
+        require(values.size == 9) { "Value array length must be 9 (3x3)" }
+        uniforms[getUniformLocation(name!!)] =
+            UniformMatrix3f(values.clone())
+        return this
+    }
+
+    /** Sets a `mat4` uniform.  */
+    fun setMat4(
+        name: String?,
+        values: FloatArray
+    ): Shader? {
+        require(values.size == 16) { "Value array length must be 16 (4x4)" }
+        uniforms[getUniformLocation(name!!)] =
+            UniformMatrix4f(values.clone())
+        return this
+    }
+
    private fun getUniformLocation(name: String): Int {
         val locationObject = uniformLocations.get(name)
         if(locationObject != null){
@@ -245,10 +298,10 @@ class Shader(renderer: ARRenderer,
         GLES30.glUseProgram(programId)
         GLError.maybeThrowGLException("Failed to use shader program", "glUseProgram")
         GLES30.glBlendFuncSeparate(
-            sourceRgbBlend.ordinal,
-            destRgbBlend.ordinal,
-            sourceAlphaBlend.ordinal,
-            destAlphaBlend.ordinal)
+            sourceRgbBlend.glesEnum,
+            destRgbBlend.glesEnum,
+            sourceAlphaBlend.glesEnum,
+            destAlphaBlend.glesEnum)
         GLError.maybeThrowGLException("Failed to set blend mode", "glBlendFuncSeparate")
         GLES30.glDepthMask(depthWrite)
         GLError.maybeThrowGLException("Failed to set depth write mask", "glDepthMask")
@@ -355,5 +408,66 @@ class Shader(renderer: ARRenderer,
         }
 
     }
+
+    private class Uniform2f(private val values: FloatArray) : Uniform {
+        override fun use(location: Int) {
+            GLES30.glUniform2fv(location, values.size / 2, values, 0)
+            GLError.maybeThrowGLException("Failed to set shader uniform 2f", "glUniform2fv")
+        }
+    }
+
+    private class Uniform3f(private val values: FloatArray) : Uniform {
+        override fun use(location: Int) {
+            GLES30.glUniform3fv(location, values.size / 3, values, 0)
+            GLError.maybeThrowGLException("Failed to set shader uniform 3f", "glUniform3fv")
+        }
+    }
+
+    class Uniform4f(values: FloatArray): Uniform{
+
+        private val values: FloatArray
+
+        init{
+            this.values = values
+        }
+
+        override fun use(location: Int) {
+            GLES30.glUniform4fv(location, values.size / 4, values, 0)
+            GLError.maybeThrowGLException("Failed to set shader uniform 4f", "glUniform4fv")
+        }
+    }
+
+    private class UniformMatrix2f(private val values: FloatArray) : Uniform {
+        override fun use(location: Int) {
+            GLES30.glUniformMatrix2fv(location, values.size / 4,  /*transpose=*/false, values, 0)
+            GLError.maybeThrowGLException(
+                "Failed to set shader uniform matrix 2f",
+                "glUniformMatrix2fv"
+            )
+        }
+    }
+
+    private class UniformMatrix3f(private val values: FloatArray) : Uniform {
+        override fun use(location: Int) {
+            GLES30.glUniformMatrix3fv(location, values.size / 9,  /*transpose=*/false, values, 0)
+            GLError.maybeThrowGLException(
+                "Failed to set shader uniform matrix 3f",
+                "glUniformMatrix3fv"
+            )
+        }
+    }
+
+    private class UniformMatrix4f(private val values: FloatArray) : Uniform {
+        override fun use(location: Int) {
+            GLES30.glUniformMatrix4fv(location, values.size / 16,  /*transpose=*/false, values, 0)
+            GLError.maybeThrowGLException(
+                "Failed to set shader uniform matrix 4f",
+                "glUniformMatrix4fv"
+            )
+        }
+    }
+
+
+
 
 }

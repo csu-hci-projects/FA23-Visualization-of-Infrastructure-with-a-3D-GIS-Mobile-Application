@@ -43,6 +43,7 @@ class ARRenderer(glSurfaceView: GLSurfaceView, renderer: Renderer, assetManager:
 
             override fun onDrawFrame(p0: GL10?) {
                 clear(null, 0f, 0f, 0f, 0f)
+                renderer.onDrawFrame(this@ARRenderer)
 //                GLES30.glClear(GLES30.GL_COLOR_BUFFER_BIT)
             }
 
@@ -96,7 +97,7 @@ class ARRenderer(glSurfaceView: GLSurfaceView, renderer: Renderer, assetManager:
     /** Interface to be implemented for rendering callbacks.  */
      interface Renderer {
         /**
-         * Called by [SampleRender] when the GL render surface is created.
+         * Called by [ARRenderer] when the GL render surface is created.
          *
          *
          * See [GLSurfaceView.Renderer.onSurfaceCreated].
@@ -104,7 +105,7 @@ class ARRenderer(glSurfaceView: GLSurfaceView, renderer: Renderer, assetManager:
         fun onSurfaceCreated(render: ARRenderer?)
 
         /**
-         * Called by [SampleRender] when the GL render surface dimensions are changed.
+         * Called by [ARRenderer] when the GL render surface dimensions are changed.
          *
          *
          * See [GLSurfaceView.Renderer.onSurfaceChanged].
@@ -116,7 +117,7 @@ class ARRenderer(glSurfaceView: GLSurfaceView, renderer: Renderer, assetManager:
         )
 
         /**
-         * Called by [SampleRender] when a GL frame is to be rendered.
+         * Called by [ARRenderer] when a GL frame is to be rendered.
          *
          *
          * See [GLSurfaceView.Renderer.onDrawFrame].

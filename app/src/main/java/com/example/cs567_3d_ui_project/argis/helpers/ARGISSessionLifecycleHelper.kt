@@ -27,6 +27,8 @@ class ARGISSessionLifecycleHelper(val activity: Activity,
     var mySession: Session? = null
         private set
 
+    var exceptionCallback: ((Exception) -> Unit)? = null
+
     override fun onResume(owner: LifecycleOwner) {
         val session = mySession ?: tryCreateSession() ?: return
         try{

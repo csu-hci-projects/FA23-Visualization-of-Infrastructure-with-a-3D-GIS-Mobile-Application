@@ -1,6 +1,7 @@
 package com.example.cs567_3d_ui_project.activities
 
 import android.os.Bundle
+import android.util.Log
 import androidx.appcompat.app.AppCompatActivity
 import com.example.cs567_3d_ui_project.argis.helpers.ARGISSessionLifecycleHelper
 import com.example.cs567_3d_ui_project.argis.helpers.DepthSettings
@@ -9,6 +10,11 @@ import com.example.cs567_3d_ui_project.argis.renderers.ARRenderer
 import com.example.cs567_3d_ui_project.views.ARGISView
 import com.google.ar.core.Config
 import com.google.ar.core.Session
+import com.google.ar.core.exceptions.CameraNotAvailableException
+import com.google.ar.core.exceptions.UnavailableApkTooOldException
+import com.google.ar.core.exceptions.UnavailableDeviceNotCompatibleException
+import com.google.ar.core.exceptions.UnavailableSdkTooOldException
+import com.google.ar.core.exceptions.UnavailableUserDeclinedInstallationException
 
 class ARGISActivity: AppCompatActivity() {
 
@@ -18,10 +24,31 @@ class ARGISActivity: AppCompatActivity() {
 
     val depthSettings = DepthSettings()
 
+    companion object{
+        private const val TAG = "ARGISActivity"
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         arGISSessionHelper = ARGISSessionLifecycleHelper(this)
+
+        arGISSessionHelper.exceptionCallback =
+            {
+                exception ->
+                val message =
+                    when(exception){
+                        is UnavailableUserDeclinedInstallationException ->
+                            "Please install Google Play Services for AR"
+                        is UnavailableApkTooOldException -> "Please update ARCore"
+                        is UnavailableSdkTooOldException -> "Please update this app"
+                        is UnavailableDeviceNotCompatibleException -> "This Device does not support AR"
+                        is CameraNotAvailableException -> "Camera not available. Try restarting the app."
+                        else -> "Failed to create AR session: $exception"
+                    }
+                Log.e(TAG, "ARCore threw an exception", exception)
+            }
+
         arGISSessionHelper.beforeSessionResume = ::createSession
         lifecycle.addObserver(arGISSessionHelper)
 
