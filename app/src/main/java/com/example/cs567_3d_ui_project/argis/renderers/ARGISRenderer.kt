@@ -6,9 +6,8 @@ import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
 import com.example.cs567_3d_ui_project.activities.ARGISActivity
 import com.example.cs567_3d_ui_project.argis.GLError
-import com.example.cs567_3d_ui_project.argis.SpecularCubemapFilter
 import com.example.cs567_3d_ui_project.argis.Texture
-import com.example.cs567_3d_ui_project.argis.buffers.FrameBuffer
+import com.example.cs567_3d_ui_project.argis.buffers.Framebuffer
 import com.example.cs567_3d_ui_project.argis.helpers.DisplayRotationHelper
 import com.example.cs567_3d_ui_project.argis.helpers.TrackingStateHelper
 import com.google.ar.core.Anchor
@@ -33,7 +32,7 @@ class ARGISRenderer(val activity: ARGISActivity):
     private lateinit var dfgTexture: Texture
     private lateinit var cubeMapFilter: SpecularCubemapFilter
 
-    private lateinit var virtualSceneFrameBuffer: FrameBuffer
+    private lateinit var virtualSceneFrameBuffer: Framebuffer
 
     private val displayRotationHelper: DisplayRotationHelper = DisplayRotationHelper(activity)
 
@@ -78,7 +77,7 @@ class ARGISRenderer(val activity: ARGISActivity):
             this.render = render!!
             //planeRenderer = PlaneRenderer(render)
             backgroundRenderer = BackgroundRenderer(render)
-            virtualSceneFrameBuffer = FrameBuffer(render, 1, 1)
+            virtualSceneFrameBuffer = Framebuffer(render, 1, 1)
 
 //            cubeMapFilter = SpecularCubemapFilter(render,
 //                CUBEMAP_RESOLUTION,
@@ -155,7 +154,7 @@ class ARGISRenderer(val activity: ARGISActivity):
 
         try{
             backgroundRenderer.setUseDepthVisualization(renderer!!,
-                activity.depthSettings.depthColorVisualizationEnabled)
+                activity.depthSettings.depthColorVisualizationEnabled())
 
             backgroundRenderer.setUseOcclusion(renderer, activity.depthSettings.useDepthForOcclusion())
         }

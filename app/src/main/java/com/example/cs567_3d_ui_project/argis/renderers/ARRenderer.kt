@@ -6,7 +6,7 @@ import android.opengl.GLSurfaceView
 import com.example.cs567_3d_ui_project.argis.GLError
 import com.example.cs567_3d_ui_project.argis.Mesh
 import com.example.cs567_3d_ui_project.argis.Shader
-import com.example.cs567_3d_ui_project.argis.buffers.FrameBuffer
+import com.example.cs567_3d_ui_project.argis.buffers.Framebuffer
 import javax.microedition.khronos.egl.EGLConfig
 import javax.microedition.khronos.opengles.GL10
 
@@ -54,13 +54,13 @@ class ARRenderer(glSurfaceView: GLSurfaceView, renderer: Renderer, assetManager:
         glSurfaceView.setWillNotDraw(false)
     }
 
-    fun draw(mesh: Mesh?, shader: Shader?, frameBuffer: FrameBuffer? = null){
+    fun draw(mesh: Mesh?, shader: Shader?, frameBuffer: Framebuffer? = null){
         useFrameBuffer(frameBuffer)
         shader!!.lowLevelUse()
         mesh!!.lowLevelDraw()
     }
 
-    fun clear(frameBuffer: FrameBuffer?, r: Float, g: Float, b: Float, a: Float){
+    fun clear(frameBuffer: Framebuffer?, r: Float, g: Float, b: Float, a: Float){
         useFrameBuffer(frameBuffer)
         GLES30.glClearColor(r, g, b, a)
         GLError.maybeThrowGLException("Failed to set clear color", "glClearColor")
@@ -74,7 +74,7 @@ class ARRenderer(glSurfaceView: GLSurfaceView, renderer: Renderer, assetManager:
         return assetManager
     }
 
-    private fun useFrameBuffer(frameBuffer: FrameBuffer?){
+    private fun useFrameBuffer(frameBuffer: Framebuffer?){
         val frameBufferId: Int
         val viewPortWidth: Int
         val viewPortHeight: Int
@@ -85,9 +85,9 @@ class ARRenderer(glSurfaceView: GLSurfaceView, renderer: Renderer, assetManager:
             viewPortWidth = this.viewPortWidth
         }
         else{
-            frameBufferId = frameBuffer.getFrameBufferId()
-            viewPortWidth = frameBuffer.getWidth()
-            viewPortHeight = frameBuffer.getHeight()
+            frameBufferId = frameBuffer.framebufferId
+            viewPortWidth = frameBuffer.width
+            viewPortHeight = frameBuffer.height
         }
 
         GLES30.glBindFramebuffer(GLES30.GL_FRAMEBUFFER, frameBufferId)
