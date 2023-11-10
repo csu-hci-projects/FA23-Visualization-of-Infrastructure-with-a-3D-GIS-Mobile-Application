@@ -18,6 +18,11 @@ package com.example.cs567_3d_ui_project.argis;
 import android.opengl.GLES30;
 import android.util.Log;
 
+import com.arcgismaps.geometry.Geometry;
+import com.arcgismaps.geometry.GeometryDimension;
+import com.arcgismaps.geometry.GeometryType;
+import com.arcgismaps.mapping.view.Graphic;
+import com.arcgismaps.mapping.view.GraphicsOverlay;
 import com.example.cs567_3d_ui_project.argis.buffers.IndexBuffer;
 import com.example.cs567_3d_ui_project.argis.buffers.VertexBuffer;
 import com.example.cs567_3d_ui_project.argis.renderers.ARRenderer;
@@ -27,6 +32,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
+import java.util.Objects;
 
 import de.javagl.obj.Obj;
 import de.javagl.obj.ObjData;
@@ -154,6 +160,23 @@ public class Mesh implements Closeable {
       return new Mesh(render, PrimitiveMode.TRIANGLES, indexBuffer, vertexBuffers);
     }
   }
+
+//  public static Mesh createFromGraphicsOverlay(ARRenderer render, GraphicsOverlay graphicsOverlay){
+//    for(Graphic graphic: graphicsOverlay.getGraphics()){
+//        Geometry geometry = graphic.getGeometry();
+//
+//        if(geometry.getDimension() instanceof GeometryDimension.Point){
+//        }
+//
+//
+//
+//    }
+//  }
+
+//  public static Mesh createFromGraphic(ARRenderer render, Graphic graphic){
+//
+//  }
+
 
   @Override
   public void close() {

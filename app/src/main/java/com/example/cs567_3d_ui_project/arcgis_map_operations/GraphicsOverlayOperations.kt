@@ -35,6 +35,8 @@ class GraphicsOverlayOperations(private var qGisClient: QGisClient, private var 
 
     private var polygonGraphicsOverlay = GraphicsOverlay()
 
+    private lateinit var features: List<Feature>
+
     init {
         mapView.graphicsOverlays.add(lineGraphicsOverlay)
         mapView.graphicsOverlays.add(pointGraphicsOverlay)
@@ -61,7 +63,7 @@ class GraphicsOverlayOperations(private var qGisClient: QGisClient, private var 
     }
 
     fun drawFeaturesInGraphicsOverlay(getFeatureResponse: GetFeatureResponse){
-        val features = getFeatureResponse.getFeatureResponseContent.features
+        features = getFeatureResponse.getFeatureResponseContent.features
 
         val pointFeatures = features.filter { it.geometry.type == "Point" }
         drawPointFeaturesInGraphicsOverlay(pointFeatures)
@@ -82,6 +84,8 @@ class GraphicsOverlayOperations(private var qGisClient: QGisClient, private var 
             val point = Point(pointGeometry!!.x, pointGeometry.y, SpatialReference.webMercator())
             val symbol = SimpleMarkerSymbol(SimpleMarkerSymbolStyle.Circle, Color.red, 10.0f)
             val pointGraphic = Graphic(point, symbol)
+
+
 
             pointGraphic.attributes["id"] = pointFeature.id
             pointGraphicsOverlay.graphics.add(pointGraphic)
