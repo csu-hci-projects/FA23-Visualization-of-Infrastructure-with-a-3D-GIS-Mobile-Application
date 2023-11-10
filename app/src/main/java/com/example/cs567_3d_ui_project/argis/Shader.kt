@@ -30,6 +30,7 @@ class Shader(renderer: ARRenderer,
 
     private var depthTest: Boolean = true
     private var depthWrite: Boolean = true
+    private var cullFace: Boolean = true
 
     private var sourceRgbBlend = BlendFactor.ONE
     private var destRgbBlend = BlendFactor.ZERO
@@ -43,7 +44,7 @@ class Shader(renderer: ARRenderer,
             val shaderId = GLES30.glCreateShader(type)
             GLError.maybeThrowGLException("Shader Creation Failed", "glCreateShader")
             GLES30.glShaderSource(shaderId, code)
-            GLError.maybeThrowGLException("SHader source failed", "glShaderSource")
+            GLError.maybeThrowGLException("Shader source failed", "glShaderSource")
             GLES30.glCompileShader(shaderId)
             GLError.maybeThrowGLException("Shader compilation failed", "glCompileShader")
 
@@ -102,7 +103,7 @@ class Shader(renderer: ARRenderer,
         }
 
         private fun insertShaderDefinesCode(sourceCode: String, definesCode: String): String {
-            val result = sourceCode.replace("(?m)^(\\s#\\s*version\\s+.*)", "$1\n" + Matcher.quoteReplacement(definesCode))
+            val result = sourceCode.replace("(?m)^(#\\s*version\\s+.*)$".toRegex(), "$1\n" + Matcher.quoteReplacement(definesCode))
 
             if(result == sourceCode){
                 return definesCode + sourceCode
@@ -119,11 +120,27 @@ class Shader(renderer: ARRenderer,
         val definesCode = createShaderDefinesCode(defines)
         try{
 
-            vertexShaderId =
-                createShader(GLES30.GL_VERTEX_SHADER, insertShaderDefinesCode(vertexShaderCode, definesCode))
+            try{
+                val shaderDefinesCode = insertShaderDefinesCode(vertexShaderCode, definesCode)
+                Log.i("Shader Code: Vertex", shaderDefinesCode)
+                vertexShaderId =
+                    createShader(GLES30.GL_VERTEX_SHADER, shaderDefinesCode)
 
-            fragmentShaderId =
-                createShader(GLES30.GL_FRAGMENT_SHADER, insertShaderDefinesCode(fragmentShaderCode, definesCode))
+            }
+            catch (e: Exception){
+                Log.e("Shader Init failed", e.message.toString())
+                throw e
+            }
+
+            try{
+                fragmentShaderId =
+                    createShader(GLES30.GL_FRAGMENT_SHADER, insertShaderDefinesCode(fragmentShaderCode, definesCode))
+            }
+            catch(e:Exception){
+                Log.e("Shader Init failed", e.message.toString())
+                throw e
+            }
+
 
             programId = GLES30.glCreateProgram()
             GLError.maybeThrowGLException("Shader program creation failed", "glCreateProgram")
@@ -149,6 +166,7 @@ class Shader(renderer: ARRenderer,
         catch (e : Exception){
             close()
             Log.e("Shader Init failed", e.message.toString())
+            throw e
         }
         finally {
             if(vertexShaderId != 0){
@@ -315,6 +333,14 @@ class Shader(renderer: ARRenderer,
             GLError.maybeThrowGLException("Failed to disable depth test", "glEnable")
         }
 
+        if(cullFace){
+            GLES30.glEnable(GLES30.GL_CULL_FACE)
+            GLError.maybeThrowGLException("Failed to enable backface culling", "glEnable")
+        }else{
+            GLES30.glDisable(GLES30.GL_CULL_FACE)
+            GLError.maybeThrowGLException("Failed to disable backface culling", "glEnable")
+        }
+
         try{
             //Remove all non-texture uniforms from the map after setting them since they are stored as part of the program
             val obsoleteEntries = ArrayList<Int>(uniforms.size)
@@ -337,6 +363,16 @@ class Shader(renderer: ARRenderer,
             GLError.maybeLogGLError(Log.WARN, TAG, "Failed to set active texture", "glActiveTexture")
         }
 
+    }
+
+    fun setInt(
+        name: String?,
+        v0: Int
+    ): Shader? {
+        val values = intArrayOf(v0)
+        uniforms[getUniformLocation(name!!)] =
+            UniformInt(values)
+        return this
     }
 
     private interface Uniform {
@@ -394,6 +430,14 @@ class Shader(renderer: ARRenderer,
         }
 
     }
+
+    private class UniformInt(private val values: IntArray) : Uniform {
+        override fun use(location: Int) {
+            GLES30.glUniform1iv(location, values.size, values, 0)
+            GLError.maybeThrowGLException("Failed to set shader uniform 1i", "glUniform1iv")
+        }
+    }
+
 
     class Uniform1f(values: FloatArray): Uniform{
         private val values: FloatArray

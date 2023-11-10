@@ -2,6 +2,8 @@ package com.example.cs567_3d_ui_project.argis.renderers
 
 import android.media.Image
 import android.opengl.GLES30
+import android.util.Log
+import com.example.cs567_3d_ui_project.argis.Mesh
 import com.example.cs567_3d_ui_project.argis.Shader
 import com.example.cs567_3d_ui_project.argis.Texture
 import com.example.cs567_3d_ui_project.argis.buffers.FrameBuffer
@@ -29,6 +31,8 @@ class BackgroundRenderer(renderer: ARRenderer) {
 
     private val cameraTexCoords = ByteBuffer.allocateDirect(COORDS_BUFFER_SIZE)
         .order(ByteOrder.nativeOrder()).asFloatBuffer()
+
+    private var mesh: Mesh
 
     companion object{
         val TAG: String = BackgroundRenderer::class.java.simpleName
@@ -68,12 +72,18 @@ class BackgroundRenderer(renderer: ARRenderer) {
 
         var virtualSceneTexCoordsVertexBuffer = VertexBuffer(renderer, 2, VIRTUAL_SCENE_TEX_COORDS_BUFFER)
 
-        var vertexBuffers = arrayOf(screenCoordsVertexBuffer, cameraTexCoordsVertexBuffer ,virtualSceneTexCoordsVertexBuffer)
+        var vertexBuffers: Array<VertexBuffer?> = arrayOf(screenCoordsVertexBuffer, cameraTexCoordsVertexBuffer ,virtualSceneTexCoordsVertexBuffer)
+
+        mesh = Mesh(renderer, Mesh.PrimitiveMode.TRIANGLE_STRIP, null, vertexBuffers)
 
     }
 
     fun setUseDepthVisualization(renderer: ARRenderer, useDepthVisualization: Boolean){
         if(backgroundShader != null){
+
+            if(this.useDepthVisualization == useDepthVisualization){
+                return
+            }
 
             backgroundShader!!.close()
             backgroundShader = null
@@ -124,7 +134,7 @@ class BackgroundRenderer(renderer: ARRenderer) {
         val defines = HashMap<String, String>()
         val useOccVal = when(useOcclusion){
             true -> "1"
-            false -> "0"
+            false -> "1"
         }
         defines["USE_OCCLUSION"] = useOccVal
 
@@ -175,18 +185,23 @@ class BackgroundRenderer(renderer: ARRenderer) {
     }
 
     fun drawBackground(renderer: ARRenderer){
-        renderer.draw(backgroundShader)
+        renderer.draw(mesh, backgroundShader)
     }
 
     fun drawVirtualScene(renderer: ARRenderer, virtualSceneFrameBuffer: FrameBuffer, zNear: Float, zFar: Float){
-        occlusionShader!!.setTexture("u_VirtualSceneDepthTexture", virtualSceneFrameBuffer.getColorTexture())
+        try{
+            occlusionShader!!.setTexture("u_VirtualSceneDepthTexture", virtualSceneFrameBuffer.getColorTexture())
 
-        if(useOcclusion){
-            occlusionShader!!.setTexture("use_VirtualSceneDepthTexture", virtualSceneFrameBuffer.getDepthTexture())
-                .setFloat("u_ZNear", zNear)
-                .setFloat("u_ZFar", zFar)
+            if(useOcclusion){
+                occlusionShader!!.setTexture("use_VirtualSceneDepthTexture", virtualSceneFrameBuffer.getDepthTexture())
+                    .setFloat("u_ZNear", zNear)
+                    .setFloat("u_ZFar", zFar)
+            }
+            renderer.draw(mesh, occlusionShader)
+        }catch (e: Exception){
+            Log.e("Error on Drawing Virtual Scene", e.message.toString())
         }
-        renderer.draw(occlusionShader)
+
     }
 
 }

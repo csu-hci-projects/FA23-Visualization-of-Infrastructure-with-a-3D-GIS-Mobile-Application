@@ -23,7 +23,7 @@ class Texture(renderer: ARRenderer, target: Target, wrapMode: WrapMode, useMipMa
             var bitmap : Bitmap? = null
             try{
                 bitmap = convertBitMapToConfig(BitmapFactory.decodeStream(renderer.getAssets().open(assetFileName)),
-                    Bitmap.Config.ARGB_8888)
+                    Config.ARGB_8888)
 
                 val buffer = ByteBuffer.allocateDirect(bitmap.byteCount)
                 bitmap.copyPixelsToBuffer(buffer)

@@ -3,10 +3,13 @@ package com.example.cs567_3d_ui_project.argis.renderers
 import android.opengl.GLES30
 import android.util.Log
 import androidx.lifecycle.DefaultLifecycleObserver
+import androidx.lifecycle.LifecycleOwner
 import com.example.cs567_3d_ui_project.activities.ARGISActivity
 import com.example.cs567_3d_ui_project.argis.GLError
+import com.example.cs567_3d_ui_project.argis.SpecularCubemapFilter
 import com.example.cs567_3d_ui_project.argis.Texture
 import com.example.cs567_3d_ui_project.argis.buffers.FrameBuffer
+import com.example.cs567_3d_ui_project.argis.helpers.DisplayRotationHelper
 import com.example.cs567_3d_ui_project.argis.helpers.TrackingStateHelper
 import com.google.ar.core.Anchor
 import com.google.ar.core.Plane
@@ -23,22 +26,44 @@ class ARGISRenderer(val activity: ARGISActivity):
     ARRenderer.Renderer,
     DefaultLifecycleObserver {
 
-    lateinit var render: ARRenderer
-    lateinit var backgroundRenderer: BackgroundRenderer
-    lateinit var planeRenderer: PlaneRenderer
+    private lateinit var render: ARRenderer
+    private lateinit var backgroundRenderer: BackgroundRenderer
+    private lateinit var planeRenderer: PlaneRenderer
 
-    lateinit var dfgTexture: Texture
-    lateinit var virtualSceneFrameBuffer: FrameBuffer
+    private lateinit var dfgTexture: Texture
+    private lateinit var cubeMapFilter: SpecularCubemapFilter
 
-    var hasSetTextureNames = false
+    private lateinit var virtualSceneFrameBuffer: FrameBuffer
+
+    private val displayRotationHelper: DisplayRotationHelper = DisplayRotationHelper(activity)
+
+    private var hasSetTextureNames = false
 
     private val Z_Near = 0.1f
     private val Z_Far = 100f
 
-    val projectionMatrix = FloatArray(16)
+    private val projectionMatrix = FloatArray(16)
 
     companion object{
         val TAG: String = ARGISRenderer::class.java.simpleName
+
+        val APPROXIMATE_DISTANCE_METERS = 2.0f
+
+        const val CUBEMAP_RESOLUTION = 16
+        const val CUBEMAP_NUMBER_OF_IMPORTANCE_SAMPLES = 32
+
+        private val sphericalHarmonicFactors =
+            floatArrayOf(
+                0.282095f,
+                -0.325735f,
+                0.325735f,
+                -0.325735f,
+                0.273137f,
+                -0.273137f,
+                0.078848f,
+                -0.273137f,
+                0.136569f
+            )
     }
 
     val session
@@ -46,13 +71,18 @@ class ARGISRenderer(val activity: ARGISActivity):
 
     private val trackingStateHelper = TrackingStateHelper(activity)
     private val wrappedAnchors = mutableListOf<WrappedAnchor>()
+    val sphericalHarmonicsCoefficients = FloatArray(9 * 3)
 
     override fun onSurfaceCreated(render: ARRenderer?) {
         try{
             this.render = render!!
-            planeRenderer = PlaneRenderer(render)
+            //planeRenderer = PlaneRenderer(render)
             backgroundRenderer = BackgroundRenderer(render)
             virtualSceneFrameBuffer = FrameBuffer(render, 1, 1)
+
+//            cubeMapFilter = SpecularCubemapFilter(render,
+//                CUBEMAP_RESOLUTION,
+//                CUBEMAP_NUMBER_OF_IMPORTANCE_SAMPLES)
 
             dfgTexture = Texture(
                 render,
@@ -87,8 +117,18 @@ class ARGISRenderer(val activity: ARGISActivity):
         }
     }
 
+    override fun onResume(owner: LifecycleOwner) {
+        displayRotationHelper.onResume()
+        hasSetTextureNames = false
+    }
+
+    override fun onPause(owner: LifecycleOwner) {
+        displayRotationHelper.onPause()
+    }
+
     override fun onSurfaceChanged(render: ARRenderer?, width: Int, height: Int) {
         Log.i("OnSurfaceChanged", "Changed")
+        displayRotationHelper.onSurfaceChanged(width, height)
         virtualSceneFrameBuffer.resize(width, height)
     }
 
@@ -99,6 +139,8 @@ class ARGISRenderer(val activity: ARGISActivity):
             session.setCameraTextureNames(intArrayOf(backgroundRenderer.cameraColorTexture.getTextureId()))
             hasSetTextureNames = true
         }
+
+        displayRotationHelper.updateSessionIfNeeded(session)
 
         val frame =
             try{
@@ -168,14 +210,14 @@ class ARGISRenderer(val activity: ARGISActivity):
             return
         }
 
-        camera.getProjectionMatrix(projectionMatrix, 0, Z_Near, Z_Far)
-
-        planeRenderer.drawPlanes(
-            renderer,
-            session.getAllTrackables(Plane::class.java),
-            camera.displayOrientedPose,
-            projectionMatrix
-        )
+//        camera.getProjectionMatrix(projectionMatrix, 0, Z_Near, Z_Far)
+//
+//        planeRenderer.drawPlanes(
+//            renderer,
+//            session.getAllTrackables(Plane::class.java),
+//            camera.displayOrientedPose,
+//            projectionMatrix
+//        )
 
         //The rest of the code in Hello AR Kotlin is setting up shaders for the GL stuff
         //that it renders. There are good things to potentially crib from in there but we will skip for now.

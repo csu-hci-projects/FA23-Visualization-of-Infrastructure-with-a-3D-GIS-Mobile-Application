@@ -4,6 +4,7 @@ import android.content.res.AssetManager
 import android.opengl.GLES30
 import android.opengl.GLSurfaceView
 import com.example.cs567_3d_ui_project.argis.GLError
+import com.example.cs567_3d_ui_project.argis.Mesh
 import com.example.cs567_3d_ui_project.argis.Shader
 import com.example.cs567_3d_ui_project.argis.buffers.FrameBuffer
 import javax.microedition.khronos.egl.EGLConfig
@@ -26,7 +27,7 @@ class ARRenderer(glSurfaceView: GLSurfaceView, renderer: Renderer, assetManager:
         glSurfaceView.setEGLContextClientVersion(3)
         glSurfaceView.setEGLConfigChooser(8, 8, 8, 8, 16, 0)
 
-        glSurfaceView.setRenderer(object: GLSurfaceView.Renderer{
+        glSurfaceView.setRenderer(object: GLSurfaceView.Renderer {
             override fun onSurfaceCreated(p0: GL10?, p1: EGLConfig?) {
 //                GLES30.glClearColor(1.0f, 1.0f, 0.4f, 0.4f)
                 GLES30.glEnable(GLES30.GL_BLEND)
@@ -53,9 +54,10 @@ class ARRenderer(glSurfaceView: GLSurfaceView, renderer: Renderer, assetManager:
         glSurfaceView.setWillNotDraw(false)
     }
 
-    fun draw(shader: Shader?, frameBuffer: FrameBuffer? = null){
+    fun draw(mesh: Mesh?, shader: Shader?, frameBuffer: FrameBuffer? = null){
         useFrameBuffer(frameBuffer)
         shader!!.lowLevelUse()
+        mesh!!.lowLevelDraw()
     }
 
     fun clear(frameBuffer: FrameBuffer?, r: Float, g: Float, b: Float, a: Float){

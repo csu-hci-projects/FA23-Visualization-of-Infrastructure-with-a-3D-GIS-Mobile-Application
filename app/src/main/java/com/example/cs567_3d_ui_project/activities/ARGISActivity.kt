@@ -5,6 +5,7 @@ import android.util.Log
 import androidx.appcompat.app.AppCompatActivity
 import com.example.cs567_3d_ui_project.argis.helpers.ARGISSessionLifecycleHelper
 import com.example.cs567_3d_ui_project.argis.helpers.DepthSettings
+import com.example.cs567_3d_ui_project.argis.helpers.FullScreenHelper
 import com.example.cs567_3d_ui_project.argis.renderers.ARGISRenderer
 import com.example.cs567_3d_ui_project.argis.renderers.ARRenderer
 import com.example.cs567_3d_ui_project.views.ARGISView
@@ -69,6 +70,11 @@ class ARGISActivity: AppCompatActivity() {
             //Set light estimation mode to Environmental HDR
             lightEstimationMode = Config.LightEstimationMode.ENVIRONMENTAL_HDR
         })
+    }
+
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        FullScreenHelper.setFullScreenOnWindowFocusChanged(this, hasFocus)
     }
 
 

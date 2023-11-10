@@ -1,6 +1,7 @@
 package com.example.cs567_3d_ui_project.argis.renderers
 
 import android.opengl.Matrix
+import com.example.cs567_3d_ui_project.argis.Mesh
 import com.example.cs567_3d_ui_project.argis.Shader
 import com.example.cs567_3d_ui_project.argis.Texture
 import com.example.cs567_3d_ui_project.argis.buffers.IndexBuffer
@@ -73,6 +74,7 @@ class PlaneRenderer(renderer: ARRenderer?) {
     private var indexBufferObject: IndexBuffer? = null
     private var vertexBufferObject: VertexBuffer? = null
     private var shader: Shader? = null
+    private var mesh: Mesh? = null
 
     private var vertexBuffer = ByteBuffer.allocateDirect(INITIAL_VERTEX_BUFFER_SIZE_BYTES)
         .order(ByteOrder.nativeOrder())
@@ -109,6 +111,8 @@ class PlaneRenderer(renderer: ARRenderer?) {
 
         indexBufferObject = IndexBuffer(renderer, null)
         vertexBufferObject = VertexBuffer(renderer, COORDS_PER_VERTEX, null)
+        val vertexBuffers = arrayOf(vertexBufferObject)
+        mesh = Mesh(renderer, Mesh.PrimitiveMode.TRIANGLE_STRIP, indexBufferObject, vertexBuffers)
     }
 
     fun drawPlanes(renderer: ARRenderer?,
@@ -172,7 +176,7 @@ class PlaneRenderer(renderer: ARRenderer?) {
             vertexBufferObject!!.set(vertexBuffer)
             indexBufferObject!!.set(indexBuffer)
 
-            renderer!!.draw(shader)
+            renderer!!.draw(mesh, shader)
         }
 
     }
