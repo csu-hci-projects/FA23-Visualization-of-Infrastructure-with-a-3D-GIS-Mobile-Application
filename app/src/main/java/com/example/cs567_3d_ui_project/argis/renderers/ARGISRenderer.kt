@@ -159,6 +159,10 @@ class ARGISRenderer(val activity: ARGISActivity):
             val cameraGeospatialPose = earth.cameraGeospatialPose
             Log.i("Camera Location", "${cameraGeospatialPose.latitude},${cameraGeospatialPose.longitude},${cameraGeospatialPose.altitude}")
         }
+        else{
+            val earthState = earth!!.earthState
+            Log.i("Earth State", earthState.toString())
+        }
 
         if(!hasSetTextureNames){
             session.setCameraTextureNames(intArrayOf(backgroundRenderer.cameraColorTexture.getTextureId()))

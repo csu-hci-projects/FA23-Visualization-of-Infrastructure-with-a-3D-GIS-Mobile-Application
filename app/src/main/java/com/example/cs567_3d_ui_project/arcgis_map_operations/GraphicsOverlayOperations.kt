@@ -43,24 +43,30 @@ class GraphicsOverlayOperations(private var qGisClient: QGisClient, private var 
         mapView.graphicsOverlays.add(polygonGraphicsOverlay)
     }
 
-    suspend fun queryFeaturesFromLayer(layerName: String): GetFeatureResponse {
+    suspend fun queryFeaturesFromLayer(layerName: String, spatialReference: SpatialReference? = null): GetFeatureResponse {
         return withContext(Dispatchers.IO){
+
+            var spatialReferenceForQuery : SpatialReference?
+
             val viewPoint = mapView.getCurrentViewpoint(ViewpointType.BoundingGeometry)
-            val spatialReference = viewPoint?.targetGeometry?.spatialReference
+            val arcgisMapSpatialReference = viewPoint?.targetGeometry?.spatialReference
             val extent = viewPoint?.targetGeometry?.extent
 
-            Log.i("WKID: ", spatialReference!!.wkid.toString())
+            spatialReferenceForQuery = spatialReference ?: arcgisMapSpatialReference
+
+            Log.i("WKID: ", spatialReferenceForQuery!!.wkid.toString())
 
             val getFeatureRequestAction = GetFeatureRequestAction(
                 layer = layerName,
-                boundingBox = BoundingBox("EPSG:${spatialReference?.wkid}",
+                boundingBox = BoundingBox("EPSG:${arcgisMapSpatialReference!!.wkid}",
                     extent!!.xMin, extent.yMin, extent.xMax, extent.yMax),
-                srs = "EPSG:${spatialReference?.wkid}"
+                srs = "EPSG:${spatialReferenceForQuery.wkid}"
             )
 
             return@withContext qGisClient.wfs.getFeature(getFeatureRequestAction)
         }
     }
+
 
     fun drawFeaturesInGraphicsOverlay(getFeatureResponse: GetFeatureResponse){
         features = getFeatureResponse.getFeatureResponseContent.features

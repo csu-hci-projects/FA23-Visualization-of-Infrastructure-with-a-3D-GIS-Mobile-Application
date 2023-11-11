@@ -8,6 +8,7 @@ import com.example.cs567_3d_ui_project.argis.helpers.DepthSettings
 import com.example.cs567_3d_ui_project.argis.helpers.FullScreenHelper
 import com.example.cs567_3d_ui_project.argis.renderers.ARGISRenderer
 import com.example.cs567_3d_ui_project.argis.renderers.ARRenderer
+import com.example.cs567_3d_ui_project.qgis_driver.resource_objects.wfs_resources.GetFeatureResponse
 import com.example.cs567_3d_ui_project.views.ARGISView
 import com.google.ar.core.Config
 import com.google.ar.core.Session
@@ -22,6 +23,7 @@ class ARGISActivity: AppCompatActivity() {
     lateinit var arGISSurfaceView: ARGISView
     lateinit var arGISSessionHelper: ARGISSessionLifecycleHelper
     lateinit var argisRenderer: ARGISRenderer
+    lateinit var latestGetFeatureResponse: GetFeatureResponse
 
     val depthSettings = DepthSettings()
 
@@ -31,6 +33,10 @@ class ARGISActivity: AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        if(intent.hasExtra("getFeaturesResponse")){
+            latestGetFeatureResponse = GetFeatureResponse(intent.extras!!.getString("getFeaturesResponse")!!, 200)
+        }
 
         arGISSessionHelper = ARGISSessionLifecycleHelper(this)
 
@@ -47,7 +53,7 @@ class ARGISActivity: AppCompatActivity() {
                         is CameraNotAvailableException -> "Camera not available. Try restarting the app."
                         else -> "Failed to create AR session: $exception"
                     }
-                Log.e(TAG, "ARCore threw an exception", exception)
+                Log.e(TAG, "ARCore threw an exception: ${message!!}", exception)
             }
 
         arGISSessionHelper.beforeSessionResume = ::createSession
