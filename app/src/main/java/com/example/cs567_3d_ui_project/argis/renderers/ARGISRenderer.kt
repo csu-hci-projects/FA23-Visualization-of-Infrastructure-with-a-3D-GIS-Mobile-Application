@@ -1,11 +1,13 @@
 package com.example.cs567_3d_ui_project.argis.renderers
 
 import android.opengl.GLES30
+import android.opengl.Matrix
 import android.util.Log
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
 import com.example.cs567_3d_ui_project.activities.ARGISActivity
 import com.example.cs567_3d_ui_project.argis.GLError
+import com.example.cs567_3d_ui_project.argis.Mesh
 import com.example.cs567_3d_ui_project.argis.Shader
 import com.example.cs567_3d_ui_project.argis.Texture
 import com.example.cs567_3d_ui_project.argis.buffers.Framebuffer
@@ -37,6 +39,11 @@ class ARGISRenderer(val activity: ARGISActivity):
     private lateinit var virtualObjectShader: Shader
     private lateinit var virtualObjectAlbedoTexture: Texture
 
+    lateinit var mapMarkerObjectMesh: Mesh
+    lateinit var mapMarkerObjectShader: Shader
+    lateinit var mapMarkerObjectTexture: Texture
+
+
     private val displayRotationHelper: DisplayRotationHelper = DisplayRotationHelper(activity)
 
     private var hasSetTextureNames = false
@@ -44,7 +51,14 @@ class ARGISRenderer(val activity: ARGISActivity):
     private val Z_Near = 0.1f
     private val Z_Far = 100f
 
-    private val projectionMatrix = FloatArray(16)
+    var earthAnchor: Anchor? = null
+
+    val modelMatrix = FloatArray(16)
+    val projectionMatrix = FloatArray(16)
+    val viewMatrix = FloatArray(16)
+    val modelViewMatrix = FloatArray(16)
+
+    val modelViewProjectionMatrix = FloatArray(16)
 
     companion object{
         val TAG: String = ARGISRenderer::class.java.simpleName
@@ -114,6 +128,25 @@ class ARGISRenderer(val activity: ARGISActivity):
                 buffer)
             GLError.maybeThrowGLException("Failed to populate DFG texture", "glTexImage2D")
 
+            mapMarkerObjectTexture = Texture.createFromAsset(
+                render,
+                "models/spatial_marker_baked.png",
+                Texture.WrapMode.CLAMP_TO_EDGE,
+                Texture.ColorFormat.SRGB
+            )
+
+            mapMarkerObjectMesh = Mesh.createFromAsset(
+                render,
+                "models/geospatial_marker.obj")
+
+
+            mapMarkerObjectShader = Shader.createFromAssets(render,
+                "shaders/ar_unlit_object.vert",
+                "shaders/ar_unlit_object.frag",
+                null)
+                .setTexture("u_Texture",mapMarkerObjectTexture)
+
+
 //            virtualObjectAlbedoTexture = Texture.createFromAsset(render, "models/pawn_albedo.png", Texture.WrapMode.CLAMP_TO_EDGE, Texture.ColorFormat.SRGB)
 //            val virtualObjectPbrTexture = Texture.createFromAsset(
 //                render,
@@ -152,17 +185,6 @@ class ARGISRenderer(val activity: ARGISActivity):
 
     override fun onDrawFrame(renderer: ARRenderer?) {
         val session = session ?: return
-
-        //Get the user's Geospatial info
-        val earth = session.earth
-        if(earth?.trackingState == TrackingState.TRACKING){
-            val cameraGeospatialPose = earth.cameraGeospatialPose
-            Log.i("Camera Location", "${cameraGeospatialPose.latitude},${cameraGeospatialPose.longitude},${cameraGeospatialPose.altitude}")
-        }
-        else{
-            val earthState = earth!!.earthState
-            Log.i("Earth State", earthState.toString())
-        }
 
         if(!hasSetTextureNames){
             session.setCameraTextureNames(intArrayOf(backgroundRenderer.cameraColorTexture.getTextureId()))
@@ -239,7 +261,62 @@ class ARGISRenderer(val activity: ARGISActivity):
             return
         }
 
-//        camera.getProjectionMatrix(projectionMatrix, 0, Z_Near, Z_Far)
+        //Get Projection Matrix
+        camera.getProjectionMatrix(projectionMatrix, 0, Z_Near, Z_Far)
+
+        //Get Camera Matrix
+        camera.getViewMatrix(viewMatrix, 0)
+
+
+        render.clear(virtualSceneFrameBuffer, 0f,0f,0f,0f)
+
+
+        //Get the user's Geospatial info
+        val earth = session.earth
+
+        if(earth?.trackingState == TrackingState.TRACKING){
+            val cameraGeospatialPose = earth.cameraGeospatialPose
+            Log.i("Camera Location", "${cameraGeospatialPose.latitude},${cameraGeospatialPose.longitude},${cameraGeospatialPose.altitude}")
+
+            //Attempt to place an anchor at the first point feature
+            if(activity.latestGetFeatureResponse != null){
+                val features = activity.latestGetFeatureResponse!!.getFeatureResponseContent.features
+                val pointFeatures = features.filter { it.geometry.type == "Point" }
+
+                if(pointFeatures.any()){
+                    val pointFeature = pointFeatures.first()
+                    val pointFeatureGeometry = pointFeature.geometry.toPointGeometry()
+
+                    Log.i("Point Feature Geometry", "${pointFeatureGeometry!!.x},${pointFeatureGeometry.y}")
+
+                    earthAnchor?.detach()
+
+                    earthAnchor = earth.createAnchor(
+                        pointFeatureGeometry!!.y,
+                        pointFeatureGeometry.x,
+                        cameraGeospatialPose.altitude,
+                        0f,
+                        0f,
+                        0f,
+                        1f
+                    )
+
+                    earthAnchor?.let {
+                        render
+                    }
+
+
+                }
+            }
+        }
+        else{
+            val earthState = earth!!.earthState
+            Log.i("Earth State", earthState.toString())
+        }
+
+        backgroundRenderer.drawVirtualScene(renderer, virtualSceneFrameBuffer, Z_Near, Z_Far)
+
+
 //
 //        planeRenderer.drawPlanes(
 //            renderer,
@@ -250,15 +327,33 @@ class ARGISRenderer(val activity: ARGISActivity):
 
         //The rest of the code in Hello AR Kotlin is setting up shaders for the GL stuff
         //that it renders. There are good things to potentially crib from in there but we will skip for now.
-//        render.clear(virtualSceneFrameBuffer, 0f,0f,0f,0f)
-//        backgroundRenderer.drawVirtualScene(renderer, virtualSceneFrameBuffer, Z_Near, Z_Far)
+//
+//
 
     }
 
     private fun Session.hasTrackingPlane() =
         getAllTrackables(Plane::class.java).any{it.trackingState == TrackingState.TRACKING}
 
+    private fun ARRenderer.renderCompassAtAnchor(anchor: Anchor){
+
+        //Get the current pose of the anchor in world space.
+        //The Anchor pose is updated during calls to session.update()
+        anchor.pose.toMatrix(modelMatrix, 0)
+
+        //Calculate model/view/projection matrices
+        Matrix.multiplyMM(modelViewMatrix, 0, viewMatrix, 0, modelMatrix, 0)
+        Matrix.multiplyMM(modelViewProjectionMatrix, 0, projectionMatrix, 0, modelViewMatrix, 0)
+
+        //Update shader properties and draw
+        mapMarkerObjectShader.setMat4("u_ModelViewProjection", modelViewProjectionMatrix)
+        draw(mapMarkerObjectMesh, virtualObjectShader, virtualSceneFrameBuffer)
+    }
+
 }
+
+
+
 
 data class WrappedAnchor(
     val anchor: Anchor,

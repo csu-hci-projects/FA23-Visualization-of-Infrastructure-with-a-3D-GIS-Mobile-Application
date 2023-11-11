@@ -23,7 +23,7 @@ class ARGISActivity: AppCompatActivity() {
     lateinit var arGISSurfaceView: ARGISView
     lateinit var arGISSessionHelper: ARGISSessionLifecycleHelper
     lateinit var argisRenderer: ARGISRenderer
-    lateinit var latestGetFeatureResponse: GetFeatureResponse
+    var latestGetFeatureResponse: GetFeatureResponse? = null
 
     val depthSettings = DepthSettings()
 
