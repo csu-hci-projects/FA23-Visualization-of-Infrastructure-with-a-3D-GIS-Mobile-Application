@@ -1,12 +1,10 @@
 package com.example.cs567_3d_ui_project.argis.renderers
 
-import android.opengl.GLES30
 import android.opengl.Matrix
 import android.util.Log
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
 import com.example.cs567_3d_ui_project.activities.ARGISActivity
-import com.example.cs567_3d_ui_project.argis.GLError
 import com.example.cs567_3d_ui_project.argis.Mesh
 import com.example.cs567_3d_ui_project.argis.Shader
 import com.example.cs567_3d_ui_project.argis.Texture
@@ -22,7 +20,6 @@ import com.google.ar.core.TrackingState
 import com.google.ar.core.exceptions.CameraNotAvailableException
 import com.google.ar.core.exceptions.NotYetAvailableException
 import java.io.IOException
-import java.nio.ByteBuffer
 
 class ARGISRenderer(val activity: ARGISActivity):
     ARRenderer.Renderer,
@@ -100,33 +97,33 @@ class ARGISRenderer(val activity: ARGISActivity):
 //                CUBEMAP_RESOLUTION,
 //                CUBEMAP_NUMBER_OF_IMPORTANCE_SAMPLES)
 
-            dfgTexture = Texture(
-                render,
-                Texture.Target.TEXTURE_2D,
-                Texture.WrapMode.CLAMP_TO_EDGE,
-                false)
-
-            val dfgResolution = 64
-            val dfgChannels = 2
-            val halfFloatSize = 2
-
-            val buffer: ByteBuffer = ByteBuffer
-                .allocateDirect(dfgResolution * dfgResolution * dfgChannels * halfFloatSize)
-            activity.assets.open("models/dfg.raw").use { it.read(buffer.array()) }
-
-            GLES30.glBindTexture(GLES30.GL_TEXTURE_2D, dfgTexture.getTextureId())
-            GLError.maybeThrowGLException("Failed to bind DFG texture", "glBindTexture")
-            GLES30.glTexImage2D(
-                GLES30.GL_TEXTURE_2D,
-                0,
-                GLES30.GL_RG16F,
-                dfgResolution,
-                dfgResolution,
-                0,
-                GLES30.GL_RG,
-                GLES30.GL_HALF_FLOAT,
-                buffer)
-            GLError.maybeThrowGLException("Failed to populate DFG texture", "glTexImage2D")
+//            dfgTexture = Texture(
+//                render,
+//                Texture.Target.TEXTURE_2D,
+//                Texture.WrapMode.CLAMP_TO_EDGE,
+//                false)
+//
+//            val dfgResolution = 64
+//            val dfgChannels = 2
+//            val halfFloatSize = 2
+//
+//            val buffer: ByteBuffer = ByteBuffer
+//                .allocateDirect(dfgResolution * dfgResolution * dfgChannels * halfFloatSize)
+//            activity.assets.open("models/dfg.raw").use { it.read(buffer.array()) }
+//
+//            GLES30.glBindTexture(GLES30.GL_TEXTURE_2D, dfgTexture.getTextureId())
+//            GLError.maybeThrowGLException("Failed to bind DFG texture", "glBindTexture")
+//            GLES30.glTexImage2D(
+//                GLES30.GL_TEXTURE_2D,
+//                0,
+//                GLES30.GL_RG16F,
+//                dfgResolution,
+//                dfgResolution,
+//                0,
+//                GLES30.GL_RG,
+//                GLES30.GL_HALF_FLOAT,
+//                buffer)
+//            GLError.maybeThrowGLException("Failed to populate DFG texture", "glTexImage2D")
 
             mapMarkerObjectTexture = Texture.createFromAsset(
                 render,
@@ -144,7 +141,10 @@ class ARGISRenderer(val activity: ARGISActivity):
                 "shaders/ar_unlit_object.vert",
                 "shaders/ar_unlit_object.frag",
                 null)
-                .setTexture("u_Texture",mapMarkerObjectTexture)
+                .setTexture("u_Texture", mapMarkerObjectTexture)
+
+            backgroundRenderer.setUseDepthVisualization(render, false)
+            backgroundRenderer.setUseOcclusion(render, false)
 
 
 //            virtualObjectAlbedoTexture = Texture.createFromAsset(render, "models/pawn_albedo.png", Texture.WrapMode.CLAMP_TO_EDGE, Texture.ColorFormat.SRGB)
@@ -287,7 +287,7 @@ class ARGISRenderer(val activity: ARGISActivity):
                     val pointFeature = pointFeatures.first()
                     val pointFeatureGeometry = pointFeature.geometry.toPointGeometry()
 
-                    Log.i("Point Feature Geometry", "${pointFeatureGeometry!!.x},${pointFeatureGeometry.y}")
+                    Log.i("Point Feature Geometry", "${pointFeatureGeometry!!.y},${pointFeatureGeometry.x}")
 
                     earthAnchor?.detach()
 
@@ -302,10 +302,8 @@ class ARGISRenderer(val activity: ARGISActivity):
                     )
 
                     earthAnchor?.let {
-                        render
+                        render.renderCompassAtAnchor(it)
                     }
-
-
                 }
             }
         }
@@ -347,7 +345,7 @@ class ARGISRenderer(val activity: ARGISActivity):
 
         //Update shader properties and draw
         mapMarkerObjectShader.setMat4("u_ModelViewProjection", modelViewProjectionMatrix)
-        draw(mapMarkerObjectMesh, virtualObjectShader, virtualSceneFrameBuffer)
+        draw(mapMarkerObjectMesh, mapMarkerObjectShader, virtualSceneFrameBuffer)
     }
 
 }

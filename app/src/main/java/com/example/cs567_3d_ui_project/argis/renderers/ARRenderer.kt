@@ -3,6 +3,7 @@ package com.example.cs567_3d_ui_project.argis.renderers
 import android.content.res.AssetManager
 import android.opengl.GLES30
 import android.opengl.GLSurfaceView
+import android.util.Log
 import com.example.cs567_3d_ui_project.argis.GLError
 import com.example.cs567_3d_ui_project.argis.Mesh
 import com.example.cs567_3d_ui_project.argis.Shader
@@ -55,6 +56,7 @@ class ARRenderer(glSurfaceView: GLSurfaceView, renderer: Renderer, assetManager:
         useFrameBuffer(frameBuffer)
         shader!!.lowLevelUse()
         mesh!!.lowLevelDraw()
+        Log.i("Draw", "Drew Object")
     }
 
     fun clear(frameBuffer: Framebuffer?, r: Float, g: Float, b: Float, a: Float){
