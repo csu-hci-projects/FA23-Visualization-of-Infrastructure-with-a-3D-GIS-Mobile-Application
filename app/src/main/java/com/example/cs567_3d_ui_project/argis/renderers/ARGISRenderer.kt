@@ -125,16 +125,23 @@ class ARGISRenderer(val activity: ARGISActivity):
 //                buffer)
 //            GLError.maybeThrowGLException("Failed to populate DFG texture", "glTexImage2D")
 
+
+            //models/spatial_marker_baked.png
+
             mapMarkerObjectTexture = Texture.createFromAsset(
                 render,
-                "models/spatial_marker_baked.png",
+                "models/BakedBox2.png",
                 Texture.WrapMode.CLAMP_TO_EDGE,
                 Texture.ColorFormat.SRGB
             )
 
+            //models/geospatial_marker.obj
+            //models/Cube.obj
+            //"models/Pipe_Blenderkt.obj
+
             mapMarkerObjectMesh = Mesh.createFromAsset(
                 render,
-                "models/geospatial_marker.obj")
+                "models/Cube.obj")
 
 
             mapMarkerObjectShader = Shader.createFromAssets(render,
