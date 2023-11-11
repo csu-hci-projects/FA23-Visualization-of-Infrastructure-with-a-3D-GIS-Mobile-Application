@@ -6,6 +6,7 @@ import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
 import com.example.cs567_3d_ui_project.activities.ARGISActivity
 import com.example.cs567_3d_ui_project.argis.GLError
+import com.example.cs567_3d_ui_project.argis.Shader
 import com.example.cs567_3d_ui_project.argis.Texture
 import com.example.cs567_3d_ui_project.argis.buffers.Framebuffer
 import com.example.cs567_3d_ui_project.argis.helpers.DisplayRotationHelper
@@ -33,6 +34,8 @@ class ARGISRenderer(val activity: ARGISActivity):
     private lateinit var cubeMapFilter: SpecularCubemapFilter
 
     private lateinit var virtualSceneFrameBuffer: Framebuffer
+    private lateinit var virtualObjectShader: Shader
+    private lateinit var virtualObjectAlbedoTexture: Texture
 
     private val displayRotationHelper: DisplayRotationHelper = DisplayRotationHelper(activity)
 
@@ -110,6 +113,22 @@ class ARGISRenderer(val activity: ARGISActivity):
                 GLES30.GL_HALF_FLOAT,
                 buffer)
             GLError.maybeThrowGLException("Failed to populate DFG texture", "glTexImage2D")
+
+//            virtualObjectAlbedoTexture = Texture.createFromAsset(render, "models/pawn_albedo.png", Texture.WrapMode.CLAMP_TO_EDGE, Texture.ColorFormat.SRGB)
+//            val virtualObjectPbrTexture = Texture.createFromAsset(
+//                render,
+//                "models/pawn_roughness_metallic_ao.png",
+//                Texture.WrapMode.CLAMP_TO_EDGE,
+//                Texture.ColorFormat.LINEAR
+//            )
+//
+//            virtualObjectShader = Shader.createFromAssets(render,
+//                "shaders/environmental_hdr.vert",
+//                "shaders/environmental_hdr.frag",
+//                mapOf("NUMBER_OF_MIPMAP_LEVELS" to cubeMapFilter.numberOfMipmapLevels.toString()))
+//                .setTexture("u_AlbedoTexture", virtualObjectAlbedoTexture)
+//                .setTexture("u_RoughnessMetallicAmbientOcclusionTexture", virtualObjectPbrTexture)
+//                .setTexture("u_DfgTexture", dfgTexture)
         }
         catch (e:Exception){
             Log.e(TAG, "Failed to read a required asset file")
@@ -133,6 +152,13 @@ class ARGISRenderer(val activity: ARGISActivity):
 
     override fun onDrawFrame(renderer: ARRenderer?) {
         val session = session ?: return
+
+        //Get the user's Geospatial info
+        val earth = session.earth
+        if(earth?.trackingState == TrackingState.TRACKING){
+            val cameraGeospatialPose = earth.cameraGeospatialPose
+            Log.i("Camera Location", "${cameraGeospatialPose.latitude},${cameraGeospatialPose.longitude},${cameraGeospatialPose.altitude}")
+        }
 
         if(!hasSetTextureNames){
             session.setCameraTextureNames(intArrayOf(backgroundRenderer.cameraColorTexture.getTextureId()))
