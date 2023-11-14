@@ -1,5 +1,6 @@
 package com.example.cs567_3d_ui_project.arcgis_map_operations
 
+import android.location.Location
 import android.util.Log
 import com.arcgismaps.Color
 import com.arcgismaps.geometry.Point
@@ -25,28 +26,33 @@ import com.example.cs567_3d_ui_project.qgis_driver.resource_objects.wms_resource
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
+@Suppress("NAME_SHADOWING")
 class GraphicsOverlayOperations(private var qGisClient: QGisClient, private var mapView: MapView) {
 
-    private var graphicsOverlay = GraphicsOverlay()
+    private var lineGraphicsOverlay = GraphicsOverlay()
+
+    private var pointGraphicsOverlay = GraphicsOverlay()
+
+    private var polygonGraphicsOverlay = GraphicsOverlay()
+
     init {
-        mapView.graphicsOverlays.add(graphicsOverlay)
+        mapView.graphicsOverlays.add(lineGraphicsOverlay)
+        mapView.graphicsOverlays.add(pointGraphicsOverlay)
+        mapView.graphicsOverlays.add(polygonGraphicsOverlay)
     }
 
     suspend fun queryFeaturesFromLayer(layerName: String): GetFeatureResponse {
         return withContext(Dispatchers.IO){
-            //var capabilities = qGisClient.wfs.getCapabilities()
-            var viewPoint = mapView.getCurrentViewpoint(ViewpointType.BoundingGeometry)
-            var spatialReference = viewPoint?.targetGeometry?.spatialReference
-            var extent = viewPoint?.targetGeometry?.extent
+            val viewPoint = mapView.getCurrentViewpoint(ViewpointType.BoundingGeometry)
+            val spatialReference = viewPoint?.targetGeometry?.spatialReference
+            val extent = viewPoint?.targetGeometry?.extent
 
-            /*Log.i("Test", viewPoint.toString())
-            Log.i("Test", spatialReference?.wkid.toString())
-            Log.i("Test", extent.toString())*/
+            Log.i("WKID: ", spatialReference!!.wkid.toString())
 
-            var getFeatureRequestAction = GetFeatureRequestAction(
+            val getFeatureRequestAction = GetFeatureRequestAction(
                 layer = layerName,
                 boundingBox = BoundingBox("EPSG:${spatialReference?.wkid}",
-                    extent?.xMin, extent?.yMin, extent?.xMax, extent?.yMax),
+                    extent!!.xMin, extent.yMin, extent.xMax, extent.yMax),
                 srs = "EPSG:${spatialReference?.wkid}"
             )
 
@@ -55,99 +61,115 @@ class GraphicsOverlayOperations(private var qGisClient: QGisClient, private var 
     }
 
     fun drawFeaturesInGraphicsOverlay(getFeatureResponse: GetFeatureResponse){
-        var features = getFeatureResponse.getFeatureResponseContent.features
+        val features = getFeatureResponse.getFeatureResponseContent.features
 
-        var pointFeatures = features.filter { it.geometry.type == "Point" }
+        val pointFeatures = features.filter { it.geometry.type == "Point" }
         drawPointFeaturesInGraphicsOverlay(pointFeatures)
 
-        var lineFeatures = features.filter { it.geometry.type == "LineString" }
+        val lineFeatures = features.filter { it.geometry.type == "LineString" }
         drawLineFeaturesInGraphicsOverlay(lineFeatures)
 
-        var polygonFeatures = features.filter { it.geometry.type == "Polygon" }
+        val polygonFeatures = features.filter { it.geometry.type == "Polygon" }
         drawPolygonFeaturesInGraphicsOverlay(polygonFeatures)
-
-
     }
 
     private fun drawPointFeaturesInGraphicsOverlay(features: List<Feature>){
-
-        var pointFeatures = features.filter { it -> it.geometry.type == "Point" }
+        //Query the collection of features for the point type features
+        val pointFeatures = features.filter { it -> it.geometry.type == "Point" }
 
         for(pointFeature in pointFeatures){
-            var pointGeometry = pointFeature.geometry.toPointGeometry()
-            var point = Point(pointGeometry!!.x, pointGeometry!!.y, SpatialReference.wgs84())
-            val symbol = SimpleMarkerSymbol(SimpleMarkerSymbolStyle.Circle, Color.cyan, 10.0f)
+            val pointGeometry = pointFeature.geometry.toPointGeometry()
+            val point = Point(pointGeometry!!.x, pointGeometry.y, SpatialReference.webMercator())
+            val symbol = SimpleMarkerSymbol(SimpleMarkerSymbolStyle.Circle, Color.red, 10.0f)
             val pointGraphic = Graphic(point, symbol)
 
             pointGraphic.attributes["id"] = pointFeature.id
-            graphicsOverlay.graphics.add(pointGraphic)
+            pointGraphicsOverlay.graphics.add(pointGraphic)
         }
     }
 
     private fun drawLineFeaturesInGraphicsOverlay(features: List<Feature>){
-        var lineFeatures = features.filter { it.geometry.type == "LineString" }
+        //Query the collection of features for the line type features
+        val lineFeatures = features.filter { it.geometry.type == "LineString" }
 
         for(lineFeature in lineFeatures){
-            var lineGeometry = lineFeature.geometry.toLineGeometry()
+            val lineGeometry = lineFeature.geometry.toLineGeometry()
             val lineSymbol = SimpleLineSymbol(SimpleLineSymbolStyle.Solid, Color.black, 3f)
 
-            val lineBuilder = PolylineBuilder(SpatialReference.wgs84()){
+            val lineBuilder = PolylineBuilder(SpatialReference.webMercator()){
                 lineGeometry!!.lineRoute.forEach{
                     addPoint(it.x, it.y)
                 }
             }
 
             val lineGraphic = Graphic(lineBuilder.toGeometry(), lineSymbol)
-            graphicsOverlay.graphics.add(lineGraphic)
+            lineGraphicsOverlay.graphics.add(lineGraphic)
         }
     }
 
     private fun drawPolygonFeaturesInGraphicsOverlay(features: List<Feature>){
-        var polygonFeatures = features.filter { it.geometry.type == "Polygon" }
+        //Query the collection of features for the polygon type features
+        val polygonFeatures = features.filter { it.geometry.type == "Polygon" }
 
         for(polygonFeature in polygonFeatures){
-            var polygonGeometry = polygonFeature.geometry.toPolygonGeometry()
-            var polygonSymbol = SimpleFillSymbol(SimpleFillSymbolStyle.Solid, Color.green, SimpleLineSymbol(SimpleLineSymbolStyle.Solid, Color.black))
+            val polygonGeometry = polygonFeature.geometry.toPolygonGeometry()
+            val polygonSymbol = SimpleFillSymbol(SimpleFillSymbolStyle.Solid, Color.green, SimpleLineSymbol(SimpleLineSymbolStyle.Solid, Color.black))
 
             for(ring in polygonGeometry!!.rings){
-                var polygonBuilder = PolygonBuilder(SpatialReference.wgs84()){
+                val polygonBuilder = PolygonBuilder(SpatialReference.webMercator()){
                     for(vertex in ring){
                         addPoint(vertex.x, vertex.y)
                     }
                 }
                 val polygon = polygonBuilder.toGeometry()
                 val polygonGraphic = Graphic(polygon, polygonSymbol)
-                graphicsOverlay.graphics.add(polygonGraphic)
+                polygonGraphicsOverlay.graphics.add(polygonGraphic)
             }
         }
     }
-
+    //The 'suspend' keyword indicates that the method is async
     suspend fun selectGraphics(screenCoordinate: ScreenCoordinate){
         withContext(Dispatchers.IO) {
             try{
                 //Run a spatial query with a given buffer around the click point
                 //with a buffer of 25 and an unlimited number of maximum results
-                var idOverlay = mapView.identifyGraphicsOverlay(
-                    graphicsOverlay = graphicsOverlay,
+                val idOverlays = mapView.identifyGraphicsOverlays(
                     screenCoordinate = screenCoordinate,
                     tolerance = 25.0,
-                    returnPopupsOnly = false,
-                    maximumResults = -1
+                    returnPopupsOnly = false
                 )
-                idOverlay.apply {
-                    onSuccess {
-                        val testGraphics = it.graphics
 
-                        //We are defaulting to a new selection anytime the event fires
-                        graphicsOverlay.graphics.forEach{ it ->
-                            it.isSelected = false
+
+                idOverlays.apply {
+                    onSuccess {
+                        //If nothing was selected, clear all selections
+                        if(!it.any()){
+                            lineGraphicsOverlay.graphics.forEach{gr ->
+                                gr.isSelected = false
+                            }
+
+                            pointGraphicsOverlay.graphics.forEach{gr ->
+                                gr.isSelected = false
+                            }
+
+                            polygonGraphicsOverlay.graphics.forEach{gr ->
+                                gr.isSelected = false
+                            }
                         }
-                        for(graphic in testGraphics){
-                            graphic.isSelected = true
+
+                        it.forEach{gro ->
+                            val graphics = gro.graphics
+
+                            gro.graphicsOverlay.graphics.forEach{gr ->
+                                gr.isSelected = false
+                            }
+
+                            for (graphic in graphics){
+                                graphic.isSelected = true
+                            }
                         }
                     }
                     onFailure {
-                        val err = "Test"
                         Log.e("Test", it.message, it)
                     }
                 }
@@ -157,7 +179,14 @@ class GraphicsOverlayOperations(private var qGisClient: QGisClient, private var 
                 throw e
             }
         }
+    }
 
-
+    suspend fun determineIfFeaturesAreInBuffer(location: Location): Boolean{
+        return withContext(Dispatchers.IO){
+            //Test random function to see if the button can enable and disable
+            //val random = Random(42)
+            //return@withContext random.nextBoolean()
+            return@withContext true
+        }
     }
 }
