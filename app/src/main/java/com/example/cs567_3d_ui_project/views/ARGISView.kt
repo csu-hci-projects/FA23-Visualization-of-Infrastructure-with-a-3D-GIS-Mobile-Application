@@ -14,7 +14,6 @@ class ARGISView(val activity: ARGISActivity): DefaultLifecycleObserver {
     val root = View.inflate(activity, R.layout.argis_view, null)
     val surfaceView = root.findViewById<GLSurfaceView>(R.id.surfaceview)
 
-
     var editingEnabled = false
 
     val saveButton:ImageButton = root.findViewById<ImageButton>(R.id.save).apply {
@@ -61,29 +60,8 @@ class ARGISView(val activity: ARGISActivity): DefaultLifecycleObserver {
         }
     }
 
-//    val optionsMenuButton = root.findViewById<ImageButton>(R.id.options).apply {
-//        setOnClickListener {
-//                v -> PopupMenu(activity, v).apply {
-//            setOnMenuItemClickListener {
-//                    item ->
-//                when(item.itemId){
-//                    R.id.edit -> Toast.makeText(activity.applicationContext, "Navigate/Display Edit Buttons Next", Toast.LENGTH_LONG)
-//                    else -> null
-//                } != null
-//            }
-//            inflate(R.menu.ar_options_menu)
-//            show()
-//        }
-//        }
-//    }
-
-
     val session
         get() = activity.arGISSessionHelper.mySession
-
-    init {
-//        surfaceView.setRenderer(activity.argisRenderer)
-    }
 
 
     override fun onResume(owner: LifecycleOwner) {
