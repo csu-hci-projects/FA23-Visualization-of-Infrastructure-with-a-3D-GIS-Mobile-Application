@@ -11,4 +11,17 @@
         android:layout_width="fill_parent"
         android:layout_height="fill_parent"
         android:layout_gravity="top"/>
+
+    <ImageButton
+        android:id="@+id/options"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentEnd="true"
+        android:layout_alignParentTop="true"
+        android:layout_margin="80dp"
+        android:src="@drawable/ar_menu_icon"
+        android:background="@android:color/transparent"/>
+
+
+
 </RelativeLayout>
