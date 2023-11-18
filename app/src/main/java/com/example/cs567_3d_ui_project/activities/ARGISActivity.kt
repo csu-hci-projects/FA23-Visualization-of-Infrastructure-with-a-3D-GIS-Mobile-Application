@@ -75,6 +75,13 @@ class ARGISActivity: AppCompatActivity() {
         session.configure(session.config.apply {
             //Set light estimation mode to Environmental HDR
             lightEstimationMode = Config.LightEstimationMode.ENVIRONMENTAL_HDR
+
+            depthMode =
+                if (session.isDepthModeSupported(Config.DepthMode.AUTOMATIC)) {
+                    Config.DepthMode.AUTOMATIC
+                } else {
+                    Config.DepthMode.DISABLED
+                }
         })
     }
 
