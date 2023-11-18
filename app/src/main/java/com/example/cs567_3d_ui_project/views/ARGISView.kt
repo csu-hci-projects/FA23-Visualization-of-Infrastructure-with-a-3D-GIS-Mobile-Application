@@ -8,6 +8,7 @@ import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
 import com.example.cs567_3d_ui_project.R
 import com.example.cs567_3d_ui_project.activities.ARGISActivity
+import com.example.cs567_3d_ui_project.argis.helpers.TapHelper
 
 class ARGISView(val activity: ARGISActivity): DefaultLifecycleObserver {
 
@@ -63,6 +64,7 @@ class ARGISView(val activity: ARGISActivity): DefaultLifecycleObserver {
     val session
         get() = activity.arGISSessionHelper.mySession
 
+    val tapHelper = TapHelper(activity).also { surfaceView.setOnTouchListener(it) }
 
     override fun onResume(owner: LifecycleOwner) {
 

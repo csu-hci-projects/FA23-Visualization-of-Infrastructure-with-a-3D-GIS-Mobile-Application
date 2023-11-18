@@ -1,25 +1,35 @@
 package com.example.cs567_3d_ui_project.argis.renderers
 
+import android.opengl.GLES30
 import android.opengl.Matrix
+import android.os.Build
+import android.util.DisplayMetrics
 import android.util.Log
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
 import com.example.cs567_3d_ui_project.activities.ARGISActivity
+import com.example.cs567_3d_ui_project.argis.GLError
 import com.example.cs567_3d_ui_project.argis.Mesh
 import com.example.cs567_3d_ui_project.argis.Shader
 import com.example.cs567_3d_ui_project.argis.Texture
 import com.example.cs567_3d_ui_project.argis.buffers.Framebuffer
+import com.example.cs567_3d_ui_project.argis.helpers.AnchorHelper
 import com.example.cs567_3d_ui_project.argis.helpers.DisplayRotationHelper
 import com.example.cs567_3d_ui_project.argis.helpers.TrackingStateHelper
 import com.google.ar.core.Anchor
+import com.google.ar.core.Camera
+import com.google.ar.core.Earth
+import com.google.ar.core.Frame
+import com.google.ar.core.GeospatialPose
 import com.google.ar.core.Plane
+import com.google.ar.core.Point
 import com.google.ar.core.Session
-import com.google.ar.core.Trackable
 import com.google.ar.core.TrackingFailureReason
 import com.google.ar.core.TrackingState
 import com.google.ar.core.exceptions.CameraNotAvailableException
 import com.google.ar.core.exceptions.NotYetAvailableException
 import java.io.IOException
+import java.nio.ByteBuffer
 
 class ARGISRenderer(val activity: ARGISActivity):
     ARRenderer.Renderer,
@@ -40,6 +50,9 @@ class ARGISRenderer(val activity: ARGISActivity):
     lateinit var mapMarkerObjectShader: Shader
     lateinit var mapMarkerObjectTexture: Texture
 
+    lateinit var selectedMapMarkerObjectMesh: Mesh
+    lateinit var selectedMapMarkerShader: Shader
+    lateinit var selectedMapMarkerTexture: Texture
 
     private val displayRotationHelper: DisplayRotationHelper = DisplayRotationHelper(activity)
 
@@ -56,6 +69,10 @@ class ARGISRenderer(val activity: ARGISActivity):
     val modelViewMatrix = FloatArray(16)
 
     val modelViewProjectionMatrix = FloatArray(16)
+
+    val anchorHelper = AnchorHelper()
+
+    private lateinit var earth: Earth
 
     companion object{
         val TAG: String = ARGISRenderer::class.java.simpleName
@@ -83,7 +100,6 @@ class ARGISRenderer(val activity: ARGISActivity):
         get() = activity.arGISSessionHelper.mySession
 
     private val trackingStateHelper = TrackingStateHelper(activity)
-    private val wrappedAnchors = mutableListOf<WrappedAnchor>()
     val sphericalHarmonicsCoefficients = FloatArray(9 * 3)
 
     override fun onSurfaceCreated(render: ARRenderer?) {
@@ -97,33 +113,33 @@ class ARGISRenderer(val activity: ARGISActivity):
 //                CUBEMAP_RESOLUTION,
 //                CUBEMAP_NUMBER_OF_IMPORTANCE_SAMPLES)
 
-//            dfgTexture = Texture(
-//                render,
-//                Texture.Target.TEXTURE_2D,
-//                Texture.WrapMode.CLAMP_TO_EDGE,
-//                false)
-//
-//            val dfgResolution = 64
-//            val dfgChannels = 2
-//            val halfFloatSize = 2
-//
-//            val buffer: ByteBuffer = ByteBuffer
-//                .allocateDirect(dfgResolution * dfgResolution * dfgChannels * halfFloatSize)
-//            activity.assets.open("models/dfg.raw").use { it.read(buffer.array()) }
-//
-//            GLES30.glBindTexture(GLES30.GL_TEXTURE_2D, dfgTexture.getTextureId())
-//            GLError.maybeThrowGLException("Failed to bind DFG texture", "glBindTexture")
-//            GLES30.glTexImage2D(
-//                GLES30.GL_TEXTURE_2D,
-//                0,
-//                GLES30.GL_RG16F,
-//                dfgResolution,
-//                dfgResolution,
-//                0,
-//                GLES30.GL_RG,
-//                GLES30.GL_HALF_FLOAT,
-//                buffer)
-//            GLError.maybeThrowGLException("Failed to populate DFG texture", "glTexImage2D")
+            dfgTexture = Texture(
+                render,
+                Texture.Target.TEXTURE_2D,
+                Texture.WrapMode.CLAMP_TO_EDGE,
+                false)
+
+            val dfgResolution = 64
+            val dfgChannels = 2
+            val halfFloatSize = 2
+
+            val buffer: ByteBuffer = ByteBuffer
+                .allocateDirect(dfgResolution * dfgResolution * dfgChannels * halfFloatSize)
+            activity.assets.open("models/dfg.raw").use { it.read(buffer.array()) }
+
+            GLES30.glBindTexture(GLES30.GL_TEXTURE_2D, dfgTexture.getTextureId())
+            GLError.maybeThrowGLException("Failed to bind DFG texture", "glBindTexture")
+            GLES30.glTexImage2D(
+                GLES30.GL_TEXTURE_2D,
+                0,
+                GLES30.GL_RG16F,
+                dfgResolution,
+                dfgResolution,
+                0,
+                GLES30.GL_RG,
+                GLES30.GL_HALF_FLOAT,
+                buffer)
+            GLError.maybeThrowGLException("Failed to populate DFG texture", "glTexImage2D")
 
 
             //models/spatial_marker_baked.png
@@ -150,25 +166,26 @@ class ARGISRenderer(val activity: ARGISActivity):
                 null)
                 .setTexture("u_Texture", mapMarkerObjectTexture)
 
+            selectedMapMarkerTexture = Texture.createFromAsset(
+                render,
+                "models/SelectedCube.png",
+                Texture.WrapMode.CLAMP_TO_EDGE,
+                Texture.ColorFormat.SRGB
+            )
+
+            selectedMapMarkerObjectMesh = Mesh.createFromAsset(
+                render,
+                "models/selectedcube.obj")
+
+            selectedMapMarkerShader = Shader.createFromAssets(
+                render,
+                "shaders/ar_unlit_object.vert",
+                "shaders/ar_unlit_object.frag",
+                null).setTexture("u_Texture",selectedMapMarkerTexture)
+
+
             backgroundRenderer.setUseDepthVisualization(render, false)
             backgroundRenderer.setUseOcclusion(render, false)
-
-
-//            virtualObjectAlbedoTexture = Texture.createFromAsset(render, "models/pawn_albedo.png", Texture.WrapMode.CLAMP_TO_EDGE, Texture.ColorFormat.SRGB)
-//            val virtualObjectPbrTexture = Texture.createFromAsset(
-//                render,
-//                "models/pawn_roughness_metallic_ao.png",
-//                Texture.WrapMode.CLAMP_TO_EDGE,
-//                Texture.ColorFormat.LINEAR
-//            )
-//
-//            virtualObjectShader = Shader.createFromAssets(render,
-//                "shaders/environmental_hdr.vert",
-//                "shaders/environmental_hdr.frag",
-//                mapOf("NUMBER_OF_MIPMAP_LEVELS" to cubeMapFilter.numberOfMipmapLevels.toString()))
-//                .setTexture("u_AlbedoTexture", virtualObjectAlbedoTexture)
-//                .setTexture("u_RoughnessMetallicAmbientOcclusionTexture", virtualObjectPbrTexture)
-//                .setTexture("u_DfgTexture", dfgTexture)
         }
         catch (e:Exception){
             Log.e(TAG, "Failed to read a required asset file")
@@ -249,9 +266,9 @@ class ARGISRenderer(val activity: ARGISActivity):
                     "Searching for Surfaces"
                 camera.trackingState == TrackingState.PAUSED ->
                     TrackingStateHelper.getTrackingFailureReasonString(camera)
-                session.hasTrackingPlane() && wrappedAnchors.isEmpty() ->
+                session.hasTrackingPlane() && anchorHelper.isEmpty() ->
                     "Tap on a surface to place an object"
-                session.hasTrackingPlane() && wrappedAnchors.isNotEmpty() -> null
+                session.hasTrackingPlane() && !anchorHelper.isEmpty() -> null
                 else -> "Searching for surfaces"
             }
 
@@ -279,7 +296,7 @@ class ARGISRenderer(val activity: ARGISActivity):
 
 
         //Get the user's Geospatial info
-        val earth = session.earth
+        earth = session.earth!!
 
         if(earth?.trackingState == TrackingState.TRACKING){
             val cameraGeospatialPose = earth.cameraGeospatialPose
@@ -299,7 +316,7 @@ class ARGISRenderer(val activity: ARGISActivity):
                     earthAnchor?.detach()
 
                     earthAnchor = earth.createAnchor(
-                        pointFeatureGeometry!!.y,
+                        pointFeatureGeometry.y,
                         pointFeatureGeometry.x,
                         cameraGeospatialPose.altitude,
                         0f,
@@ -308,11 +325,16 @@ class ARGISRenderer(val activity: ARGISActivity):
                         1f
                     )
 
+
+
                     earthAnchor?.let {
                         render.renderCompassAtAnchor(it)
                     }
                 }
             }
+
+            handleTap(frame, camera, cameraGeospatialPose)
+
         }
         else{
             val earthState = earth!!.earthState
@@ -320,20 +342,6 @@ class ARGISRenderer(val activity: ARGISActivity):
         }
 
         backgroundRenderer.drawVirtualScene(renderer, virtualSceneFrameBuffer, Z_Near, Z_Far)
-
-
-//
-//        planeRenderer.drawPlanes(
-//            renderer,
-//            session.getAllTrackables(Plane::class.java),
-//            camera.displayOrientedPose,
-//            projectionMatrix
-//        )
-
-        //The rest of the code in Hello AR Kotlin is setting up shaders for the GL stuff
-        //that it renders. There are good things to potentially crib from in there but we will skip for now.
-//
-//
 
     }
 
@@ -355,13 +363,125 @@ class ARGISRenderer(val activity: ARGISActivity):
         draw(mapMarkerObjectMesh, mapMarkerObjectShader, virtualSceneFrameBuffer)
     }
 
+    private fun handleTap(frame: Frame, camera: Camera, geospatialPose: GeospatialPose){
+        if (camera.trackingState != TrackingState.TRACKING) return
+        val tap = activity.arGISSurfaceView.tapHelper.poll() ?: return
+
+        try{
+            val hitResultList = frame.hitTest(tap)
+            Log.i("HitResultList Size", hitResultList.size.toString())
+
+            if(hitResultList.any()) {
+                val hitResult = hitResultList.first()
+
+                when(hitResult.trackable!!){
+                    is Point -> Log.i("Trackable is Point", "${(hitResult.trackable as Point).pose.tx()}, ${(hitResult.trackable as Point).pose.ty()}, ${(hitResult.trackable as Point).pose.tz()}")
+                    is Plane -> Log.i("Trackable is Plane", hitResult.trackable.anchors.size.toString())
+                    else -> Log.i("Something Else", hitResult.trackable.anchors.size.toString())
+                }
+
+                val geospatialHitPose = earth.getGeospatialPose(hitResult.hitPose)
+                Log.i(
+                    "Hit Result",
+                    "${geospatialHitPose.latitude}, ${geospatialHitPose.longitude}, ${geospatialHitPose.altitude}"
+                )
+
+            }
+        }
+        catch (e: Exception){
+            Log.e("Error an Hit Result Processing", e.message.toString())
+        }
+
+//
+
+
+        val geospatialAnchorPoint = earth.getGeospatialPose(earthAnchor!!.pose)
+
+        Log.i("Tap Point", "${tap.x}" + ":${tap.y}")
+        convertAnchorPositionToScreenCoordinates()
+        //Log.i("Geospatial Tap Point", "${geospatialHitPose.latitude}, ${geospatialHitPose.longitude}, ${geospatialHitPose.altitude}")
+        Log.i("Geospatial Pose", "${geospatialPose.latitude}, ${geospatialPose.longitude}, ${geospatialPose.altitude}")
+        val eastUpSouthQuaternion = geospatialPose.eastUpSouthQuaternion.toList().map {
+           it.toString()
+        }.reduce { acc, s -> "$acc,$s" }
+
+
+        Log.i("EastUpSouthQuarternion", eastUpSouthQuaternion)
+        Log.i("GFeature", "${geospatialAnchorPoint.latitude},${geospatialAnchorPoint.longitude}, ${geospatialAnchorPoint.altitude}")
+        Log.i("CFeature", "${earthAnchor!!.pose.ty() },${earthAnchor!!.pose.tx()}, ${earthAnchor!!.pose.tz()}")
+        Log.i("CFeature", "${earthAnchor!!.pose.ty() },${earthAnchor!!.pose.tx()}, ${earthAnchor!!.pose.tz()}")
+    }
+
+    //Implemented this based off this thread
+    //https://stackoverflow.com/questions/49026297/convert-3d-world-arcore-anchor-pose-to-its-corresponding-2d-screen-coordinates/49066308#49066308
+    fun calculateWorld2CameraMatrix(anchorMatrix: FloatArray): FloatArray{
+        val scaleFactor = 1.0f
+        var scaleMatrix = FloatArray(16)
+        var modelXScale = FloatArray(16)
+        var viewXmodelXscale = FloatArray(16)
+        var world2ScreenMatrix = FloatArray(16)
+
+        //Set scale factor into diagonal parts of matrix (I think?)
+        Matrix.setIdentityM(scaleMatrix, 0)
+        scaleMatrix[0] = scaleFactor
+        scaleMatrix[5] = scaleFactor
+        scaleMatrix[10] = scaleFactor
+
+        Matrix.multiplyMM(modelXScale, 0, anchorMatrix, 0, scaleMatrix, 0)
+        Matrix.multiplyMM(viewXmodelXscale, 0, viewMatrix, 0, modelXScale, 0)
+        Matrix.multiplyMM(world2ScreenMatrix, 0, projectionMatrix, 0, viewXmodelXscale, 0)
+
+        return world2ScreenMatrix
+    }
+
+    fun convertAnchorPositionToScreenCoordinates(){
+        val bounds = getWindowBounds()
+
+        val width = bounds.first
+        val height = bounds.second
+
+        val anchorMatrix = FloatArray(16)
+        earthAnchor!!.pose.toMatrix(anchorMatrix, 0)
+
+        val world2ScreenMatrix = calculateWorld2CameraMatrix(anchorMatrix)
+        val anchor2d = world2Screen(width, height, world2ScreenMatrix)
+
+        Log.i("Anchor 2D Screen Coord", "${anchor2d[0]},${anchor2d[1]}")
+
+    }
+
+    private fun world2Screen(screenWidth: Int, screenHeight: Int, world2ScreenMatrix: FloatArray): DoubleArray {
+        val origin = floatArrayOf(0f, 0f, 0f, 1f)
+        val ndcCoord = FloatArray(4)
+        Matrix.multiplyMV(ndcCoord, 0, world2ScreenMatrix, 0, origin, 0)
+
+        ndcCoord[0] = ndcCoord[0]/ndcCoord[3]
+        ndcCoord[1] = ndcCoord[1]/ndcCoord[3]
+
+        val pos2D = doubleArrayOf(0.0, 0.0)
+        pos2D[0] = screenWidth * ((ndcCoord[0] + 1.0)/2.0)
+        pos2D[1] = screenHeight * ((1.0 - ndcCoord[1])/2.0)
+
+        return pos2D
+    }
+
+    //Returns widthPixels and heightPixels in a Tuple
+    private fun getWindowBounds(): Pair<Int,Int> {
+        return if(Build.VERSION.SDK_INT >= 30){
+            val bounds = activity.windowManager.currentWindowMetrics.bounds
+            Pair(bounds.width(), bounds.height())
+        } else{
+            val displayMetrics = DisplayMetrics()
+            @Suppress("DEPRECATION")
+            //Suppressed as this is the way to get the display before SDK 30
+            activity.windowManager.defaultDisplay.getMetrics(displayMetrics)
+            Pair(displayMetrics.widthPixels, displayMetrics.heightPixels)
+        }
+    }
+
 }
 
 
 
 
-data class WrappedAnchor(
-    val anchor: Anchor,
-    val trackable: Trackable
-)
 
