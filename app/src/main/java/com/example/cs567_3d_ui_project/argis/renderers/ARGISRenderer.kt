@@ -18,6 +18,7 @@ import com.example.cs567_3d_ui_project.argis.helpers.DisplayRotationHelper
 import com.example.cs567_3d_ui_project.argis.helpers.TrackingStateHelper
 import com.google.ar.core.Anchor
 import com.google.ar.core.Camera
+import com.google.ar.core.DepthPoint
 import com.google.ar.core.Earth
 import com.google.ar.core.Frame
 import com.google.ar.core.GeospatialPose
@@ -267,8 +268,8 @@ class ARGISRenderer(val activity: ARGISActivity):
                 camera.trackingState == TrackingState.PAUSED ->
                     TrackingStateHelper.getTrackingFailureReasonString(camera)
                 session.hasTrackingPlane() && anchorHelper.isEmpty() ->
-                    "Tap on a surface to place an object"
-                session.hasTrackingPlane() && !anchorHelper.isEmpty() -> null
+                    "No Spatial Features Nearby"
+                session.hasTrackingPlane() && !anchorHelper.isEmpty() -> "Tracking and Anchors"
                 else -> "Searching for surfaces"
             }
 
@@ -305,7 +306,10 @@ class ARGISRenderer(val activity: ARGISActivity):
             //Attempt to place an anchor at the first point feature
             if(activity.latestGetFeatureResponse != null){
                 val features = activity.latestGetFeatureResponse!!.getFeatureResponseContent.features
+
                 val pointFeatures = features.filter { it.geometry.type == "Point" }
+
+                Log.i("Point Feature Count", pointFeatures.size.toString())
 
                 if(pointFeatures.any()){
                     val pointFeature = pointFeatures.first()
@@ -313,23 +317,33 @@ class ARGISRenderer(val activity: ARGISActivity):
 
                     Log.i("Point Feature Geometry", "${pointFeatureGeometry!!.y},${pointFeatureGeometry.x}")
 
-                    earthAnchor?.detach()
+                    //earthAnchor?.detach()
+                    anchorHelper.detachAnchorsAndClear()
 
-                    earthAnchor = earth.createAnchor(
-                        pointFeatureGeometry.y,
-                        pointFeatureGeometry.x,
-                        cameraGeospatialPose.altitude,
-                        0f,
-                        0f,
-                        0f,
-                        1f
-                    )
+                    anchorHelper.createEarthAnchor(earth, pointFeatureGeometry, cameraGeospatialPose)
+
+//                    earthAnchor = earth.createAnchor(
+//                        pointFeatureGeometry.y,
+//                        pointFeatureGeometry.x,
+//                        cameraGeospatialPose.altitude,
+//                        0f,
+//                        0f,
+//                        0f,
+//                        1f
+//                    )
 
 
 
-                    earthAnchor?.let {
-                        render.renderCompassAtAnchor(it)
+//                    earthAnchor?.let {
+//                        render.renderCompassAtAnchor(it)
+//                    }
+
+                    anchorHelper.wrappedAnchors.forEach {
+                        it.let {
+                            render.renderCompassAtAnchor(it.anchor!!)
+                        }
                     }
+
                 }
             }
 
@@ -377,6 +391,7 @@ class ARGISRenderer(val activity: ARGISActivity):
                 when(hitResult.trackable!!){
                     is Point -> Log.i("Trackable is Point", "${(hitResult.trackable as Point).pose.tx()}, ${(hitResult.trackable as Point).pose.ty()}, ${(hitResult.trackable as Point).pose.tz()}")
                     is Plane -> Log.i("Trackable is Plane", hitResult.trackable.anchors.size.toString())
+                    is DepthPoint -> Log.i("Trackable is Depth Point", hitResult.trackable.anchors.size.toString())
                     else -> Log.i("Something Else", hitResult.trackable.anchors.size.toString())
                 }
 
@@ -386,30 +401,42 @@ class ARGISRenderer(val activity: ARGISActivity):
                     "${geospatialHitPose.latitude}, ${geospatialHitPose.longitude}, ${geospatialHitPose.altitude}"
                 )
 
+                val closestEarthAnchor = anchorHelper.getClosestAnchorToTap(geospatialPose)
+
+                if(closestEarthAnchor != null){
+                    Log.i("Tap Point", "${tap.x}" + ":${tap.y}")
+                    val geospatialAnchorPoint = earth.getGeospatialPose(closestEarthAnchor!!.pose)
+
+                    //Log.i("Geospatial Tap Point", "${geospatialHitPose.latitude}, ${geospatialHitPose.longitude}, ${geospatialHitPose.altitude}")
+                    Log.i("Closest Geospatial Anchor Pose", "${geospatialPose.latitude}, ${geospatialPose.longitude}, ${geospatialPose.altitude}")
+
+                    convertAnchorPositionToScreenCoordinates(closestEarthAnchor)
+                    Log.i("GFeature", "${geospatialAnchorPoint.latitude},${geospatialAnchorPoint.longitude}, ${geospatialAnchorPoint.altitude}")
+                    Log.i("GFeature", "${geospatialAnchorPoint.latitude},${geospatialAnchorPoint.longitude}, ${geospatialAnchorPoint.altitude}")
+//                    val eastUpSouthQuaternion = geospatialPose.eastUpSouthQuaternion.toList().map {
+//                        it.toString()
+//                    }.reduce { acc, s -> "$acc,$s" }
+//                    Log.i("EastUpSouthQuarternion", eastUpSouthQuaternion)
+//                    Log.i("CFeature", "${earthAnchor!!.pose.ty() },${earthAnchor!!.pose.tx()}, ${earthAnchor!!.pose.tz()}")
+//                    Log.i("CFeature", "${earthAnchor!!.pose.ty() },${earthAnchor!!.pose.tx()}, ${earthAnchor!!.pose.tz()}")
+                }
+
+
+
+
             }
         }
         catch (e: Exception){
             Log.e("Error an Hit Result Processing", e.message.toString())
         }
 
-//
 
 
-        val geospatialAnchorPoint = earth.getGeospatialPose(earthAnchor!!.pose)
-
-        Log.i("Tap Point", "${tap.x}" + ":${tap.y}")
-        convertAnchorPositionToScreenCoordinates()
-        //Log.i("Geospatial Tap Point", "${geospatialHitPose.latitude}, ${geospatialHitPose.longitude}, ${geospatialHitPose.altitude}")
-        Log.i("Geospatial Pose", "${geospatialPose.latitude}, ${geospatialPose.longitude}, ${geospatialPose.altitude}")
-        val eastUpSouthQuaternion = geospatialPose.eastUpSouthQuaternion.toList().map {
-           it.toString()
-        }.reduce { acc, s -> "$acc,$s" }
 
 
-        Log.i("EastUpSouthQuarternion", eastUpSouthQuaternion)
-        Log.i("GFeature", "${geospatialAnchorPoint.latitude},${geospatialAnchorPoint.longitude}, ${geospatialAnchorPoint.altitude}")
-        Log.i("CFeature", "${earthAnchor!!.pose.ty() },${earthAnchor!!.pose.tx()}, ${earthAnchor!!.pose.tz()}")
-        Log.i("CFeature", "${earthAnchor!!.pose.ty() },${earthAnchor!!.pose.tx()}, ${earthAnchor!!.pose.tz()}")
+
+
+
     }
 
     //Implemented this based off this thread
@@ -434,14 +461,14 @@ class ARGISRenderer(val activity: ARGISActivity):
         return world2ScreenMatrix
     }
 
-    fun convertAnchorPositionToScreenCoordinates(){
+    fun convertAnchorPositionToScreenCoordinates(anchor: Anchor){
         val bounds = getWindowBounds()
 
         val width = bounds.first
         val height = bounds.second
 
         val anchorMatrix = FloatArray(16)
-        earthAnchor!!.pose.toMatrix(anchorMatrix, 0)
+        anchor.pose.toMatrix(anchorMatrix, 0)
 
         val world2ScreenMatrix = calculateWorld2CameraMatrix(anchorMatrix)
         val anchor2d = world2Screen(width, height, world2ScreenMatrix)

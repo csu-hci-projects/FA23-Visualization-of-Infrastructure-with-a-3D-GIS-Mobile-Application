@@ -4,16 +4,17 @@ import com.example.cs567_3d_ui_project.qgis_driver.resource_objects.wfs_resource
 import com.google.ar.core.Anchor
 import com.google.ar.core.Earth
 import com.google.ar.core.GeospatialPose
-import com.google.ar.core.Trackable
 
 class AnchorHelper {
-    private val wrappedAnchors = mutableListOf<WrappedAnchor>()
+    val wrappedAnchors = mutableListOf<WrappedEarthAnchor>()
 
+    val tolerance = 0.0001
 
-    fun detachAnchors(){
+    fun detachAnchorsAndClear(){
         wrappedAnchors.forEach {
-            a -> a.anchor.detach()
+            a -> a.anchor?.detach()
         }
+        wrappedAnchors.clear()
     }
 
     fun isEmpty(): Boolean{
@@ -21,15 +22,37 @@ class AnchorHelper {
     }
 
     fun createEarthAnchor(earth: Earth, pointGeometry: PointGeometry, geospatialPose: GeospatialPose){
+        //pointGeometry.z ?: geospatialPose.altitude,
         val earthAnchor = earth.createAnchor(
             pointGeometry.y,
             pointGeometry.x,
-            pointGeometry.z ?: geospatialPose.altitude,
+            geospatialPose.altitude,
             0f,
             0f,
             0f,
             1f
         )
+
+        val wrappedAnchor = WrappedEarthAnchor(earthAnchor, earth)
+        wrappedAnchors.add(wrappedAnchor)
+    }
+
+    fun getClosestAnchorToTap(geospatialHitPose: GeospatialPose): Anchor? {
+        val geospatialAnchorPoints = wrappedAnchors.map {
+            Pair(it.earth.getGeospatialPose(it.anchor!!.pose), it.anchor)
+        }
+
+        geospatialAnchorPoints.forEach {
+            val distanceLat = kotlin.math.abs(it.first.latitude - geospatialHitPose.latitude)
+            val distanceLong = kotlin.math.abs(it.first.longitude - geospatialHitPose.longitude)
+
+            if(distanceLat <= tolerance && distanceLong <= tolerance){
+                return it.second
+            }
+
+        }
+        //We did not find an intersecting anchor
+        return null
     }
 
 
@@ -38,7 +61,8 @@ class AnchorHelper {
 
 }
 
-data class WrappedAnchor(
-    val anchor: Anchor,
-    val trackable: Trackable
+data class WrappedEarthAnchor(
+    val anchor: Anchor?,
+    val earth: Earth
 )
+
