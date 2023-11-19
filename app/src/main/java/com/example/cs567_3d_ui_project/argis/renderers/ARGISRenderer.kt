@@ -182,7 +182,7 @@ class ARGISRenderer(val activity: ARGISActivity):
                 render,
                 "shaders/ar_unlit_object.vert",
                 "shaders/ar_unlit_object.frag",
-                null).setTexture("u_Texture",selectedMapMarkerTexture)
+                null).setTexture("u_Texture", selectedMapMarkerTexture)
 
 
             backgroundRenderer.setUseDepthVisualization(render, false)
@@ -313,14 +313,14 @@ class ARGISRenderer(val activity: ARGISActivity):
 
                 if(pointFeatures.any()){
                     val pointFeature = pointFeatures.first()
-                    val pointFeatureGeometry = pointFeature.geometry.toPointGeometry()
 
-                    Log.i("Point Feature Geometry", "${pointFeatureGeometry!!.y},${pointFeatureGeometry.x}")
+//                    val pointFeatureGeometry = pointFeature.geometry.toPointGeometry()
+//                    Log.i("Point Feature Geometry", "${pointFeatureGeometry!!.y},${pointFeatureGeometry.x}")
 
                     //earthAnchor?.detach()
                     anchorHelper.detachAnchorsAndClear()
 
-                    anchorHelper.createEarthAnchor(earth, pointFeatureGeometry, cameraGeospatialPose)
+                    anchorHelper.createEarthAnchorFromPointFeature(earth, pointFeature, cameraGeospatialPose)
 
 //                    earthAnchor = earth.createAnchor(
 //                        pointFeatureGeometry.y,
@@ -339,8 +339,10 @@ class ARGISRenderer(val activity: ARGISActivity):
 //                    }
 
                     anchorHelper.wrappedAnchors.forEach {
+                        it ->
+                        if(it.anchor == null) return@forEach
                         it.let {
-                            render.renderCompassAtAnchor(it.anchor!!)
+                            render.renderCompassAtAnchor(it.anchor!!, it.selected)
                         }
                     }
 
@@ -362,7 +364,7 @@ class ARGISRenderer(val activity: ARGISActivity):
     private fun Session.hasTrackingPlane() =
         getAllTrackables(Plane::class.java).any{it.trackingState == TrackingState.TRACKING}
 
-    private fun ARRenderer.renderCompassAtAnchor(anchor: Anchor){
+    private fun ARRenderer.renderCompassAtAnchor(anchor: Anchor, selected: Boolean=false){
 
         //Get the current pose of the anchor in world space.
         //The Anchor pose is updated during calls to session.update()
@@ -374,7 +376,15 @@ class ARGISRenderer(val activity: ARGISActivity):
 
         //Update shader properties and draw
         mapMarkerObjectShader.setMat4("u_ModelViewProjection", modelViewProjectionMatrix)
-        draw(mapMarkerObjectMesh, mapMarkerObjectShader, virtualSceneFrameBuffer)
+
+        if(selected){
+            Log.i("Drawing Selected Feature Texture", "Drew Object Selected")
+            draw(mapMarkerObjectMesh, selectedMapMarkerShader, virtualSceneFrameBuffer)
+        }else{
+            Log.i("Draw", "Draw Normal Object")
+            draw(mapMarkerObjectMesh, mapMarkerObjectShader, virtualSceneFrameBuffer)
+        }
+
     }
 
     private fun handleTap(frame: Frame, camera: Camera, geospatialPose: GeospatialPose){
@@ -401,29 +411,29 @@ class ARGISRenderer(val activity: ARGISActivity):
                     "${geospatialHitPose.latitude}, ${geospatialHitPose.longitude}, ${geospatialHitPose.altitude}"
                 )
 
-                val closestEarthAnchor = anchorHelper.getClosestAnchorToTap(geospatialPose)
+                val closestEarthAnchor = anchorHelper.getClosestAnchorToTap(geospatialHitPose)
 
                 if(closestEarthAnchor != null){
                     Log.i("Tap Point", "${tap.x}" + ":${tap.y}")
-                    val geospatialAnchorPoint = earth.getGeospatialPose(closestEarthAnchor!!.pose)
+                    val geospatialAnchorPoint = earth.getGeospatialPose(closestEarthAnchor.anchor!!.pose)
 
                     //Log.i("Geospatial Tap Point", "${geospatialHitPose.latitude}, ${geospatialHitPose.longitude}, ${geospatialHitPose.altitude}")
                     Log.i("Closest Geospatial Anchor Pose", "${geospatialPose.latitude}, ${geospatialPose.longitude}, ${geospatialPose.altitude}")
 
-                    convertAnchorPositionToScreenCoordinates(closestEarthAnchor)
+                    convertAnchorPositionToScreenCoordinates(closestEarthAnchor.anchor!!)
                     Log.i("GFeature", "${geospatialAnchorPoint.latitude},${geospatialAnchorPoint.longitude}, ${geospatialAnchorPoint.altitude}")
-                    Log.i("GFeature", "${geospatialAnchorPoint.latitude},${geospatialAnchorPoint.longitude}, ${geospatialAnchorPoint.altitude}")
+//                    Log.i("GFeature", "${geospatialAnchorPoint.latitude},${geospatialAnchorPoint.longitude}, ${geospatialAnchorPoint.altitude}")
 //                    val eastUpSouthQuaternion = geospatialPose.eastUpSouthQuaternion.toList().map {
 //                        it.toString()
 //                    }.reduce { acc, s -> "$acc,$s" }
 //                    Log.i("EastUpSouthQuarternion", eastUpSouthQuaternion)
 //                    Log.i("CFeature", "${earthAnchor!!.pose.ty() },${earthAnchor!!.pose.tx()}, ${earthAnchor!!.pose.tz()}")
 //                    Log.i("CFeature", "${earthAnchor!!.pose.ty() },${earthAnchor!!.pose.tx()}, ${earthAnchor!!.pose.tz()}")
+                    anchorHelper.setSelectedEarthAnchors(listOf(closestEarthAnchor))
                 }
-
-
-
-
+                else{
+                    anchorHelper.setSelectedEarthAnchors()
+                }
             }
         }
         catch (e: Exception){
