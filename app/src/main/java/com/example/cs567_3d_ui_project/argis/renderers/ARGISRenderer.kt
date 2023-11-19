@@ -413,7 +413,9 @@ class ARGISRenderer(val activity: ARGISActivity):
 
                 val closestEarthAnchor = anchorHelper.getClosestAnchorToTap(geospatialHitPose)
 
-                if(closestEarthAnchor != null){
+                //The geospatial plane seems very difficult to get consistent behavior
+                //with taps. Need to see what other way there is.
+                if(closestEarthAnchor != null && !closestEarthAnchor.selected){
                     Log.i("Tap Point", "${tap.x}" + ":${tap.y}")
                     val geospatialAnchorPoint = earth.getGeospatialPose(closestEarthAnchor.anchor!!.pose)
 

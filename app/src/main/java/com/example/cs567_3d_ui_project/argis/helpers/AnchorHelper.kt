@@ -67,7 +67,7 @@ class AnchorHelper {
             Log.i("Wrapped Anchor Loc", "${it.first.latitude},${it.first.longitude},${it.first.altitude}")
             Log.i("Distances", "${distanceLat},${distanceLong},${distanceAlt}")
 
-            if(distanceLat <= tolerance && distanceLong <= tolerance && distanceAlt <= tolerance){
+            if(distanceLat <= tolerance && distanceLong <= tolerance && distanceAlt <= 0.5){
                 return it.second
             }
 
