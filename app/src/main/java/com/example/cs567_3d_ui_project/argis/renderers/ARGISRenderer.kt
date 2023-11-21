@@ -55,6 +55,10 @@ class ARGISRenderer(val activity: ARGISActivity):
     lateinit var selectedMapMarkerShader: Shader
     lateinit var selectedMapMarkerTexture: Texture
 
+    lateinit var pipeObjectMesh: Mesh
+    lateinit var pipeObjectShader: Shader
+    lateinit var pipeObjectTexture: Texture
+
     private val displayRotationHelper: DisplayRotationHelper = DisplayRotationHelper(activity)
 
     private var hasSetTextureNames = false
@@ -156,6 +160,9 @@ class ARGISRenderer(val activity: ARGISActivity):
             //models/Cube.obj
             //"models/Pipe_Blenderkt.obj
 
+
+
+
             mapMarkerObjectMesh = Mesh.createFromAsset(
                 render,
                 "models/Cube.obj")
@@ -185,11 +192,34 @@ class ARGISRenderer(val activity: ARGISActivity):
                 null).setTexture("u_Texture", selectedMapMarkerTexture)
 
 
+            //"models/PipeAttempt.obj"
+            //"models/PipeAttempt2.obj"
+            //"models/Cylinder.obj"
+            pipeObjectMesh = Mesh.createFromAsset(
+                render,
+                "models/PipeAttempt.obj"
+            )
+            //"models/WhitePipe.png"
+            //"models/Cylinder_Text.png"
+            pipeObjectTexture = Texture.createFromAsset(
+                render,
+                "models/Test.png",
+                Texture.WrapMode.CLAMP_TO_EDGE,
+                Texture.ColorFormat.SRGB
+            )
+
+            pipeObjectShader = Shader.createFromAssets(
+                render,
+                "shaders/ar_unlit_object.vert",
+                "shaders/ar_unlit_object.frag",
+                null).setTexture("u_Texture", pipeObjectTexture)
+
+
             backgroundRenderer.setUseDepthVisualization(render, false)
             backgroundRenderer.setUseOcclusion(render, false)
         }
         catch (e:Exception){
-            Log.e(TAG, "Failed to read a required asset file")
+            Log.e(TAG, "Failed to read a required asset file: ${e.message}")
         }
     }
 
@@ -375,14 +405,20 @@ class ARGISRenderer(val activity: ARGISActivity):
         Matrix.multiplyMM(modelViewProjectionMatrix, 0, projectionMatrix, 0, modelViewMatrix, 0)
 
         //Update shader properties and draw
-        mapMarkerObjectShader.setMat4("u_ModelViewProjection", modelViewProjectionMatrix)
+
+
+
 
         if(selected){
+            selectedMapMarkerShader.setMat4("u_ModelViewProjection", modelViewProjectionMatrix)
             Log.i("Drawing Selected Feature Texture", "Drew Object Selected")
             draw(mapMarkerObjectMesh, selectedMapMarkerShader, virtualSceneFrameBuffer)
         }else{
             Log.i("Draw", "Draw Normal Object")
-            draw(mapMarkerObjectMesh, mapMarkerObjectShader, virtualSceneFrameBuffer)
+            //mapMarkerObjectShader.setMat4("u_ModelViewProjection", modelViewProjectionMatrix)
+            pipeObjectShader.setMat4("u_ModelViewProjection", modelViewProjectionMatrix)
+            draw(pipeObjectMesh, pipeObjectShader, virtualSceneFrameBuffer)
+            //draw(mapMarkerObjectMesh, mapMarkerObjectShader, virtualSceneFrameBuffer)
         }
 
     }
