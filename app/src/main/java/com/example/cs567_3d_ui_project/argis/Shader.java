@@ -78,7 +78,7 @@ public class Shader implements Closeable {
 
   private boolean depthTest = true;
   private boolean depthWrite = true;
-  private boolean cullFace = true;
+  private boolean cullFace = false;
   private BlendFactor sourceRgbBlend = BlendFactor.ONE;
   private BlendFactor destRgbBlend = BlendFactor.ZERO;
   private BlendFactor sourceAlphaBlend = BlendFactor.ONE;

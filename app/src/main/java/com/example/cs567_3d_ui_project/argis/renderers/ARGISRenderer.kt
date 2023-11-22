@@ -59,6 +59,9 @@ class ARGISRenderer(val activity: ARGISActivity):
     lateinit var pipeObjectShader: Shader
     lateinit var pipeObjectTexture: Texture
 
+    lateinit var pipeObjectAlbedoTexture: Texture
+    lateinit var pipeObjectRoughnessTexture: Texture
+
     private val displayRotationHelper: DisplayRotationHelper = DisplayRotationHelper(activity)
 
     private var hasSetTextureNames = false
@@ -106,6 +109,9 @@ class ARGISRenderer(val activity: ARGISActivity):
 
     private val trackingStateHelper = TrackingStateHelper(activity)
     val sphericalHarmonicsCoefficients = FloatArray(9 * 3)
+    val viewInverseMatrix = FloatArray(16)
+    val worldLightDirection = floatArrayOf(0.0f, 0.0f, 0.0f, 0.0f)
+    val viewLightDirection = FloatArray(4) // view x world light direction
 
     override fun onSurfaceCreated(render: ARRenderer?) {
         try{
@@ -114,9 +120,9 @@ class ARGISRenderer(val activity: ARGISActivity):
             backgroundRenderer = BackgroundRenderer(render)
             virtualSceneFrameBuffer = Framebuffer(render, 1, 1)
 
-//            cubeMapFilter = SpecularCubemapFilter(render,
-//                CUBEMAP_RESOLUTION,
-//                CUBEMAP_NUMBER_OF_IMPORTANCE_SAMPLES)
+            cubeMapFilter = SpecularCubemapFilter(render,
+                CUBEMAP_RESOLUTION,
+                CUBEMAP_NUMBER_OF_IMPORTANCE_SAMPLES)
 
             dfgTexture = Texture(
                 render,
@@ -160,9 +166,6 @@ class ARGISRenderer(val activity: ARGISActivity):
             //models/Cube.obj
             //"models/Pipe_Blenderkt.obj
 
-
-
-
             mapMarkerObjectMesh = Mesh.createFromAsset(
                 render,
                 "models/Cube.obj")
@@ -195,24 +198,51 @@ class ARGISRenderer(val activity: ARGISActivity):
             //"models/PipeAttempt.obj"
             //"models/PipeAttempt2.obj"
             //"models/Cylinder.obj"
+            //"models/PipeAttempt_horizontal.obj"
             pipeObjectMesh = Mesh.createFromAsset(
                 render,
-                "models/PipeAttempt.obj"
+                "models/Pipe_Cylinder.obj"
             )
             //"models/WhitePipe.png"
             //"models/Cylinder_Text.png"
-            pipeObjectTexture = Texture.createFromAsset(
+
+
+//            pipeObjectTexture = Texture.createFromAsset(
+//                render,
+//                "models/Test.png",
+//                Texture.WrapMode.CLAMP_TO_EDGE,
+//                Texture.ColorFormat.SRGB
+//            )
+
+            pipeObjectAlbedoTexture = Texture.createFromAsset(
                 render,
-                "models/Test.png",
+                "models/MetalPipe_Albedo.png",
                 Texture.WrapMode.CLAMP_TO_EDGE,
                 Texture.ColorFormat.SRGB
             )
 
+            pipeObjectRoughnessTexture = Texture.createFromAsset(
+                render,
+                "models/MetalPipe_Roughness.png",
+                Texture.WrapMode.CLAMP_TO_EDGE,
+                Texture.ColorFormat.SRGB
+            )
+
+//            pipeObjectShader = Shader.createFromAssets(
+//                render,
+//                "shaders/ar_unlit_object.vert",
+//                "shaders/ar_unlit_object.frag",
+//                null).setTexture("u_Texture", pipeObjectTexture)
+
             pipeObjectShader = Shader.createFromAssets(
                 render,
-                "shaders/ar_unlit_object.vert",
-                "shaders/ar_unlit_object.frag",
-                null).setTexture("u_Texture", pipeObjectTexture)
+                "shaders/environmental_hdr.vert",
+                "shaders/environmental_hdr.frag",
+                mapOf("NUMBER_OF_MIPMAP_LEVELS" to cubeMapFilter.numberOfMipmapLevels.toString()))
+                .setTexture("u_AlbedoTexture", pipeObjectAlbedoTexture)
+                .setTexture("u_RoughnessMetallicAmbientOcclusionTexture", pipeObjectRoughnessTexture)
+                .setTexture("u_Cubemap", cubeMapFilter.filteredCubemapTexture)
+                .setTexture("u_DfgTexture", dfgTexture)
 
 
             backgroundRenderer.setUseDepthVisualization(render, false)
@@ -477,12 +507,6 @@ class ARGISRenderer(val activity: ARGISActivity):
         catch (e: Exception){
             Log.e("Error an Hit Result Processing", e.message.toString())
         }
-
-
-
-
-
-
 
 
     }
