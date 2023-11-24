@@ -22,6 +22,7 @@ import com.google.ar.core.DepthPoint
 import com.google.ar.core.Earth
 import com.google.ar.core.Frame
 import com.google.ar.core.GeospatialPose
+import com.google.ar.core.LightEstimate
 import com.google.ar.core.Plane
 import com.google.ar.core.Point
 import com.google.ar.core.Session
@@ -75,6 +76,7 @@ class ARGISRenderer(val activity: ARGISActivity):
     val projectionMatrix = FloatArray(16)
     val viewMatrix = FloatArray(16)
     val modelViewMatrix = FloatArray(16)
+    val rotationMatrix = FloatArray(16)
 
     val modelViewProjectionMatrix = FloatArray(16)
 
@@ -352,14 +354,15 @@ class ARGISRenderer(val activity: ARGISActivity):
         //Get Camera Matrix
         camera.getViewMatrix(viewMatrix, 0)
 
+        // Update lighting parameters in the shader
+        updateLightEstimation(frame.lightEstimate, viewMatrix)
 
         render.clear(virtualSceneFrameBuffer, 0f,0f,0f,0f)
-
 
         //Get the user's Geospatial info
         earth = session.earth!!
 
-        if(earth?.trackingState == TrackingState.TRACKING){
+        if(earth.trackingState == TrackingState.TRACKING){
             val cameraGeospatialPose = earth.cameraGeospatialPose
             Log.i("Camera Location", "${cameraGeospatialPose.latitude},${cameraGeospatialPose.longitude},${cameraGeospatialPose.altitude}")
 
@@ -367,53 +370,43 @@ class ARGISRenderer(val activity: ARGISActivity):
             if(activity.latestGetFeatureResponse != null){
                 val features = activity.latestGetFeatureResponse!!.getFeatureResponseContent.features
 
+                val lineFeatures = features.filter{ it.geometry.type == "LineString"}
                 val pointFeatures = features.filter { it.geometry.type == "Point" }
 
                 Log.i("Point Feature Count", pointFeatures.size.toString())
+                anchorHelper.detachAnchors()
 
                 if(pointFeatures.any()){
                     val pointFeature = pointFeatures.first()
-
-//                    val pointFeatureGeometry = pointFeature.geometry.toPointGeometry()
-//                    Log.i("Point Feature Geometry", "${pointFeatureGeometry!!.y},${pointFeatureGeometry.x}")
-
-                    //earthAnchor?.detach()
-                    anchorHelper.detachAnchorsAndClear()
-
                     anchorHelper.createEarthAnchorFromPointFeature(earth, pointFeature, cameraGeospatialPose)
-
-//                    earthAnchor = earth.createAnchor(
-//                        pointFeatureGeometry.y,
-//                        pointFeatureGeometry.x,
-//                        cameraGeospatialPose.altitude,
-//                        0f,
-//                        0f,
-//                        0f,
-//                        1f
-//                    )
-
-
-
-//                    earthAnchor?.let {
-//                        render.renderCompassAtAnchor(it)
-//                    }
 
                     anchorHelper.wrappedAnchors.forEach {
                         it ->
                         if(it.anchor == null) return@forEach
-                        it.let {
-                            render.renderCompassAtAnchor(it.anchor!!, it.selected)
+//                        it.let {
+//                            render.renderCompassAtAnchor(it.anchor!!, it.selected)
+//                        }
+                    }
+                }
+
+                if(lineFeatures.any()){
+                    val lineFeature = lineFeatures.first()
+                    anchorHelper.createEarthAnchorsFromLineGeometry(earth, lineFeature, cameraGeospatialPose)
+                    anchorHelper.wrappedLineEarthAnchors.forEach {
+                        it.anchors.forEach {
+                            a ->
+                            if(a == null) return@forEach
+                            render.renderCompassAtAnchor(a, it.selected)
                         }
                     }
-
                 }
             }
 
-            handleTap(frame, camera, cameraGeospatialPose)
+            //handleTap(frame, camera, cameraGeospatialPose)
 
         }
         else{
-            val earthState = earth!!.earthState
+            val earthState = earth.earthState
             Log.i("Earth State", earthState.toString())
         }
 
@@ -423,6 +416,10 @@ class ARGISRenderer(val activity: ARGISActivity):
 
     private fun Session.hasTrackingPlane() =
         getAllTrackables(Plane::class.java).any{it.trackingState == TrackingState.TRACKING}
+
+    private fun ARRenderer.renderLineFeatureAtAnchors(anchors: ArrayList<Anchor>, selected: Boolean=false){
+
+    }
 
     private fun ARRenderer.renderCompassAtAnchor(anchor: Anchor, selected: Boolean=false){
 
@@ -435,9 +432,6 @@ class ARGISRenderer(val activity: ARGISActivity):
         Matrix.multiplyMM(modelViewProjectionMatrix, 0, projectionMatrix, 0, modelViewMatrix, 0)
 
         //Update shader properties and draw
-
-
-
 
         if(selected){
             selectedMapMarkerShader.setMat4("u_ModelViewProjection", modelViewProjectionMatrix)
@@ -515,10 +509,10 @@ class ARGISRenderer(val activity: ARGISActivity):
     //https://stackoverflow.com/questions/49026297/convert-3d-world-arcore-anchor-pose-to-its-corresponding-2d-screen-coordinates/49066308#49066308
     fun calculateWorld2CameraMatrix(anchorMatrix: FloatArray): FloatArray{
         val scaleFactor = 1.0f
-        var scaleMatrix = FloatArray(16)
-        var modelXScale = FloatArray(16)
-        var viewXmodelXscale = FloatArray(16)
-        var world2ScreenMatrix = FloatArray(16)
+        val scaleMatrix = FloatArray(16)
+        val modelXScale = FloatArray(16)
+        val viewXmodelXscale = FloatArray(16)
+        val world2ScreenMatrix = FloatArray(16)
 
         //Set scale factor into diagonal parts of matrix (I think?)
         Matrix.setIdentityM(scaleMatrix, 0)
@@ -577,6 +571,71 @@ class ARGISRenderer(val activity: ARGISActivity):
             Pair(displayMetrics.widthPixels, displayMetrics.heightPixels)
         }
     }
+
+    private fun updateSphericalHarmonicsCoefficients(coefficients: FloatArray) {
+        // Pre-multiply the spherical harmonics coefficients before passing them to the shader. The
+        // constants in sphericalHarmonicFactors were derived from three terms:
+        //
+        // 1. The normalized spherical harmonics basis functions (y_lm)
+        //
+        // 2. The lambertian diffuse BRDF factor (1/pi)
+        //
+        // 3. A <cos> convolution. This is done to so that the resulting function outputs the irradiance
+        // of all incoming light over a hemisphere for a given surface normal, which is what the shader
+        // (environmental_hdr.frag) expects.
+        //
+        // You can read more details about the math here:
+        // https://google.github.io/filament/Filament.html#annex/sphericalharmonics
+        require(coefficients.size == 9 * 3) {
+            "The given coefficients array must be of length 27 (3 components per 9 coefficients"
+        }
+
+        // Apply each factor to every component of each coefficient
+        for (i in 0 until 9 * 3) {
+            sphericalHarmonicsCoefficients[i] = coefficients[i] * sphericalHarmonicFactors[i / 3]
+        }
+        pipeObjectShader.setVec3Array(
+            "u_SphericalHarmonicsCoefficients",
+            sphericalHarmonicsCoefficients
+        )
+    }
+
+    private fun updateMainLight(
+        direction: FloatArray,
+        intensity: FloatArray,
+        viewMatrix: FloatArray
+    ) {
+        // We need the direction in a vec4 with 0.0 as the final component to transform it to view space
+        worldLightDirection[0] = direction[0]
+        worldLightDirection[1] = direction[1]
+        worldLightDirection[2] = direction[2]
+        Matrix.multiplyMV(viewLightDirection, 0, viewMatrix, 0, worldLightDirection, 0)
+        pipeObjectShader.setVec4("u_ViewLightDirection", viewLightDirection)
+        pipeObjectShader.setVec3("u_LightIntensity", intensity)
+    }
+
+    /** Update state based on the current frame's light estimation. */
+    private fun updateLightEstimation(lightEstimate: LightEstimate, viewMatrix: FloatArray) {
+        if (lightEstimate.state != LightEstimate.State.VALID) {
+            pipeObjectShader.setBool("u_LightEstimateIsValid", false)
+            return
+        }
+        pipeObjectShader.setBool("u_LightEstimateIsValid", true)
+
+        Matrix.invertM(viewInverseMatrix, 0, viewMatrix, 0)
+
+        pipeObjectShader.setMat4("u_ViewInverse", viewInverseMatrix)
+
+
+        updateMainLight(
+            lightEstimate.environmentalHdrMainLightDirection,
+            lightEstimate.environmentalHdrMainLightIntensity,
+            viewMatrix
+        )
+        updateSphericalHarmonicsCoefficients(lightEstimate.environmentalHdrAmbientSphericalHarmonics)
+        cubeMapFilter.update(lightEstimate.acquireEnvironmentalHdrCubeMap())
+    }
+
 
 }
 
