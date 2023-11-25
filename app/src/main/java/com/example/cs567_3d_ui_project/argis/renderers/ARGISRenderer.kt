@@ -467,7 +467,7 @@ class ARGISRenderer(val activity: ARGISActivity):
         val rotatedModelMatrix = FloatArray(16)
 
         //Multiply model matrix and the rotation matrix before doing any other transforms
-        Matrix.multiplyMM(rotatedModelMatrix, 0, rotationMatrix, 0, modelMatrix, 0)
+        Matrix.multiplyMM(rotatedModelMatrix, 0, modelMatrix, 0, rotationMatrix, 0)
         return rotatedModelMatrix
     }
 
@@ -476,10 +476,11 @@ class ARGISRenderer(val activity: ARGISActivity):
         //Get the current pose of the anchor in world space.
         //The Anchor pose is updated during calls to session.update()
         anchor.pose.toMatrix(modelMatrix, 0)
-        //val rotatedModelMatrix = rotateAsset(modelMatrix, rotationMatrix, theta)
+        val rotatedModelMatrix = rotateAsset(modelMatrix, rotationMatrix, theta)
+
 
         //Calculate model/view/projection matrices
-        Matrix.multiplyMM(modelViewMatrix, 0, viewMatrix, 0, modelMatrix, 0)
+        Matrix.multiplyMM(modelViewMatrix, 0, viewMatrix, 0, rotatedModelMatrix, 0)
         Matrix.multiplyMM(modelViewProjectionMatrix, 0, projectionMatrix, 0, modelViewMatrix, 0)
 
 
