@@ -205,13 +205,15 @@ data class WrappedEarthAnchor(
     var anchor: Anchor?,
     var earth: Earth,
     var featureId: String,
-    var selected: Boolean = false
+    var selected: Boolean = false,
+    var angle: Float = 0.0f
 )
 
 data class WrappedLineEarthAnchor(
     var anchors: ArrayList<Anchor?>,
     var earth: Earth,
     var featureId: String,
-    var selected: Boolean = false
+    var selected: Boolean = false,
+    var angle: Float = 0.0f
 )
 

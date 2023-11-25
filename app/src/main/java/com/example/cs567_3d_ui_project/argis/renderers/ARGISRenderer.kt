@@ -122,6 +122,8 @@ class ARGISRenderer(val activity: ARGISActivity):
             backgroundRenderer = BackgroundRenderer(render)
             virtualSceneFrameBuffer = Framebuffer(render, 1, 1)
 
+
+
             cubeMapFilter = SpecularCubemapFilter(render,
                 CUBEMAP_RESOLUTION,
                 CUBEMAP_NUMBER_OF_IMPORTANCE_SAMPLES)
@@ -337,7 +339,6 @@ class ARGISRenderer(val activity: ARGISActivity):
 
         Log.i(TAG, message!!)
 
-
         //Draw background
         if(frame.timestamp != 0L){
             //Suppress rendering if the camera did not produce the first frame yet.
@@ -396,8 +397,16 @@ class ARGISRenderer(val activity: ARGISActivity):
                         it.anchors.forEach {
                             a ->
                             if(a == null) return@forEach
-                            render.renderCompassAtAnchor(a, it.selected)
+                            render.renderAssetAtAnchor(a, it.selected, it.angle)
                         }
+                        //Set Next Angle for asset to rotate at
+                        if(it.angle + 0.01f >= 360.0f){
+                            it.angle = 0.0f
+                        }
+                        else{
+                            it.angle += 0.01f
+                        }
+
                     }
                 }
             }
@@ -414,6 +423,7 @@ class ARGISRenderer(val activity: ARGISActivity):
 
     }
 
+
     private fun Session.hasTrackingPlane() =
         getAllTrackables(Plane::class.java).any{it.trackingState == TrackingState.TRACKING}
 
@@ -421,18 +431,59 @@ class ARGISRenderer(val activity: ARGISActivity):
 
     }
 
-    private fun ARRenderer.renderCompassAtAnchor(anchor: Anchor, selected: Boolean=false){
+
+    private fun rotateAsset(modelMatrix: FloatArray, rotationMatrix: FloatArray, theta: Float): FloatArray {
+        //Rotate the model matrix
+        //hardcoded just for testing
+        //applied the transformation matrix along Y according to this guide:
+        //https://learnopengl.com/Getting-started/Transformations
+
+        Log.i("Rotate Asset On Y", "Theta = $theta")
+
+        //Transform with X
+//        rotationMatrix[0] = 1.0f
+//        rotationMatrix[5] = kotlin.math.cos(theta)
+//        rotationMatrix[6] = -kotlin.math.sin(theta)
+//        rotationMatrix[9] = kotlin.math.sin(theta)
+//        rotationMatrix[10] = kotlin.math.cos(theta)
+
+        //Transform with Y
+        rotationMatrix[0] = kotlin.math.cos(theta)
+        rotationMatrix[2] = kotlin.math.sin(theta)
+        rotationMatrix[5] = 1.0f
+        rotationMatrix[8] = -kotlin.math.sin(theta)
+        rotationMatrix[10] = kotlin.math.cos(theta)
+
+        //Transform with Z
+//        rotationMatrix[0] = kotlin.math.cos(theta)
+//        rotationMatrix[1] = -kotlin.math.sin(theta)
+//        rotationMatrix[4] = kotlin.math.sin(theta)
+//        rotationMatrix[5] = kotlin.math.cos(theta)
+//        rotationMatrix[10] = 1.0f
+
+        //Leave w as 1
+        rotationMatrix[15] = 1f
+
+        val rotatedModelMatrix = FloatArray(16)
+
+        //Multiply model matrix and the rotation matrix before doing any other transforms
+        Matrix.multiplyMM(rotatedModelMatrix, 0, rotationMatrix, 0, modelMatrix, 0)
+        return rotatedModelMatrix
+    }
+
+    private fun ARRenderer.renderAssetAtAnchor(anchor: Anchor, selected: Boolean=false, theta: Float = 0.0f){
 
         //Get the current pose of the anchor in world space.
         //The Anchor pose is updated during calls to session.update()
         anchor.pose.toMatrix(modelMatrix, 0)
+        //val rotatedModelMatrix = rotateAsset(modelMatrix, rotationMatrix, theta)
 
         //Calculate model/view/projection matrices
         Matrix.multiplyMM(modelViewMatrix, 0, viewMatrix, 0, modelMatrix, 0)
         Matrix.multiplyMM(modelViewProjectionMatrix, 0, projectionMatrix, 0, modelViewMatrix, 0)
 
-        //Update shader properties and draw
 
+        //Update shader properties and draw
         if(selected){
             selectedMapMarkerShader.setMat4("u_ModelViewProjection", modelViewProjectionMatrix)
             Log.i("Drawing Selected Feature Texture", "Drew Object Selected")
