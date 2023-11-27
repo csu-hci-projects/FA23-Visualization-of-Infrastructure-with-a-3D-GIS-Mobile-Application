@@ -8,6 +8,7 @@ import android.util.Log
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
 import com.example.cs567_3d_ui_project.activities.ARGISActivity
+import com.example.cs567_3d_ui_project.argis.Axis
 import com.example.cs567_3d_ui_project.argis.GLError
 import com.example.cs567_3d_ui_project.argis.Mesh
 import com.example.cs567_3d_ui_project.argis.Shader
@@ -16,6 +17,8 @@ import com.example.cs567_3d_ui_project.argis.buffers.Framebuffer
 import com.example.cs567_3d_ui_project.argis.helpers.AnchorHelper
 import com.example.cs567_3d_ui_project.argis.helpers.DisplayRotationHelper
 import com.example.cs567_3d_ui_project.argis.helpers.TrackingStateHelper
+import com.example.cs567_3d_ui_project.qgis_driver.resource_objects.wfs_resources.LineGeometry
+import com.example.cs567_3d_ui_project.qgis_driver.resource_objects.wfs_resources.PointGeometry
 import com.google.ar.core.Anchor
 import com.google.ar.core.Camera
 import com.google.ar.core.DepthPoint
@@ -32,6 +35,7 @@ import com.google.ar.core.exceptions.CameraNotAvailableException
 import com.google.ar.core.exceptions.NotYetAvailableException
 import java.io.IOException
 import java.nio.ByteBuffer
+import kotlin.math.atan
 
 class ARGISRenderer(val activity: ARGISActivity):
     ARRenderer.Renderer,
@@ -76,7 +80,7 @@ class ARGISRenderer(val activity: ARGISActivity):
     val projectionMatrix = FloatArray(16)
     val viewMatrix = FloatArray(16)
     val modelViewMatrix = FloatArray(16)
-    val rotationMatrix = FloatArray(16)
+    var rotationMatrix = FloatArray(16)
 
     val modelViewProjectionMatrix = FloatArray(16)
 
@@ -121,8 +125,6 @@ class ARGISRenderer(val activity: ARGISActivity):
             //planeRenderer = PlaneRenderer(render)
             backgroundRenderer = BackgroundRenderer(render)
             virtualSceneFrameBuffer = Framebuffer(render, 1, 1)
-
-
 
             cubeMapFilter = SpecularCubemapFilter(render,
                 CUBEMAP_RESOLUTION,
@@ -393,10 +395,15 @@ class ARGISRenderer(val activity: ARGISActivity):
                 if(lineFeatures.any()){
                     val lineFeature = lineFeatures.first()
                     anchorHelper.createEarthAnchorsFromLineGeometry(earth, lineFeature, cameraGeospatialPose)
+                    val thetaArray = calculateAngleForLineSegments(lineFeature.geometry.toLineGeometry()!!)
+
+
                     anchorHelper.wrappedLineEarthAnchors.forEach {
-                        it.anchors.forEach {
-                            a ->
+                        it.anchors.forEachIndexed{
+                            i, a ->
                             if(a == null) return@forEach
+                            //TODO: Make use of the angles found in the theta array
+                            //Possibly adjust the wrappedLineEarthAnchor to store the theta array
                             render.renderAssetAtAnchor(a, it.selected, it.angle)
                         }
                         //Set Next Angle for asset to rotate at
@@ -427,39 +434,87 @@ class ARGISRenderer(val activity: ARGISActivity):
     private fun Session.hasTrackingPlane() =
         getAllTrackables(Plane::class.java).any{it.trackingState == TrackingState.TRACKING}
 
-    private fun ARRenderer.renderLineFeatureAtAnchors(anchors: ArrayList<Anchor>, selected: Boolean=false){
+    private fun calculateAngleForLineSegments(lineGeometry: LineGeometry): FloatArray {
+        //Find the theta between each line segment.
+        val angleArray = ArrayList<Float>()
 
+        //Since the last point geometry has no other direction, use the last
+        //angle as its theta.
+        var theta: Float
+
+        lineGeometry.lineRoute.forEachIndexed {
+                i, pointGeometry ->
+
+            if(i + 1 >= lineGeometry.lineRoute.size){
+                //Copy the last computed angle before exiting
+                angleArray.add(angleArray[i-1])
+                return@forEachIndexed
+            }
+
+            val nextIndex = i + 1
+            val nextGeometry = lineGeometry.lineRoute[nextIndex]
+
+            theta = calculateAngleForSegment(pointGeometry, nextGeometry)
+            angleArray.add(theta)
+        }
+
+        return angleArray.toFloatArray()
+    }
+
+    private fun calculateAngleForSegment(
+        pointGeometry1: PointGeometry,
+        pointGeometry2: PointGeometry
+    ): Float {
+        //TODO: If this doesn't work might have to research into how to handle things in Z as well
+
+        //Using Pythagoras Theorem, determine the angle that the line segment should be in.
+        //https://www.dummies.com/article/academics-the-arts/science/physics/how-to-find-the-angle-and-magnitude-of-a-vector-173966/
+        //theta = tan^-1(y/x)
+        //x = x2 - x1
+        //y = y2 - y1
+
+        val x = pointGeometry2.x - pointGeometry1.x
+        val y = pointGeometry2.y - pointGeometry1.y
+
+        return atan((y / x)).toFloat()
     }
 
 
-    private fun rotateAsset(modelMatrix: FloatArray, rotationMatrix: FloatArray, theta: Float): FloatArray {
+    private fun rotateAsset(modelMatrix: FloatArray, rotationMatrix: FloatArray, theta: Float, axis: Axis = Axis.Y): FloatArray {
         //Rotate the model matrix
         //hardcoded just for testing
         //applied the transformation matrix along Y according to this guide:
         //https://learnopengl.com/Getting-started/Transformations
 
-        Log.i("Rotate Asset On Y", "Theta = $theta")
-
-        //Transform with X
-//        rotationMatrix[0] = 1.0f
-//        rotationMatrix[5] = kotlin.math.cos(theta)
-//        rotationMatrix[6] = -kotlin.math.sin(theta)
-//        rotationMatrix[9] = kotlin.math.sin(theta)
-//        rotationMatrix[10] = kotlin.math.cos(theta)
-
-        //Transform with Y
-        rotationMatrix[0] = kotlin.math.cos(theta)
-        rotationMatrix[2] = kotlin.math.sin(theta)
-        rotationMatrix[5] = 1.0f
-        rotationMatrix[8] = -kotlin.math.sin(theta)
-        rotationMatrix[10] = kotlin.math.cos(theta)
-
-        //Transform with Z
-//        rotationMatrix[0] = kotlin.math.cos(theta)
-//        rotationMatrix[1] = -kotlin.math.sin(theta)
-//        rotationMatrix[4] = kotlin.math.sin(theta)
-//        rotationMatrix[5] = kotlin.math.cos(theta)
-//        rotationMatrix[10] = 1.0f
+        when(axis){
+            Axis.X -> {
+                //Transform with X
+                Log.i("Rotate Asset On X", "Theta = $theta")
+                rotationMatrix[0] = 1.0f
+                rotationMatrix[5] = kotlin.math.cos(theta)
+                rotationMatrix[6] = -kotlin.math.sin(theta)
+                rotationMatrix[9] = kotlin.math.sin(theta)
+                rotationMatrix[10] = kotlin.math.cos(theta)
+            }
+            Axis.Y -> {
+                //Transform with Y
+                Log.i("Rotate Asset On Y", "Theta = $theta")
+                rotationMatrix[0] = kotlin.math.cos(theta)
+                rotationMatrix[2] = kotlin.math.sin(theta)
+                rotationMatrix[5] = 1.0f
+                rotationMatrix[8] = -kotlin.math.sin(theta)
+                rotationMatrix[10] = kotlin.math.cos(theta)
+            }
+            Axis.Z -> {
+                //Transform with Z
+                Log.i("Rotate Asset On Z", "Theta = $theta")
+                rotationMatrix[0] = kotlin.math.cos(theta)
+                rotationMatrix[1] = -kotlin.math.sin(theta)
+                rotationMatrix[4] = kotlin.math.sin(theta)
+                rotationMatrix[5] = kotlin.math.cos(theta)
+                rotationMatrix[10] = 1.0f
+            }
+        }
 
         //Leave w as 1
         rotationMatrix[15] = 1f
@@ -476,6 +531,8 @@ class ARGISRenderer(val activity: ARGISActivity):
         //Get the current pose of the anchor in world space.
         //The Anchor pose is updated during calls to session.update()
         anchor.pose.toMatrix(modelMatrix, 0)
+
+        rotationMatrix = FloatArray(16)
         val rotatedModelMatrix = rotateAsset(modelMatrix, rotationMatrix, theta)
 
 
@@ -687,7 +744,6 @@ class ARGISRenderer(val activity: ARGISActivity):
         updateSphericalHarmonicsCoefficients(lightEstimate.environmentalHdrAmbientSphericalHarmonics)
         cubeMapFilter.update(lightEstimate.acquireEnvironmentalHdrCubeMap())
     }
-
 
 }
 
