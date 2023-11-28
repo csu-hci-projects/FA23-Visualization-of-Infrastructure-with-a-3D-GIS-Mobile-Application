@@ -81,6 +81,7 @@ class ARGISRenderer(val activity: ARGISActivity):
     val viewMatrix = FloatArray(16)
     val modelViewMatrix = FloatArray(16)
     var rotationMatrix = FloatArray(16)
+    var scaleMatrix = FloatArray(16)
 
     val modelViewProjectionMatrix = FloatArray(16)
 
@@ -404,15 +405,17 @@ class ARGISRenderer(val activity: ARGISActivity):
                             if(a == null) return@forEach
                             //TODO: Make use of the angles found in the theta array
                             //Possibly adjust the wrappedLineEarthAnchor to store the theta array
-                            render.renderAssetAtAnchor(a, it.selected, it.angle)
+                            // it.angle
+                            val theta = thetaArray[i]
+                            render.renderAssetAtAnchor(a, it.selected, theta)
                         }
                         //Set Next Angle for asset to rotate at
-                        if(it.angle + 0.01f >= 360.0f){
-                            it.angle = 0.0f
-                        }
-                        else{
-                            it.angle += 0.01f
-                        }
+//                        if(it.angle + 0.01f >= 360.0f){
+//                            it.angle = 0.0f
+//                        }
+//                        else{
+//                            it.angle += 0.01f
+//                        }
 
                     }
                 }
@@ -526,18 +529,62 @@ class ARGISRenderer(val activity: ARGISActivity):
         return rotatedModelMatrix
     }
 
+    private fun scaleAsset(modelMatrix: FloatArray, transformationMatrix: FloatArray, scaleFactor: Float, axis: Axis): FloatArray{
+        val scaledModelMatrix = FloatArray(16)
+
+        when(axis){
+            Axis.X -> {
+                transformationMatrix[0] = scaleFactor
+                transformationMatrix[5] = 1.0f
+                transformationMatrix[10] = 1.0f
+            }
+            Axis.Y -> {
+                transformationMatrix[0] = 1.0f
+                transformationMatrix[5] = scaleFactor
+                transformationMatrix[10] = 1.0f
+            }
+            Axis.Z -> {
+                transformationMatrix[0] = 1.0f
+                transformationMatrix[5] = 1.0f
+                transformationMatrix[10] = scaleFactor
+            }
+
+        }
+
+        //Always set w to 1.0 for now
+        transformationMatrix[15] = 1.0f
+
+        Matrix.multiplyMM(scaledModelMatrix, 0, modelMatrix, 0, transformationMatrix, 0)
+
+        return scaledModelMatrix
+    }
+
+//TODO: Create a method just for rendering line strings as these changes will likely break for other feature types
     private fun ARRenderer.renderAssetAtAnchor(anchor: Anchor, selected: Boolean=false, theta: Float = 0.0f){
 
         //Get the current pose of the anchor in world space.
         //The Anchor pose is updated during calls to session.update()
         anchor.pose.toMatrix(modelMatrix, 0)
 
+        Log.i("renderAssetAtAnchor", "Anchor Before Rotation")
+        prettyPrintMatrix(modelMatrix)
+
+
         rotationMatrix = FloatArray(16)
         val rotatedModelMatrix = rotateAsset(modelMatrix, rotationMatrix, theta)
 
+        Log.i("renderAssetAtAnchor", "Anchor After Rotation")
+        prettyPrintMatrix(rotatedModelMatrix)
+
+        //Scale Models
+        scaleMatrix = FloatArray(16)
+        val scaledRotatedModelMatrix = scaleAsset(rotatedModelMatrix, scaleMatrix, 2.0f, Axis.Z)
+
+        Log.i("renderAssetAtAnchor", "Anchor After Scaling")
+        prettyPrintMatrix(scaledRotatedModelMatrix)
 
         //Calculate model/view/projection matrices
-        Matrix.multiplyMM(modelViewMatrix, 0, viewMatrix, 0, rotatedModelMatrix, 0)
+        Matrix.multiplyMM(modelViewMatrix, 0, viewMatrix, 0, scaledRotatedModelMatrix, 0)
         Matrix.multiplyMM(modelViewProjectionMatrix, 0, projectionMatrix, 0, modelViewMatrix, 0)
 
 
@@ -743,6 +790,28 @@ class ARGISRenderer(val activity: ARGISActivity):
         )
         updateSphericalHarmonicsCoefficients(lightEstimate.environmentalHdrAmbientSphericalHarmonics)
         cubeMapFilter.update(lightEstimate.acquireEnvironmentalHdrCubeMap())
+    }
+
+    private fun prettyPrintMatrix(matrix: FloatArray){
+        //Always assuming it is a 4x4 matrix since we can only work with those in open GL
+        if(matrix.size != 16){
+            Log.i("prettyPrintMatrix", "Only 4x4 float arrays allowed")
+        }
+
+        val stringBuilder = StringBuilder()
+
+        matrix.toList().forEachIndexed {
+                index, fl ->
+
+            if((index + 1).mod(4) == 0){
+                stringBuilder.appendLine("$fl")
+            }
+            else{
+                stringBuilder.append("$fl ")
+            }
+        }
+
+       Log.i("Pretty Print Matrix", stringBuilder.toString())
     }
 
 }
