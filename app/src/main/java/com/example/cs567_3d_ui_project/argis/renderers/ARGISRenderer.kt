@@ -36,6 +36,7 @@ import com.google.ar.core.exceptions.NotYetAvailableException
 import java.io.IOException
 import java.nio.ByteBuffer
 import kotlin.math.atan
+import kotlin.math.pow
 
 class ARGISRenderer(val activity: ARGISActivity):
     ARRenderer.Renderer,
@@ -206,9 +207,10 @@ class ARGISRenderer(val activity: ARGISActivity):
             //"models/PipeAttempt2.obj"
             //"models/Cylinder.obj"
             //"models/PipeAttempt_horizontal.obj"
+            //"models/Pipe_Cylinder.obj"
             pipeObjectMesh = Mesh.createFromAsset(
                 render,
-                "models/Pipe_Cylinder.obj"
+                "models/HorizontalPipeSection_Aligned.obj"
             )
             //"models/WhitePipe.png"
             //"models/Cylinder_Text.png"
@@ -377,7 +379,7 @@ class ARGISRenderer(val activity: ARGISActivity):
                 val lineFeatures = features.filter{ it.geometry.type == "LineString"}
                 val pointFeatures = features.filter { it.geometry.type == "Point" }
 
-                Log.i("Point Feature Count", pointFeatures.size.toString())
+                //Log.i("Point Feature Count", pointFeatures.size.toString())
                 anchorHelper.detachAnchors()
 
                 if(pointFeatures.any()){
@@ -396,8 +398,11 @@ class ARGISRenderer(val activity: ARGISActivity):
                 if(lineFeatures.any()){
                     val lineFeature = lineFeatures.first()
                     anchorHelper.createEarthAnchorsFromLineGeometry(earth, lineFeature, cameraGeospatialPose)
-                    val thetaArray = calculateAngleForLineSegments(lineFeature.geometry.toLineGeometry()!!)
 
+                    val lineGeometry = lineFeature.geometry.toLineGeometry()!!
+
+                    val thetaArray = calculateAngleForLineSegments(lineGeometry)
+                    val scaleFactorArray = calculateScaleFactorsForLineSegments(lineGeometry)
 
                     anchorHelper.wrappedLineEarthAnchors.forEach {
                         it.anchors.forEachIndexed{
@@ -405,9 +410,11 @@ class ARGISRenderer(val activity: ARGISActivity):
                             if(a == null) return@forEach
                             //TODO: Make use of the angles found in the theta array
                             //Possibly adjust the wrappedLineEarthAnchor to store the theta array
-                            // it.angle
                             val theta = thetaArray[i]
-                            render.renderAssetAtAnchor(a, it.selected, theta)
+                            val scaleFactor = scaleFactorArray[i]
+                            render.renderAssetAtAnchor(a, it.selected, theta, 1.75f)
+                            //render.renderAssetAtAnchor(a, it.selected, it.angle, 2.0f)
+                            //render.renderAssetAtAnchor(a, it.selected, it.angle)
                         }
                         //Set Next Angle for asset to rotate at
 //                        if(it.angle + 0.01f >= 360.0f){
@@ -464,6 +471,29 @@ class ARGISRenderer(val activity: ARGISActivity):
         return angleArray.toFloatArray()
     }
 
+    private fun calculateScaleFactorsForLineSegments(lineGeometry: LineGeometry): FloatArray{
+        val scaleFactorArray = ArrayList<Float>()
+
+        var scaleFactor: Float
+
+        lineGeometry.lineRoute.forEachIndexed{
+            i, pointGeometry ->
+
+            if(i + 1 >= lineGeometry.lineRoute.size){
+                scaleFactorArray.add(scaleFactorArray[i - 1])
+                return@forEachIndexed
+            }
+
+            val nextIndex = i + 1
+            val nextGeometry = lineGeometry.lineRoute[nextIndex]
+
+            scaleFactor = calculateScaleFactorForSegment(pointGeometry, nextGeometry)
+            scaleFactorArray.add(scaleFactor)
+        }
+
+        return scaleFactorArray.toFloatArray()
+    }
+
     private fun calculateAngleForSegment(
         pointGeometry1: PointGeometry,
         pointGeometry2: PointGeometry
@@ -479,7 +509,16 @@ class ARGISRenderer(val activity: ARGISActivity):
         val x = pointGeometry2.x - pointGeometry1.x
         val y = pointGeometry2.y - pointGeometry1.y
 
-        return atan((y / x)).toFloat()
+        var angle = atan((y / x)).toFloat()
+
+        if(angle < 0){
+            angle -= 0.045f
+        }
+        else{
+            angle += 0.045f
+        }
+
+        return angle
     }
 
 
@@ -529,6 +568,19 @@ class ARGISRenderer(val activity: ARGISActivity):
         return rotatedModelMatrix
     }
 
+    private fun calculateScaleFactorForSegment(pointGeometry1: PointGeometry,
+                                     pointGeometry2: PointGeometry) : Float{
+
+        val x = pointGeometry2.x - pointGeometry1.x
+        val y = pointGeometry2.y - pointGeometry1.y
+
+        val xSquared = x.pow(2)
+        val ySquared = y.pow(2)
+
+        return kotlin.math.sqrt(xSquared + ySquared).toFloat()
+
+    }
+
     private fun scaleAsset(modelMatrix: FloatArray, transformationMatrix: FloatArray, scaleFactor: Float, axis: Axis): FloatArray{
         val scaledModelMatrix = FloatArray(16)
 
@@ -560,7 +612,7 @@ class ARGISRenderer(val activity: ARGISActivity):
     }
 
 //TODO: Create a method just for rendering line strings as these changes will likely break for other feature types
-    private fun ARRenderer.renderAssetAtAnchor(anchor: Anchor, selected: Boolean=false, theta: Float = 0.0f){
+    private fun ARRenderer.renderAssetAtAnchor(anchor: Anchor, selected: Boolean=false, theta: Float = 0.0f, scaleFactor: Float = 1.0f){
 
         //Get the current pose of the anchor in world space.
         //The Anchor pose is updated during calls to session.update()
@@ -578,7 +630,7 @@ class ARGISRenderer(val activity: ARGISActivity):
 
         //Scale Models
         scaleMatrix = FloatArray(16)
-        val scaledRotatedModelMatrix = scaleAsset(rotatedModelMatrix, scaleMatrix, 2.0f, Axis.Z)
+        val scaledRotatedModelMatrix = scaleAsset(rotatedModelMatrix, scaleMatrix, scaleFactor, Axis.Z)
 
         Log.i("renderAssetAtAnchor", "Anchor After Scaling")
         prettyPrintMatrix(scaledRotatedModelMatrix)

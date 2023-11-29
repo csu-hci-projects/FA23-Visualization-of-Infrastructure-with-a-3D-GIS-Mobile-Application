@@ -44,7 +44,7 @@ class AnchorHelper {
             val earthAnchor = earth.createAnchor(
                 pointGeometry.y,
                 pointGeometry.x,
-                geospatialPose.altitude - 1,
+                geospatialPose.altitude - 3,
                 0f,
                 0f,
                 0f,
