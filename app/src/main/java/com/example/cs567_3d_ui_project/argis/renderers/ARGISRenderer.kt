@@ -396,34 +396,49 @@ class ARGISRenderer(val activity: ARGISActivity):
                 }
 
                 if(lineFeatures.any()){
-                    val lineFeature = lineFeatures.first()
-                    anchorHelper.createEarthAnchorsFromLineGeometry(earth, lineFeature, cameraGeospatialPose)
 
-                    val lineGeometry = lineFeature.geometry.toLineGeometry()!!
+                    Log.i("Count", lineFeatures.size.toString())
 
-                    val thetaArray = calculateAngleForLineSegments(lineGeometry)
-                    val scaleFactorArray = calculateScaleFactorsForLineSegments(lineGeometry)
+                    lineFeatures.forEach {
+                        lineFeature ->
+                        //val lineFeature = lineFeatures.first()
+                        val wrappedLineEarthAnchor = anchorHelper.createEarthAnchorsFromLineGeometry(earth, lineFeature, cameraGeospatialPose)
 
-                    anchorHelper.wrappedLineEarthAnchors.forEach {
-                        it.anchors.forEachIndexed{
-                            i, a ->
+                        val lineGeometry = lineFeature.geometry.toLineGeometry()!!
+
+                        val thetaArray = calculateAngleForLineSegments(lineGeometry)
+                        val scaleFactorArray = calculateScaleFactorsForLineSegments(lineGeometry)
+
+                        wrappedLineEarthAnchor.anchors.forEachIndexed{
+                            i,a ->
                             if(a == null) return@forEach
                             //TODO: Make use of the angles found in the theta array
                             //Possibly adjust the wrappedLineEarthAnchor to store the theta array
                             val theta = thetaArray[i]
                             val scaleFactor = scaleFactorArray[i]
-                            render.renderAssetAtAnchor(a, it.selected, theta, 1.75f)
-                            //render.renderAssetAtAnchor(a, it.selected, it.angle, 2.0f)
-                            //render.renderAssetAtAnchor(a, it.selected, it.angle)
+                            render.renderAssetAtAnchor(a, wrappedLineEarthAnchor.selected, theta, 1.75f)
                         }
-                        //Set Next Angle for asset to rotate at
-//                        if(it.angle + 0.01f >= 360.0f){
-//                            it.angle = 0.0f
+//                        anchorHelper.wrappedLineEarthAnchors.forEach {
+//                            it.anchors.forEachIndexed{
+//                                    i, a ->
+//                                if(a == null) return@forEach
+//                                //TODO: Make use of the angles found in the theta array
+//                                //Possibly adjust the wrappedLineEarthAnchor to store the theta array
+//                                val theta = thetaArray[i]
+//                                val scaleFactor = scaleFactorArray[i]
+//                                render.renderAssetAtAnchor(a, it.selected, theta, 1.75f)
+//                                //render.renderAssetAtAnchor(a, it.selected, it.angle, 2.0f)
+//                                //render.renderAssetAtAnchor(a, it.selected, it.angle)
+//                            }
+//                            //Set Next Angle for asset to rotate at
+////                        if(it.angle + 0.01f >= 360.0f){
+////                            it.angle = 0.0f
+////                        }
+////                        else{
+////                            it.angle += 0.01f
+////                        }
+//
 //                        }
-//                        else{
-//                            it.angle += 0.01f
-//                        }
-
                     }
                 }
             }
@@ -511,12 +526,14 @@ class ARGISRenderer(val activity: ARGISActivity):
 
         var angle = atan((y / x)).toFloat()
 
-        if(angle < 0){
-            angle -= 0.045f
-        }
-        else{
-            angle += 0.045f
-        }
+
+
+//        if(angle < 0){
+//            angle -= 0.045f
+//        }
+//        else{
+//            angle += 0.045f
+//        }
 
         return angle
     }

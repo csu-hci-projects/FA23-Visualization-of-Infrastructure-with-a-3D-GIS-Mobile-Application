@@ -35,7 +35,7 @@ class AnchorHelper {
         return !wrappedAnchors.any() && !wrappedLineEarthAnchors.any()
     }
 
-    fun createEarthAnchorsFromLineGeometry(earth: Earth, lineFeature: Feature, geospatialPose: GeospatialPose){
+    fun createEarthAnchorsFromLineGeometry(earth: Earth, lineFeature: Feature, geospatialPose: GeospatialPose): WrappedLineEarthAnchor{
         val lineGeometry = lineFeature.geometry.toLineGeometry()
 
         val lineAnchors = ArrayList<Anchor?>()
@@ -57,9 +57,11 @@ class AnchorHelper {
             val wrappedLineEarthAnchor = wrappedLineEarthAnchors.first{it.featureId == lineFeature.id}
             wrappedLineEarthAnchor.anchors = lineAnchors
             wrappedLineEarthAnchor.earth = earth
+            return wrappedLineEarthAnchor
         }else{
             val wrappedLineEarthAnchor = WrappedLineEarthAnchor(lineAnchors, earth, lineFeature.id)
             wrappedLineEarthAnchors.add(wrappedLineEarthAnchor)
+            return wrappedLineEarthAnchor
         }
 
 
