@@ -7,6 +7,7 @@ import android.util.DisplayMetrics
 import android.util.Log
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
+import com.example.cs567_3d_ui_project.R
 import com.example.cs567_3d_ui_project.activities.ARGISActivity
 import com.example.cs567_3d_ui_project.argis.Axis
 import com.example.cs567_3d_ui_project.argis.GLError
@@ -371,6 +372,8 @@ class ARGISRenderer(val activity: ARGISActivity):
         if(earth.trackingState == TrackingState.TRACKING){
             val cameraGeospatialPose = earth.cameraGeospatialPose
             Log.i("Camera Location", "${cameraGeospatialPose.latitude},${cameraGeospatialPose.longitude},${cameraGeospatialPose.altitude}")
+
+            updateLocationAccuracy(cameraGeospatialPose)
 
             //Attempt to place an anchor at the first point feature
             if(activity.latestGetFeatureResponse != null){
@@ -877,6 +880,31 @@ class ARGISRenderer(val activity: ARGISActivity):
         }
 
        Log.i("Pretty Print Matrix", stringBuilder.toString())
+    }
+
+    private fun updateLocationAccuracy(geospatialPose: GeospatialPose){
+        val horizontalAccuracy = geospatialPose.horizontalAccuracy
+        val verticalAccuracy = geospatialPose.verticalAccuracy
+        val orientationYawAccuracy = geospatialPose.orientationYawAccuracy
+
+        val accuracyArray = listOf(horizontalAccuracy, verticalAccuracy, orientationYawAccuracy)
+
+        Log.i("HorizontalAccuracy", horizontalAccuracy.toString())
+        Log.i("VerticalAccuracy", verticalAccuracy.toString())
+        Log.i("orientationYawAccuracy", orientationYawAccuracy.toString())
+
+        val locationAccuracyUpdate: String = if(accuracyArray.any{it < 50.0}){
+            activity.baseContext.getString(R.string.low_accuracy)
+        } else if(accuracyArray.any{it >= 50.0 && it < 80.0}){
+            activity.baseContext.getString(R.string.medium_accuracy)
+        } else if(accuracyArray.any { it >= 80.0 }){
+            activity.baseContext.getString(R.string.high_accuracy)
+        } else{
+            activity.baseContext.getString(R.string.unknown_accuracy)
+        }
+
+        activity.arGISSurfaceView.updateLocationAccuracy(locationAccuracyUpdate)
+
     }
 
 }

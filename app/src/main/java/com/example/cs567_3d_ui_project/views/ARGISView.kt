@@ -4,6 +4,7 @@ import android.opengl.GLSurfaceView
 import android.util.Log
 import android.view.View
 import android.widget.ImageButton
+import android.widget.TextView
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
 import com.example.cs567_3d_ui_project.R
@@ -20,6 +21,7 @@ class ARGISView(val activity: ARGISActivity): DefaultLifecycleObserver {
     var allModelsRotate = false
 
     var modelRotationAxis = Axis.Y
+    var locationAccuracyStatus = activity.baseContext.getString(R.string.unknown_accuracy)
 
     val saveButton:ImageButton = root.findViewById<ImageButton>(R.id.save).apply {
         setOnClickListener{
@@ -120,6 +122,8 @@ class ARGISView(val activity: ARGISActivity): DefaultLifecycleObserver {
         }
     }
 
+    val locationAccuracyTextView: TextView = root.findViewById(R.id.location_accuracy)
+
     val session
         get() = activity.arGISSessionHelper.mySession
 
@@ -147,5 +151,9 @@ class ARGISView(val activity: ARGISActivity): DefaultLifecycleObserver {
             Log.e("Surface View On Pause Failure", e.message.toString())
             super.onPause(owner)
         }
+    }
+
+    fun updateLocationAccuracy(locationAccuracyStatus: String){
+        locationAccuracyTextView.text = locationAccuracyStatus
     }
 }

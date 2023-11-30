@@ -11,6 +11,17 @@
         android:layout_width="fill_parent"
         android:layout_height="fill_parent"
         android:layout_gravity="top"/>
+
+    <TextView
+        android:id="@+id/location_accuracy"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentTop="true"
+        android:layout_alignParentStart="true"
+        android:textColor="@color/white"
+        android:text="@string/unknown_accuracy"
+        android:layout_margin="25dp"
+        android:background="@android:color/transparent"/>
     
     <LinearLayout
         android:layout_width="wrap_content"
