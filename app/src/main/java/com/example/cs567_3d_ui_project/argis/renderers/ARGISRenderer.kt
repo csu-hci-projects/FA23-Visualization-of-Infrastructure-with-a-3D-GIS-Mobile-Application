@@ -636,7 +636,7 @@ class ARGISRenderer(val activity: ARGISActivity):
 
 
         rotationMatrix = FloatArray(16)
-        val rotatedModelMatrix = rotateAsset(modelMatrix, rotationMatrix, theta)
+        val rotatedModelMatrix = rotateAsset(modelMatrix, rotationMatrix, theta, activity.arGISSurfaceView.modelRotationAxis)
 
         Log.i("renderAssetAtAnchor", "Anchor After Rotation")
         prettyPrintMatrix(rotatedModelMatrix)

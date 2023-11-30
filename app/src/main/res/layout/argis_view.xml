@@ -25,6 +25,7 @@
             android:layout_height="wrap_content"
             android:layout_margin="25dp"
             android:src="@drawable/editing"
+            android:visibility="gone"
             android:background="@android:color/transparent"/>
 
         <ImageButton
@@ -32,9 +33,62 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_margin="25dp"
-            android:src="@drawable/threed"
+            android:src="@drawable/rotatemodels"
             android:background="@android:color/transparent"
             />
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:orientation="vertical">
+            <ImageButton
+                android:id="@+id/rotateModelXAxis"
+                android:src="@drawable/xaxis"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_margin="25dp"
+                android:visibility="invisible"
+                android:background="@android:color/transparent"/>
+
+            <ImageButton
+                android:id="@+id/rotateModelYAxis"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:visibility="invisible"
+                android:layout_margin="25dp"
+                android:src="@drawable/yaxis"
+                android:background="@android:color/transparent"/>
+
+            <ImageButton
+                android:id="@+id/rotateModelZAxis"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:visibility="invisible"
+                android:layout_margin="25dp"
+                android:src="@drawable/zaxis"
+                android:background="@android:color/transparent"/>
+
+            <ImageButton
+                android:id="@+id/pauseModelRotation"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:visibility="invisible"
+                android:layout_margin="25dp"
+                android:src="@drawable/pause"
+                android:background="@android:color/transparent"/>
+
+            <ImageButton
+                android:id="@+id/stopModelRotation"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:visibility="invisible"
+                android:layout_margin="25dp"
+                android:src="@drawable/stoprotating"
+                android:background="@android:color/transparent"/>
+
+
+        </LinearLayout>
+
 
         <LinearLayout
             android:layout_width="wrap_content"

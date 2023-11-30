@@ -8,6 +8,7 @@ import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
 import com.example.cs567_3d_ui_project.R
 import com.example.cs567_3d_ui_project.activities.ARGISActivity
+import com.example.cs567_3d_ui_project.argis.Axis
 import com.example.cs567_3d_ui_project.argis.helpers.TapHelper
 
 class ARGISView(val activity: ARGISActivity): DefaultLifecycleObserver {
@@ -17,6 +18,8 @@ class ARGISView(val activity: ARGISActivity): DefaultLifecycleObserver {
 
     var editingEnabled = false
     var allModelsRotate = false
+
+    var modelRotationAxis = Axis.Y
 
     val saveButton:ImageButton = root.findViewById<ImageButton>(R.id.save).apply {
         setOnClickListener{
@@ -65,7 +68,55 @@ class ARGISView(val activity: ARGISActivity): DefaultLifecycleObserver {
     val rotateButton: ImageButton = root.findViewById<ImageButton>(R.id.rotateAll).apply{
         setOnClickListener{
             v ->
+            allModelsRotate = true
+            xAxis.visibility = View.VISIBLE
+            yAxis.visibility = View.VISIBLE
+            zAxis.visibility = View.VISIBLE
+            pauseModelRotation.visibility = View.VISIBLE
+            stopModelRotation.visibility = View.VISIBLE
+            v.visibility = View.GONE
+
+        }
+    }
+
+    val xAxis: ImageButton = root.findViewById<ImageButton>(R.id.rotateModelXAxis).apply {
+        setOnClickListener{
+            v ->
+            modelRotationAxis = Axis.X
+        }
+    }
+
+    val yAxis: ImageButton = root.findViewById<ImageButton>(R.id.rotateModelYAxis).apply {
+        setOnClickListener{
+                v ->
+            modelRotationAxis = Axis.Y
+        }
+    }
+
+    val zAxis: ImageButton = root.findViewById<ImageButton>(R.id.rotateModelZAxis).apply {
+        setOnClickListener{
+                v ->
+            modelRotationAxis = Axis.Z
+        }
+    }
+
+    val pauseModelRotation: ImageButton = root.findViewById<ImageButton>(R.id.pauseModelRotation).apply {
+        setOnClickListener{
+                v ->
             allModelsRotate = !allModelsRotate
+        }
+    }
+
+    val stopModelRotation: ImageButton = root.findViewById<ImageButton>(R.id.stopModelRotation).apply {
+        setOnClickListener{
+                v ->
+            allModelsRotate = false
+            rotateButton.visibility = View.VISIBLE
+            xAxis.visibility = View.INVISIBLE
+            yAxis.visibility = View.INVISIBLE
+            zAxis.visibility = View.INVISIBLE
+            pauseModelRotation.visibility = View.INVISIBLE
+            v.visibility = View.INVISIBLE
         }
     }
 
