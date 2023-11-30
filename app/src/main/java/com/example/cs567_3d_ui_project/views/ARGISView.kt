@@ -19,9 +19,9 @@ class ARGISView(val activity: ARGISActivity): DefaultLifecycleObserver {
 
     var editingEnabled = false
     var allModelsRotate = false
+    var alignAssets = true
 
     var modelRotationAxis = Axis.Y
-    var locationAccuracyStatus = activity.baseContext.getString(R.string.unknown_accuracy)
 
     val saveButton:ImageButton = root.findViewById<ImageButton>(R.id.save).apply {
         setOnClickListener{
@@ -71,13 +71,14 @@ class ARGISView(val activity: ARGISActivity): DefaultLifecycleObserver {
         setOnClickListener{
             v ->
             allModelsRotate = true
+            alignAssets = false
             xAxis.visibility = View.VISIBLE
             yAxis.visibility = View.VISIBLE
             zAxis.visibility = View.VISIBLE
             pauseModelRotation.visibility = View.VISIBLE
             stopModelRotation.visibility = View.VISIBLE
             v.visibility = View.GONE
-
+            alignAssetsButton.visibility = View.GONE
         }
     }
 
@@ -118,11 +119,21 @@ class ARGISView(val activity: ARGISActivity): DefaultLifecycleObserver {
             yAxis.visibility = View.INVISIBLE
             zAxis.visibility = View.INVISIBLE
             pauseModelRotation.visibility = View.INVISIBLE
+            alignAssetsButton.visibility = View.VISIBLE
             v.visibility = View.INVISIBLE
         }
     }
 
-    val locationAccuracyTextView: TextView = root.findViewById(R.id.location_accuracy)
+    val alignAssetsButton: ImageButton = root.findViewById<ImageButton>(R.id.align).apply {
+        setOnClickListener {
+            alignAssets = true
+            modelRotationAxis = Axis.Y
+        }
+    }
+
+    private val locationAccuracyTextView: TextView = root.findViewById(R.id.location_accuracy)
+
+
 
     val session
         get() = activity.arGISSessionHelper.mySession
@@ -154,6 +165,12 @@ class ARGISView(val activity: ARGISActivity): DefaultLifecycleObserver {
     }
 
     fun updateLocationAccuracy(locationAccuracyStatus: String){
-        locationAccuracyTextView.text = locationAccuracyStatus
+
+        if(locationAccuracyTextView.text == locationAccuracyStatus){
+            return
+        }
+        activity.runOnUiThread {
+            locationAccuracyTextView.text = locationAccuracyStatus
+        }
     }
 }

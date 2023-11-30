@@ -419,7 +419,14 @@ class ARGISRenderer(val activity: ARGISActivity):
                             //Possibly adjust the wrappedLineEarthAnchor to store the theta array
                             val theta = thetaArray[i]
                             val scaleFactor = scaleFactorArray[i]
-                            render.renderAssetAtAnchor(a, wrappedLineEarthAnchor.selected, wrappedLineEarthAnchor.angle, 1.0f)
+
+                            if(activity.arGISSurfaceView.alignAssets){
+                                render.renderAssetAtAnchor(a, wrappedLineEarthAnchor.selected, theta, 1.0f)
+                            }else{
+                                render.renderAssetAtAnchor(a, wrappedLineEarthAnchor.selected, wrappedLineEarthAnchor.angle, 1.0f)
+                            }
+
+
                         }
 
                         if(activity.arGISSurfaceView.allModelsRotate){
@@ -432,7 +439,6 @@ class ARGISRenderer(val activity: ARGISActivity):
                                     wrappedLineEarthAnchor.angle + 0.01f)
                             }
                         }
-
 
 //                        anchorHelper.wrappedLineEarthAnchors.forEach {
 //                            it.anchors.forEachIndexed{
@@ -893,15 +899,18 @@ class ARGISRenderer(val activity: ARGISActivity):
         Log.i("VerticalAccuracy", verticalAccuracy.toString())
         Log.i("orientationYawAccuracy", orientationYawAccuracy.toString())
 
-        val locationAccuracyUpdate: String = if(accuracyArray.any{it < 50.0}){
-            activity.baseContext.getString(R.string.low_accuracy)
-        } else if(accuracyArray.any{it >= 50.0 && it < 80.0}){
-            activity.baseContext.getString(R.string.medium_accuracy)
-        } else if(accuracyArray.any { it >= 80.0 }){
-            activity.baseContext.getString(R.string.high_accuracy)
-        } else{
-            activity.baseContext.getString(R.string.unknown_accuracy)
-        }
+        val locationAccuracyUpdate: String =
+            if(accuracyArray.any { it >= 50.0 }){
+                activity.baseContext.getString(R.string.low_accuracy)
+            }
+            else if(accuracyArray.any{it > 10.0 && it < 50.0}){
+                activity.baseContext.getString(R.string.medium_accuracy)
+            }
+            else if(accuracyArray.all{it <= 10.0}){
+                activity.baseContext.getString(R.string.high_accuracy)
+            } else{
+                activity.baseContext.getString(R.string.unknown_accuracy)
+            }
 
         activity.arGISSurfaceView.updateLocationAccuracy(locationAccuracyUpdate)
 
