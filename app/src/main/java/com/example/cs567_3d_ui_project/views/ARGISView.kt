@@ -16,6 +16,7 @@ class ARGISView(val activity: ARGISActivity): DefaultLifecycleObserver {
     val surfaceView = root.findViewById<GLSurfaceView>(R.id.surfaceview)
 
     var editingEnabled = false
+    var allModelsRotate = false
 
     val saveButton:ImageButton = root.findViewById<ImageButton>(R.id.save).apply {
         setOnClickListener{
@@ -58,6 +59,13 @@ class ARGISView(val activity: ARGISActivity): DefaultLifecycleObserver {
             saveButton.visibility = View.INVISIBLE
             cancelButton.visibility = View.INVISIBLE
             v.visibility = View.INVISIBLE
+        }
+    }
+
+    val rotateButton: ImageButton = root.findViewById<ImageButton>(R.id.rotateAll).apply{
+        setOnClickListener{
+            v ->
+            allModelsRotate = !allModelsRotate
         }
     }
 

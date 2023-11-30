@@ -11,17 +11,7 @@
         android:layout_width="fill_parent"
         android:layout_height="fill_parent"
         android:layout_gravity="top"/>
-
-    <ImageButton
-        android:id="@+id/edit"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_alignParentEnd="true"
-        android:layout_alignParentTop="true"
-        android:layout_margin="25dp"
-        android:src="@drawable/editing"
-        android:background="@android:color/transparent"/>
-
+    
     <LinearLayout
         android:layout_width="wrap_content"
         android:layout_height="match_parent"
@@ -30,32 +20,60 @@
         android:orientation="vertical">
 
         <ImageButton
-            android:id="@+id/save"
-            android:src="@drawable/save"
+            android:id="@+id/edit"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_margin="25dp"
-            android:visibility="invisible"
+            android:src="@drawable/editing"
             android:background="@android:color/transparent"/>
 
         <ImageButton
-            android:id="@+id/cancel"
+            android:id="@+id/rotateAll"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:visibility="invisible"
             android:layout_margin="25dp"
-            android:src="@drawable/cancel"
-            android:background="@android:color/transparent"/>
+            android:src="@drawable/threed"
+            android:background="@android:color/transparent"
+            />
 
-        <ImageButton
-            android:id="@+id/undo"
+        <LinearLayout
             android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:visibility="invisible"
-            android:layout_margin="25dp"
-            android:src="@drawable/undo"
-            android:background="@android:color/transparent"/>
+            android:layout_height="match_parent"
+            android:orientation="vertical">
+
+            <ImageButton
+                android:id="@+id/save"
+                android:src="@drawable/save"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_margin="25dp"
+                android:visibility="invisible"
+                android:background="@android:color/transparent"/>
+
+            <ImageButton
+                android:id="@+id/cancel"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:visibility="invisible"
+                android:layout_margin="25dp"
+                android:src="@drawable/cancel"
+                android:background="@android:color/transparent"/>
+
+            <ImageButton
+                android:id="@+id/undo"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:visibility="invisible"
+                android:layout_margin="25dp"
+                android:src="@drawable/undo"
+                android:background="@android:color/transparent"/>
+        </LinearLayout>
+
+
+
     </LinearLayout>
+
+
     
 
 

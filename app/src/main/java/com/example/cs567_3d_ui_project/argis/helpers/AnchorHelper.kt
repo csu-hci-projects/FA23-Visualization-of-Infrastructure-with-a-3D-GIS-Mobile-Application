@@ -53,32 +53,25 @@ class AnchorHelper {
             lineAnchors.add(earthAnchor)
         }
 
-        if(wrappedLineEarthAnchors.any{it.featureId == lineFeature.id}){
+        return if(wrappedLineEarthAnchors.any{it.featureId == lineFeature.id}){
             val wrappedLineEarthAnchor = wrappedLineEarthAnchors.first{it.featureId == lineFeature.id}
             wrappedLineEarthAnchor.anchors = lineAnchors
             wrappedLineEarthAnchor.earth = earth
-            return wrappedLineEarthAnchor
+            wrappedLineEarthAnchor
         }else{
             val wrappedLineEarthAnchor = WrappedLineEarthAnchor(lineAnchors, earth, lineFeature.id)
             wrappedLineEarthAnchors.add(wrappedLineEarthAnchor)
-            return wrappedLineEarthAnchor
+            wrappedLineEarthAnchor
         }
+    }
 
-
-
-
-
-//        val centerPoint = getCenterVertexOfLineGeometry(lineGeometry!!)
-//        Log.i("CenterPoint", centerPoint.toString())
-//        val directionVectors = calculateDirectionalVectorsFromLineFeature(lineGeometry)
-//        Log.i("DirectionVectors Size", directionVectors.size.toString())
-//        directionVectors.forEach {
-//            Log.i("DirectionVector", it.toString())
-//        }
-//        Log.i("DirectionVectors", directionVectors.size.toString())
-
-
-
+    fun updateWrappedLineEarthAnchorAngle(wrappedLineEarthAnchor: WrappedLineEarthAnchor, theta:Float){
+        wrappedLineEarthAnchors.forEach {
+            it ->
+            if(it.featureId == wrappedLineEarthAnchor.featureId){
+                it.angle = theta
+            }
+        }
     }
 
     fun calculateDirectionalVectorsFromLineFeature(lineGeometry: LineGeometry): FloatArray{

@@ -416,8 +416,21 @@ class ARGISRenderer(val activity: ARGISActivity):
                             //Possibly adjust the wrappedLineEarthAnchor to store the theta array
                             val theta = thetaArray[i]
                             val scaleFactor = scaleFactorArray[i]
-                            render.renderAssetAtAnchor(a, wrappedLineEarthAnchor.selected, theta, 1.75f)
+                            render.renderAssetAtAnchor(a, wrappedLineEarthAnchor.selected, wrappedLineEarthAnchor.angle, 1.0f)
                         }
+
+                        if(activity.arGISSurfaceView.allModelsRotate){
+                            //Set Next Angle for asset to rotate at
+                            if(wrappedLineEarthAnchor.angle + 0.01f >= 360.0f){
+                                anchorHelper.updateWrappedLineEarthAnchorAngle(wrappedLineEarthAnchor, 0.0f)
+                            }
+                            else{
+                                anchorHelper.updateWrappedLineEarthAnchorAngle(wrappedLineEarthAnchor,
+                                    wrappedLineEarthAnchor.angle + 0.01f)
+                            }
+                        }
+
+
 //                        anchorHelper.wrappedLineEarthAnchors.forEach {
 //                            it.anchors.forEachIndexed{
 //                                    i, a ->
@@ -430,13 +443,7 @@ class ARGISRenderer(val activity: ARGISActivity):
 //                                //render.renderAssetAtAnchor(a, it.selected, it.angle, 2.0f)
 //                                //render.renderAssetAtAnchor(a, it.selected, it.angle)
 //                            }
-//                            //Set Next Angle for asset to rotate at
-////                        if(it.angle + 0.01f >= 360.0f){
-////                            it.angle = 0.0f
-////                        }
-////                        else{
-////                            it.angle += 0.01f
-////                        }
+//
 //
 //                        }
                     }
@@ -524,18 +531,7 @@ class ARGISRenderer(val activity: ARGISActivity):
         val x = pointGeometry2.x - pointGeometry1.x
         val y = pointGeometry2.y - pointGeometry1.y
 
-        var angle = atan((y / x)).toFloat()
-
-
-
-//        if(angle < 0){
-//            angle -= 0.045f
-//        }
-//        else{
-//            angle += 0.045f
-//        }
-
-        return angle
+        return atan((y / x)).toFloat()
     }
 
 
@@ -645,7 +641,7 @@ class ARGISRenderer(val activity: ARGISActivity):
         Log.i("renderAssetAtAnchor", "Anchor After Rotation")
         prettyPrintMatrix(rotatedModelMatrix)
 
-        //Scale Models
+        //Scale Models (Must be last)
         scaleMatrix = FloatArray(16)
         val scaledRotatedModelMatrix = scaleAsset(rotatedModelMatrix, scaleMatrix, scaleFactor, Axis.Z)
 
