@@ -22,6 +22,18 @@
         android:text="@string/unknown_accuracy"
         android:layout_margin="25dp"
         android:background="@android:color/transparent"/>
+
+    <TextView
+        android:id="@+id/scaleFactor"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:visibility="invisible"
+        android:layout_margin="25dp"
+        android:text="@string/scalefactor_1_0x"
+        android:textColor="@color/white"
+        android:layout_alignParentBottom="true"
+        android:layout_alignParentLeft="true"
+        android:background="@android:color/transparent"/>
     
     <LinearLayout
         android:layout_width="wrap_content"
@@ -45,15 +57,22 @@
             android:layout_height="wrap_content"
             android:layout_margin="25dp"
             android:src="@drawable/rotatemodels"
-            android:background="@android:color/transparent"
-            />
+            android:background="@android:color/transparent"/>
+
+        <ImageButton
+            android:id="@+id/scaleAll"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_margin="25dp"
+            android:src="@drawable/scale"
+            android:background="@android:color/transparent"/>
 
         <ImageButton
             android:id="@+id/align"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_margin="25dp"
-            android:src="@drawable/centeralign"
+            android:src="@drawable/eraser_tool"
             android:background="@android:color/transparent"/>
 
         <LinearLayout
@@ -91,7 +110,7 @@
                 android:id="@+id/pauseModelRotation"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:visibility="invisible"
+                android:visibility="gone"
                 android:layout_margin="25dp"
                 android:src="@drawable/pause"
                 android:background="@android:color/transparent"/>
@@ -100,12 +119,19 @@
                 android:id="@+id/stopModelRotation"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:visibility="invisible"
+                android:visibility="gone"
                 android:layout_margin="25dp"
-                android:src="@drawable/stoprotating"
+                android:src="@drawable/back_arrow"
                 android:background="@android:color/transparent"/>
 
-
+            <ImageButton
+                android:id="@+id/stopScaling"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:visibility="gone"
+                android:layout_margin="25dp"
+                android:src="@drawable/back_arrow"
+                android:background="@android:color/transparent"/>
         </LinearLayout>
 
 
@@ -141,14 +167,35 @@
                 android:src="@drawable/undo"
                 android:background="@android:color/transparent"/>
         </LinearLayout>
-
-
-
     </LinearLayout>
 
 
-    
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:layout_alignParentStart="true"
+        android:layout_marginTop="25dp"
+        android:layout_alignParentTop="true">
+        <ImageButton
+            android:id="@+id/scaleUp"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:visibility="invisible"
+            android:layout_margin="25dp"
+            android:src="@drawable/arrow_up"
+            android:background="@android:color/transparent"/>
 
+        <ImageButton
+            android:id="@+id/scaleDown"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:visibility="invisible"
+            android:layout_margin="25dp"
+            android:src="@drawable/arrow_down"
+            android:background="@android:color/transparent"/>
+
+    </LinearLayout>
 
 
 </RelativeLayout>

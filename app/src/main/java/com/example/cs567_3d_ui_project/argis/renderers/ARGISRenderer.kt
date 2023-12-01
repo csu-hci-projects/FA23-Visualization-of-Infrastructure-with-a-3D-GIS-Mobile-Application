@@ -423,7 +423,8 @@ class ARGISRenderer(val activity: ARGISActivity):
                             if(activity.arGISSurfaceView.alignAssets){
                                 render.renderAssetAtAnchor(a, wrappedLineEarthAnchor.selected, theta, 1.0f)
                             }else{
-                                render.renderAssetAtAnchor(a, wrappedLineEarthAnchor.selected, wrappedLineEarthAnchor.angle, 1.0f)
+                                render.renderAssetAtAnchor(a, wrappedLineEarthAnchor.selected, wrappedLineEarthAnchor.angle,
+                                    activity.arGISSurfaceView.scaleFactor)
                             }
 
 
@@ -652,7 +653,7 @@ class ARGISRenderer(val activity: ARGISActivity):
 
         //Scale Models (Must be last)
         scaleMatrix = FloatArray(16)
-        val scaledRotatedModelMatrix = scaleAsset(rotatedModelMatrix, scaleMatrix, scaleFactor, Axis.Z)
+        val scaledRotatedModelMatrix = scaleAsset(rotatedModelMatrix, scaleMatrix, scaleFactor, activity.arGISSurfaceView.modelScaleAxis)
 
         Log.i("renderAssetAtAnchor", "Anchor After Scaling")
         prettyPrintMatrix(scaledRotatedModelMatrix)

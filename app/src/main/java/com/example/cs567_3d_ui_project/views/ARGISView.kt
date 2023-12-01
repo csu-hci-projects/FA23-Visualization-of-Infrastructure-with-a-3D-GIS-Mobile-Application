@@ -1,5 +1,6 @@
 package com.example.cs567_3d_ui_project.views
 
+import android.annotation.SuppressLint
 import android.opengl.GLSurfaceView
 import android.util.Log
 import android.view.View
@@ -22,6 +23,9 @@ class ARGISView(val activity: ARGISActivity): DefaultLifecycleObserver {
     var alignAssets = true
 
     var modelRotationAxis = Axis.Y
+    var modelScaleAxis = Axis.Y
+
+    var scaleFactor = 1.0f
 
     val saveButton:ImageButton = root.findViewById<ImageButton>(R.id.save).apply {
         setOnClickListener{
@@ -77,29 +81,47 @@ class ARGISView(val activity: ARGISActivity): DefaultLifecycleObserver {
             zAxis.visibility = View.VISIBLE
             pauseModelRotation.visibility = View.VISIBLE
             stopModelRotation.visibility = View.VISIBLE
+
             v.visibility = View.GONE
-            alignAssetsButton.visibility = View.GONE
+            eraseTransformationsButton.visibility = View.GONE
+            scaleAssetsButton.visibility = View.GONE
         }
     }
 
     val xAxis: ImageButton = root.findViewById<ImageButton>(R.id.rotateModelXAxis).apply {
         setOnClickListener{
             v ->
-            modelRotationAxis = Axis.X
+            if(stopModelRotation.visibility == View.VISIBLE){
+                modelRotationAxis = Axis.X
+            }
+            else if(stopScalingButton.visibility == View.VISIBLE){
+                modelScaleAxis = Axis.X
+            }
+
         }
     }
 
     val yAxis: ImageButton = root.findViewById<ImageButton>(R.id.rotateModelYAxis).apply {
         setOnClickListener{
                 v ->
-            modelRotationAxis = Axis.Y
+            if(stopModelRotation.visibility == View.VISIBLE){
+                modelRotationAxis = Axis.Y
+            }
+            else if(stopScalingButton.visibility == View.VISIBLE){
+                modelScaleAxis = Axis.Y
+            }
         }
     }
 
     val zAxis: ImageButton = root.findViewById<ImageButton>(R.id.rotateModelZAxis).apply {
         setOnClickListener{
                 v ->
-            modelRotationAxis = Axis.Z
+            if(stopModelRotation.visibility == View.VISIBLE){
+                modelRotationAxis = Axis.Z
+            }
+            else if(stopScalingButton.visibility == View.VISIBLE){
+                modelScaleAxis = Axis.Z
+            }
         }
     }
 
@@ -114,22 +136,89 @@ class ARGISView(val activity: ARGISActivity): DefaultLifecycleObserver {
         setOnClickListener{
                 v ->
             allModelsRotate = false
+
+            v.visibility = View.GONE
+            xAxis.visibility = View.GONE
+            yAxis.visibility = View.GONE
+            zAxis.visibility = View.GONE
+            pauseModelRotation.visibility = View.GONE
+
             rotateButton.visibility = View.VISIBLE
-            xAxis.visibility = View.INVISIBLE
-            yAxis.visibility = View.INVISIBLE
-            zAxis.visibility = View.INVISIBLE
-            pauseModelRotation.visibility = View.INVISIBLE
-            alignAssetsButton.visibility = View.VISIBLE
-            v.visibility = View.INVISIBLE
+            eraseTransformationsButton.visibility = View.VISIBLE
+            scaleAssetsButton.visibility = View.VISIBLE
         }
     }
 
-    val alignAssetsButton: ImageButton = root.findViewById<ImageButton>(R.id.align).apply {
+    val eraseTransformationsButton: ImageButton = root.findViewById<ImageButton>(R.id.align).apply {
         setOnClickListener {
             alignAssets = true
             modelRotationAxis = Axis.Y
+            modelScaleAxis = Axis.Y
+            scaleFactor = 1.0f
         }
     }
+
+    val scaleAssetsButton: ImageButton = root.findViewById<ImageButton>(R.id.scaleAll).apply {
+        setOnClickListener {
+            v ->
+            xAxis.visibility = View.VISIBLE
+            yAxis.visibility = View.VISIBLE
+            zAxis.visibility = View.VISIBLE
+            scaleUpButton.visibility = View.VISIBLE
+            scaleDownButton.visibility = View.VISIBLE
+            stopScalingButton.visibility = View.VISIBLE
+            scaleFactorTextView.visibility = View.VISIBLE
+
+            v.visibility = View.GONE
+            eraseTransformationsButton.visibility = View.GONE
+            rotateButton.visibility = View.GONE
+        }
+    }
+
+    @SuppressLint("SetTextI18n")
+    val scaleUpButton: ImageButton = root.findViewById<ImageButton>(R.id.scaleUp).apply {
+        setOnClickListener {
+            v ->
+
+            if( scaleFactor < 10.0f) {
+                scaleFactor += 0.5f
+            }
+
+            scaleFactorTextView.text = "ScaleFactor: ${scaleFactor}x"
+        }
+    }
+
+    @SuppressLint("SetTextI18n")
+    val scaleDownButton: ImageButton = root.findViewById<ImageButton>(R.id.scaleDown).apply {
+        setOnClickListener {
+                v ->
+
+            if(scaleFactor > 0.5f){
+                scaleFactor -= 0.5f
+            }
+
+            scaleFactorTextView.text = "ScaleFactor: ${scaleFactor}x"
+        }
+    }
+
+    val stopScalingButton: ImageButton = root.findViewById<ImageButton>(R.id.stopScaling).apply {
+        setOnClickListener {
+            v ->
+            v.visibility = View.GONE
+            xAxis.visibility = View.GONE
+            yAxis.visibility = View.GONE
+            zAxis.visibility = View.GONE
+            scaleUpButton.visibility = View.GONE
+            scaleDownButton.visibility = View.GONE
+            scaleFactorTextView.visibility = View.GONE
+
+            scaleAssetsButton.visibility = View.VISIBLE
+            eraseTransformationsButton.visibility = View.VISIBLE
+            rotateButton.visibility = View.VISIBLE
+        }
+    }
+
+    private val scaleFactorTextView: TextView = root.findViewById(R.id.scaleFactor)
 
     private val locationAccuracyTextView: TextView = root.findViewById(R.id.location_accuracy)
 
