@@ -7,7 +7,4 @@
 
     <include app:graph="@navigation/map"/>
 
-
-
-
 </navigation>

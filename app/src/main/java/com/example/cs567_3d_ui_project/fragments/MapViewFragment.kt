@@ -1,12 +1,14 @@
 package com.example.cs567_3d_ui_project.fragments
 
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.location.Location
 import android.os.Bundle
 import android.os.Looper
 import android.util.Log
 import android.view.View
+import android.widget.Button
 import android.widget.Toast
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
@@ -14,6 +16,7 @@ import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import com.arcgismaps.ApiKey
 import com.arcgismaps.ArcGISEnvironment
+import com.arcgismaps.geometry.SpatialReference
 import com.arcgismaps.location.LocationDisplayAutoPanMode
 import com.arcgismaps.mapping.ArcGISMap
 import com.arcgismaps.mapping.BasemapStyle
@@ -21,9 +24,11 @@ import com.arcgismaps.mapping.view.DrawStatus
 import com.arcgismaps.mapping.view.LocationDisplay
 import com.arcgismaps.mapping.view.MapView
 import com.example.cs567_3d_ui_project.R
+import com.example.cs567_3d_ui_project.activities.ARGISActivity
 import com.example.cs567_3d_ui_project.arcgis_map_operations.GraphicsOverlayOperations
 import com.example.cs567_3d_ui_project.databinding.FragmentMapViewBinding
 import com.example.cs567_3d_ui_project.qgis_driver.QGisClient
+import com.example.cs567_3d_ui_project.qgis_driver.resource_objects.wfs_resources.GetFeatureResponse
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationCallback
 import com.google.android.gms.location.LocationRequest
@@ -31,6 +36,7 @@ import com.google.android.gms.location.LocationResult
 import com.google.android.gms.location.LocationServices
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 
 class MapViewFragment: Fragment(R.layout.fragment_map_view) {
 
@@ -40,6 +46,10 @@ class MapViewFragment: Fragment(R.layout.fragment_map_view) {
     private lateinit var graphicsOverlayOperations: GraphicsOverlayOperations
     private lateinit var locationCallBack: LocationCallback
     private lateinit var fusedLocationClient: FusedLocationProviderClient
+    private lateinit var arExperienceButton: Button
+
+    private lateinit var latestGetFeaturesResponse: GetFeatureResponse
+    private lateinit var latestGetFeaturesResponseWGS84: GetFeatureResponse
 
     private var fusedLocationListening: Boolean = false
 
@@ -62,10 +72,30 @@ class MapViewFragment: Fragment(R.layout.fragment_map_view) {
         try {
             fusedLocationClient = LocationServices.getFusedLocationProviderClient(requireActivity())
             lifecycle.addObserver(mapView)
+
+            //Setting auto-pan mode automatically moves the map to the location display
+            //as specified by the device's location
             locationDisplay.setAutoPanMode(LocationDisplayAutoPanMode.Recenter)
+            locationDisplay.initialZoomScale = 500.0
 
             setApiKey()
             setupMap()
+
+            arExperienceButton = view.findViewById(R.id.arExperienceButton)
+
+            arExperienceButton.setOnClickListener{
+
+                val intent = Intent(requireActivity(), ARGISActivity::class.java)
+
+                if(!this::latestGetFeaturesResponseWGS84.isInitialized){
+                    startActivity(intent)
+                }
+                val bundle = Bundle()
+                bundle.putString("getFeaturesResponse", latestGetFeaturesResponseWGS84.content)
+                intent.putExtras(bundle)
+                startActivity(intent)
+            }
+
         }catch (e: Exception){
             Log.e("Error During onViewCreated", e.message, e)
             throw e
@@ -123,24 +153,28 @@ class MapViewFragment: Fragment(R.layout.fragment_map_view) {
     private fun loadMap(){
         lifecycleScope.launch(Dispatchers.IO) {
 
+            //Start tracking the location of the device
+            locationDisplay.dataSource.start()
+
             //This while loop ensures that the map is actually fully loaded
             //before we try to query features in the extent of where the map loads
-            while(mapView.drawStatus.value != DrawStatus.Completed){
+            while(mapView.drawStatus.value != DrawStatus.Completed && mapView.isNavigating){
                 Thread.sleep(1000)
             }
 
-            mapView.setViewpointScale(500.0)
-
-            //Start tracking the location of the device
-            locationDisplay.dataSource.start()
+//            mapView.setViewpointScale(500.0)
 
             //Load the graphics at the user's start location
             graphicsOverlayOperations = GraphicsOverlayOperations(qGisClient, mapView)
 
             //Layer is hard coded for now but maybe we should let the user pick the layers they want shown?
             //"phonelocation_z,test_lines,test_polys"
-            val getFeaturesResponse = graphicsOverlayOperations.queryFeaturesFromLayer("lines,points,polygons")
-            graphicsOverlayOperations.drawFeaturesInGraphicsOverlay(getFeaturesResponse)
+            latestGetFeaturesResponse = graphicsOverlayOperations.queryFeaturesFromLayer("lines,points,polygons")
+            latestGetFeaturesResponseWGS84 = graphicsOverlayOperations.queryFeaturesFromLayer("lines,points,polygons", SpatialReference.wgs84())
+            graphicsOverlayOperations.drawFeaturesInGraphicsOverlay(latestGetFeaturesResponse)
+
+            determineIfFeaturesAreInBufferFromGetFeatureResponse(latestGetFeaturesResponse)
+
         }
         listenToOnSingleTapEvents()
     }
@@ -149,8 +183,9 @@ class MapViewFragment: Fragment(R.layout.fragment_map_view) {
     private fun drawGraphicsOnEventRaised(){
         lifecycleScope.launch(Dispatchers.IO) {
             try{
-                val getFeaturesResponse = graphicsOverlayOperations.queryFeaturesFromLayer("lines,points,polygons")
-                graphicsOverlayOperations.drawFeaturesInGraphicsOverlay(getFeaturesResponse)
+                latestGetFeaturesResponse = graphicsOverlayOperations.queryFeaturesFromLayer("lines,points,polygons")
+                latestGetFeaturesResponseWGS84 = graphicsOverlayOperations.queryFeaturesFromLayer("lines,points,polygons", SpatialReference.wgs84())
+                graphicsOverlayOperations.drawFeaturesInGraphicsOverlay(latestGetFeaturesResponse)
             }
             catch (e: Exception){
                 Log.e("Graphics Overlay Issue", e.message.toString())
@@ -191,10 +226,15 @@ class MapViewFragment: Fragment(R.layout.fragment_map_view) {
                     if(mapView.drawStatus.value != DrawStatus.Completed){
                         return
                     }
+                    //Draw any features that are nearby, if they aren't drawn
                     drawGraphicsOnEventRaised()
+
+                    //Determine if the AR Experience button should be enabled
+                    determineIfFeaturesAreInBuffer(locationResult)
                     super.onLocationResult(locationResult)
                 }
             }
+
         }
 
         if(!fusedLocationListening){
@@ -246,5 +286,27 @@ class MapViewFragment: Fragment(R.layout.fragment_map_view) {
         }
     }
 
+    private fun determineIfFeaturesAreInBuffer(locationResult: LocationResult){
+        try{
+            val result = runBlocking(Dispatchers.IO) {
+                return@runBlocking graphicsOverlayOperations.determineIfFeaturesAreInBuffer(locationResult.lastLocation!!)
+            }
+
+            //Must run on main thread to update items in the UI
+            lifecycleScope.launch(Dispatchers.Main){
+                arExperienceButton.isEnabled = result
+            }
+        }
+        catch (e: Exception){
+            Log.e("Exception in Trying Check Features in Buffer", e.message.toString())
+        }
+    }
+
+    private fun determineIfFeaturesAreInBufferFromGetFeatureResponse(getFeatureResponse: GetFeatureResponse){
+        lifecycleScope.launch(Dispatchers.Main){
+            //Must run on main thread to update items in the UI
+            arExperienceButton.isEnabled = getFeatureResponse.getFeatureResponseContent.features.any()
+        }
+    }
 
 }

@@ -3,4 +3,11 @@
     <string name="re_center_map_on_location_update">Center Map on Device Location</string>
     <string name="drawer_open">Open navigation drawer</string>
     <string name="drawer_close">Close navigation drawer</string>
+    <string name="enter_ar_experience">Enter AR Experience</string>
+    <string name="edit">Edit</string>
+    <string name="low_accuracy">Location Accuracy: Low</string>
+    <string name="medium_accuracy">Location Accuracy: Medium</string>
+    <string name="high_accuracy">Location Accuracy: High</string>
+    <string name="unknown_accuracy">Location Accuracy: Unknown</string>
+    <string name="scalefactor_1_0x">ScaleFactor: 1.0x</string>
 </resources>

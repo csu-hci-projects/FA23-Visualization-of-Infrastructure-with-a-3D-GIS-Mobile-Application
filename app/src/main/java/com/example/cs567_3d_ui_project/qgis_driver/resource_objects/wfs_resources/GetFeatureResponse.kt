@@ -18,7 +18,7 @@ class GetFeatureResponse(content: String, responseCode: Int):
 
         val gson = builder.create()
         try {
-           return gson.fromJson(properties, GetFeatureResponseContent::class.java)
+            return gson.fromJson(properties, GetFeatureResponseContent::class.java)
         } catch (e: Exception) {
             throw e
         }

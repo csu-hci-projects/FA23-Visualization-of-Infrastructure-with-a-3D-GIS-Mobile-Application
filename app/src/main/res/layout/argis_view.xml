@@ -1,0 +1,201 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/argisview"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context="com.example.cs567_3d_ui_project.activities.ARGISActivity">
+
+    <android.opengl.GLSurfaceView
+        android:id="@+id/surfaceview"
+        android:layout_width="fill_parent"
+        android:layout_height="fill_parent"
+        android:layout_gravity="top"/>
+
+    <TextView
+        android:id="@+id/location_accuracy"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentTop="true"
+        android:layout_alignParentStart="true"
+        android:textColor="@color/white"
+        android:text="@string/unknown_accuracy"
+        android:layout_margin="25dp"
+        android:background="@android:color/transparent"/>
+
+    <TextView
+        android:id="@+id/scaleFactor"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:visibility="invisible"
+        android:layout_margin="25dp"
+        android:text="@string/scalefactor_1_0x"
+        android:textColor="@color/white"
+        android:layout_alignParentBottom="true"
+        android:layout_alignParentLeft="true"
+        android:background="@android:color/transparent"/>
+    
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="match_parent"
+        android:layout_alignParentEnd="true"
+        android:layout_alignParentTop="true"
+        android:orientation="vertical">
+
+        <ImageButton
+            android:id="@+id/edit"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_margin="25dp"
+            android:src="@drawable/editing"
+            android:visibility="gone"
+            android:background="@android:color/transparent"/>
+
+        <ImageButton
+            android:id="@+id/rotateAll"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_margin="25dp"
+            android:src="@drawable/rotatemodels"
+            android:background="@android:color/transparent"/>
+
+        <ImageButton
+            android:id="@+id/scaleAll"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_margin="25dp"
+            android:src="@drawable/scale"
+            android:background="@android:color/transparent"/>
+
+        <ImageButton
+            android:id="@+id/align"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_margin="25dp"
+            android:src="@drawable/eraser_tool"
+            android:background="@android:color/transparent"/>
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:orientation="vertical">
+            <ImageButton
+                android:id="@+id/rotateModelXAxis"
+                android:src="@drawable/xaxis"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_margin="25dp"
+                android:visibility="invisible"
+                android:background="@android:color/transparent"/>
+
+            <ImageButton
+                android:id="@+id/rotateModelYAxis"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:visibility="invisible"
+                android:layout_margin="25dp"
+                android:src="@drawable/yaxis"
+                android:background="@android:color/transparent"/>
+
+            <ImageButton
+                android:id="@+id/rotateModelZAxis"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:visibility="invisible"
+                android:layout_margin="25dp"
+                android:src="@drawable/zaxis"
+                android:background="@android:color/transparent"/>
+
+            <ImageButton
+                android:id="@+id/pauseModelRotation"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:visibility="gone"
+                android:layout_margin="25dp"
+                android:src="@drawable/pause"
+                android:background="@android:color/transparent"/>
+
+            <ImageButton
+                android:id="@+id/stopModelRotation"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:visibility="gone"
+                android:layout_margin="25dp"
+                android:src="@drawable/back_arrow"
+                android:background="@android:color/transparent"/>
+
+            <ImageButton
+                android:id="@+id/stopScaling"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:visibility="gone"
+                android:layout_margin="25dp"
+                android:src="@drawable/back_arrow"
+                android:background="@android:color/transparent"/>
+        </LinearLayout>
+
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:orientation="vertical">
+
+            <ImageButton
+                android:id="@+id/save"
+                android:src="@drawable/save"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_margin="25dp"
+                android:visibility="invisible"
+                android:background="@android:color/transparent"/>
+
+            <ImageButton
+                android:id="@+id/cancel"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:visibility="invisible"
+                android:layout_margin="25dp"
+                android:src="@drawable/cancel"
+                android:background="@android:color/transparent"/>
+
+            <ImageButton
+                android:id="@+id/undo"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:visibility="invisible"
+                android:layout_margin="25dp"
+                android:src="@drawable/undo"
+                android:background="@android:color/transparent"/>
+        </LinearLayout>
+    </LinearLayout>
+
+
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:layout_alignParentStart="true"
+        android:layout_marginTop="25dp"
+        android:layout_alignParentTop="true">
+        <ImageButton
+            android:id="@+id/scaleUp"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:visibility="invisible"
+            android:layout_margin="25dp"
+            android:src="@drawable/arrow_up"
+            android:background="@android:color/transparent"/>
+
+        <ImageButton
+            android:id="@+id/scaleDown"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:visibility="invisible"
+            android:layout_margin="25dp"
+            android:src="@drawable/arrow_down"
+            android:background="@android:color/transparent"/>
+
+    </LinearLayout>
+
+
+</RelativeLayout>

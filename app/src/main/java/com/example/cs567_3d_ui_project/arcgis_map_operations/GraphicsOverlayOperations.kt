@@ -1,5 +1,6 @@
 package com.example.cs567_3d_ui_project.arcgis_map_operations
 
+import android.location.Location
 import android.util.Log
 import com.arcgismaps.Color
 import com.arcgismaps.geometry.Point
@@ -28,32 +29,47 @@ import kotlinx.coroutines.withContext
 @Suppress("NAME_SHADOWING")
 class GraphicsOverlayOperations(private var qGisClient: QGisClient, private var mapView: MapView) {
 
-    private var graphicsOverlay = GraphicsOverlay()
+    private var lineGraphicsOverlay = GraphicsOverlay()
+
+    private var pointGraphicsOverlay = GraphicsOverlay()
+
+    private var polygonGraphicsOverlay = GraphicsOverlay()
+
+    private lateinit var features: List<Feature>
+
     init {
-        mapView.graphicsOverlays.add(graphicsOverlay)
+        mapView.graphicsOverlays.add(lineGraphicsOverlay)
+        mapView.graphicsOverlays.add(pointGraphicsOverlay)
+        mapView.graphicsOverlays.add(polygonGraphicsOverlay)
     }
 
-    suspend fun queryFeaturesFromLayer(layerName: String): GetFeatureResponse {
+    suspend fun queryFeaturesFromLayer(layerName: String, spatialReference: SpatialReference? = null): GetFeatureResponse {
         return withContext(Dispatchers.IO){
+
+            var spatialReferenceForQuery : SpatialReference?
+
             val viewPoint = mapView.getCurrentViewpoint(ViewpointType.BoundingGeometry)
-            val spatialReference = viewPoint?.targetGeometry?.spatialReference
+            val arcgisMapSpatialReference = viewPoint?.targetGeometry?.spatialReference
             val extent = viewPoint?.targetGeometry?.extent
 
-            Log.i("WKID: ", spatialReference!!.wkid.toString())
+            spatialReferenceForQuery = spatialReference ?: arcgisMapSpatialReference
+
+            Log.i("WKID: ", spatialReferenceForQuery!!.wkid.toString())
 
             val getFeatureRequestAction = GetFeatureRequestAction(
                 layer = layerName,
-                boundingBox = BoundingBox("EPSG:${spatialReference?.wkid}",
+                boundingBox = BoundingBox("EPSG:${arcgisMapSpatialReference!!.wkid}",
                     extent!!.xMin, extent.yMin, extent.xMax, extent.yMax),
-                srs = "EPSG:${spatialReference?.wkid}"
+                srs = "EPSG:${spatialReferenceForQuery.wkid}"
             )
 
             return@withContext qGisClient.wfs.getFeature(getFeatureRequestAction)
         }
     }
 
+
     fun drawFeaturesInGraphicsOverlay(getFeatureResponse: GetFeatureResponse){
-        val features = getFeatureResponse.getFeatureResponseContent.features
+        features = getFeatureResponse.getFeatureResponseContent.features
 
         val pointFeatures = features.filter { it.geometry.type == "Point" }
         drawPointFeaturesInGraphicsOverlay(pointFeatures)
@@ -75,8 +91,10 @@ class GraphicsOverlayOperations(private var qGisClient: QGisClient, private var 
             val symbol = SimpleMarkerSymbol(SimpleMarkerSymbolStyle.Circle, Color.red, 10.0f)
             val pointGraphic = Graphic(point, symbol)
 
+
+
             pointGraphic.attributes["id"] = pointFeature.id
-            graphicsOverlay.graphics.add(pointGraphic)
+            pointGraphicsOverlay.graphics.add(pointGraphic)
         }
     }
 
@@ -95,7 +113,7 @@ class GraphicsOverlayOperations(private var qGisClient: QGisClient, private var 
             }
 
             val lineGraphic = Graphic(lineBuilder.toGeometry(), lineSymbol)
-            graphicsOverlay.graphics.add(lineGraphic)
+            lineGraphicsOverlay.graphics.add(lineGraphic)
         }
     }
 
@@ -115,7 +133,7 @@ class GraphicsOverlayOperations(private var qGisClient: QGisClient, private var 
                 }
                 val polygon = polygonBuilder.toGeometry()
                 val polygonGraphic = Graphic(polygon, polygonSymbol)
-                graphicsOverlay.graphics.add(polygonGraphic)
+                polygonGraphicsOverlay.graphics.add(polygonGraphic)
             }
         }
     }
@@ -125,23 +143,40 @@ class GraphicsOverlayOperations(private var qGisClient: QGisClient, private var 
             try{
                 //Run a spatial query with a given buffer around the click point
                 //with a buffer of 25 and an unlimited number of maximum results
-                val idOverlay = mapView.identifyGraphicsOverlay(
-                    graphicsOverlay = graphicsOverlay,
+                val idOverlays = mapView.identifyGraphicsOverlays(
                     screenCoordinate = screenCoordinate,
                     tolerance = 25.0,
-                    returnPopupsOnly = false,
-                    maximumResults = -1
+                    returnPopupsOnly = false
                 )
-                idOverlay.apply {
-                    onSuccess {
-                        val testGraphics = it.graphics
 
-                        //We are defaulting to a new selection anytime the event fires
-                        graphicsOverlay.graphics.forEach{ it ->
-                            it.isSelected = false
+
+                idOverlays.apply {
+                    onSuccess {
+                        //If nothing was selected, clear all selections
+                        if(!it.any()){
+                            lineGraphicsOverlay.graphics.forEach{gr ->
+                                gr.isSelected = false
+                            }
+
+                            pointGraphicsOverlay.graphics.forEach{gr ->
+                                gr.isSelected = false
+                            }
+
+                            polygonGraphicsOverlay.graphics.forEach{gr ->
+                                gr.isSelected = false
+                            }
                         }
-                        for(graphic in testGraphics){
-                            graphic.isSelected = true
+
+                        it.forEach{gro ->
+                            val graphics = gro.graphics
+
+                            gro.graphicsOverlay.graphics.forEach{gr ->
+                                gr.isSelected = false
+                            }
+
+                            for (graphic in graphics){
+                                graphic.isSelected = true
+                            }
                         }
                     }
                     onFailure {
@@ -153,6 +188,15 @@ class GraphicsOverlayOperations(private var qGisClient: QGisClient, private var 
                 Log.e("setIdentifyGraphicsOverlay", e.message, e)
                 throw e
             }
+        }
+    }
+
+    suspend fun determineIfFeaturesAreInBuffer(location: Location): Boolean{
+        return withContext(Dispatchers.IO){
+            //Test random function to see if the button can enable and disable
+            //val random = Random(42)
+            //return@withContext random.nextBoolean()
+            return@withContext true
         }
     }
 }
