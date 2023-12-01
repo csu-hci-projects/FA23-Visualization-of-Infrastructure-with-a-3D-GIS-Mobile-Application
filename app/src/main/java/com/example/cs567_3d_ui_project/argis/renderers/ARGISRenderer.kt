@@ -69,6 +69,11 @@ class ARGISRenderer(val activity: ARGISActivity):
     lateinit var pipeObjectAlbedoTexture: Texture
     lateinit var pipeObjectRoughnessTexture: Texture
 
+    lateinit var selectedPipeObjectMesh: Mesh
+    lateinit var selectedPipeObjectShader: Shader
+    lateinit var selectedPipeObjectAlbedoTexture: Texture
+
+
     private val displayRotationHelper: DisplayRotationHelper = DisplayRotationHelper(activity)
 
     private var hasSetTextureNames = false
@@ -204,6 +209,10 @@ class ARGISRenderer(val activity: ARGISActivity):
                 null).setTexture("u_Texture", selectedMapMarkerTexture)
 
 
+
+
+
+
             //"models/PipeAttempt.obj"
             //"models/PipeAttempt2.obj"
             //"models/Cylinder.obj"
@@ -253,6 +262,24 @@ class ARGISRenderer(val activity: ARGISActivity):
                 .setTexture("u_RoughnessMetallicAmbientOcclusionTexture", pipeObjectRoughnessTexture)
                 .setTexture("u_Cubemap", cubeMapFilter.filteredCubemapTexture)
                 .setTexture("u_DfgTexture", dfgTexture)
+
+
+            selectedPipeObjectAlbedoTexture = Texture.createFromAsset(
+                render,
+                "models/MetalPipe_Albedo_Selected.png",
+                Texture.WrapMode.CLAMP_TO_EDGE,
+                Texture.ColorFormat.SRGB
+            )
+
+            selectedPipeObjectMesh = Mesh.createFromAsset(
+                render,
+                "models/HorizontalPipeSection_Aligned.obj")
+
+            selectedPipeObjectShader = Shader.createFromAssets(
+                render,
+                "shaders/ar_unlit_object.vert",
+                "shaders/ar_unlit_object.frag",
+                null).setTexture("u_Texture", selectedPipeObjectAlbedoTexture)
 
 
             backgroundRenderer.setUseDepthVisualization(render, false)
@@ -407,6 +434,10 @@ class ARGISRenderer(val activity: ARGISActivity):
                         //val lineFeature = lineFeatures.first()
                         val wrappedLineEarthAnchor = anchorHelper.createEarthAnchorsFromLineGeometry(earth, lineFeature, cameraGeospatialPose)
 
+                        if(wrappedLineEarthAnchor.selected){
+                            Log.i("Selected Pipe With ID (onDrawFrame): ", wrappedLineEarthAnchor.featureId)
+                        }
+
                         val lineGeometry = lineFeature.geometry.toLineGeometry()!!
 
                         val thetaArray = calculateAngleForLineSegments(lineGeometry)
@@ -460,7 +491,7 @@ class ARGISRenderer(val activity: ARGISActivity):
                 }
             }
 
-            //handleTap(frame, camera, cameraGeospatialPose)
+            handleTap(frame, camera, cameraGeospatialPose)
 
         }
         else{
@@ -665,9 +696,9 @@ class ARGISRenderer(val activity: ARGISActivity):
 
         //Update shader properties and draw
         if(selected){
-            selectedMapMarkerShader.setMat4("u_ModelViewProjection", modelViewProjectionMatrix)
+            selectedPipeObjectShader.setMat4("u_ModelViewProjection", modelViewProjectionMatrix)
             Log.i("Drawing Selected Feature Texture", "Drew Object Selected")
-            draw(mapMarkerObjectMesh, selectedMapMarkerShader, virtualSceneFrameBuffer)
+            draw(selectedPipeObjectMesh, selectedPipeObjectShader, virtualSceneFrameBuffer)
         }else{
             Log.i("Draw", "Draw Normal Object")
             //mapMarkerObjectShader.setMat4("u_ModelViewProjection", modelViewProjectionMatrix)
@@ -706,14 +737,14 @@ class ARGISRenderer(val activity: ARGISActivity):
 
                 //The geospatial plane seems very difficult to get consistent behavior
                 //with taps. Need to see what other way there is.
-                if(closestEarthAnchor != null && !closestEarthAnchor.selected){
+                if(closestEarthAnchor != null && !closestEarthAnchor.second!!.selected){
                     Log.i("Tap Point", "${tap.x}" + ":${tap.y}")
-                    val geospatialAnchorPoint = earth.getGeospatialPose(closestEarthAnchor.anchor!!.pose)
+                    val geospatialAnchorPoint = closestEarthAnchor.first
 
                     //Log.i("Geospatial Tap Point", "${geospatialHitPose.latitude}, ${geospatialHitPose.longitude}, ${geospatialHitPose.altitude}")
                     Log.i("Closest Geospatial Anchor Pose", "${geospatialPose.latitude}, ${geospatialPose.longitude}, ${geospatialPose.altitude}")
 
-                    convertAnchorPositionToScreenCoordinates(closestEarthAnchor.anchor!!)
+                    //convertAnchorPositionToScreenCoordinates(closestEarthAnchor.anchor!!)
                     Log.i("GFeature", "${geospatialAnchorPoint.latitude},${geospatialAnchorPoint.longitude}, ${geospatialAnchorPoint.altitude}")
 //                    Log.i("GFeature", "${geospatialAnchorPoint.latitude},${geospatialAnchorPoint.longitude}, ${geospatialAnchorPoint.altitude}")
 //                    val eastUpSouthQuaternion = geospatialPose.eastUpSouthQuaternion.toList().map {
@@ -722,7 +753,7 @@ class ARGISRenderer(val activity: ARGISActivity):
 //                    Log.i("EastUpSouthQuarternion", eastUpSouthQuaternion)
 //                    Log.i("CFeature", "${earthAnchor!!.pose.ty() },${earthAnchor!!.pose.tx()}, ${earthAnchor!!.pose.tz()}")
 //                    Log.i("CFeature", "${earthAnchor!!.pose.ty() },${earthAnchor!!.pose.tx()}, ${earthAnchor!!.pose.tz()}")
-                    anchorHelper.setSelectedEarthAnchors(listOf(closestEarthAnchor))
+                    anchorHelper.setSelectedEarthAnchors(listOf(closestEarthAnchor.second))
                 }
                 else{
                     anchorHelper.setSelectedEarthAnchors()

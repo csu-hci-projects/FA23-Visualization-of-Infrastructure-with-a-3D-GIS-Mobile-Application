@@ -145,11 +145,35 @@ class AnchorHelper {
     //TODO: Need better collision detection, we should try to account for
     //the size of the rendered feature in our calculation for whether the user
     //intended to select the feature.
-    fun getClosestAnchorToTap(geospatialHitPose: GeospatialPose): WrappedEarthAnchor? {
-        val geospatialAnchorPoints = wrappedAnchors.map {
-            Pair(it.earth.getGeospatialPose(it.anchor!!.pose), it)
-        }
+    fun getClosestAnchorToTap(geospatialHitPose: GeospatialPose): Pair<GeospatialPose, WrappedLineEarthAnchor>? {
+//        val geospatialAnchorPoints = wrappedAnchors.map {
+//            Pair(it.earth.getGeospatialPose(it.anchor!!.pose), it)
+//        }
 
+//        geospatialAnchorPoints.forEach {
+//            val distanceLat = kotlin.math.abs(it.first.latitude - geospatialHitPose.latitude)
+//            val distanceLong = kotlin.math.abs(it.first.longitude - geospatialHitPose.longitude)
+//            val distanceAlt = kotlin.math.abs(it.first.altitude - geospatialHitPose.altitude)
+//
+//            Log.i("Hit Result - anchor helper", "${geospatialHitPose.latitude},${geospatialHitPose.longitude},${geospatialHitPose.altitude}")
+//            Log.i("Wrapped Anchor Loc", "${it.first.latitude},${it.first.longitude},${it.first.altitude}")
+//            Log.i("Distances", "${distanceLat},${distanceLong},${distanceAlt}")
+//
+//            if(distanceLat <= tolerance && distanceLong <= tolerance && distanceAlt <= 0.5){
+//                return it.second
+//            }
+//
+//        }
+
+
+        val geospatialAnchorPoints = wrappedLineEarthAnchors.map {
+            it.anchors.map {
+                a->
+                Pair(it.earth.getGeospatialPose(a!!.pose), it)
+            }.reduce{
+                _, t -> t
+            }
+        }
 
         geospatialAnchorPoints.forEach {
             val distanceLat = kotlin.math.abs(it.first.latitude - geospatialHitPose.latitude)
@@ -160,8 +184,8 @@ class AnchorHelper {
             Log.i("Wrapped Anchor Loc", "${it.first.latitude},${it.first.longitude},${it.first.altitude}")
             Log.i("Distances", "${distanceLat},${distanceLong},${distanceAlt}")
 
-            if(distanceLat <= tolerance && distanceLong <= tolerance && distanceAlt <= 0.5){
-                return it.second
+            if(distanceLat <= tolerance && distanceLong <= tolerance && distanceAlt <= 2.0f){
+                return it
             }
 
         }
@@ -169,22 +193,34 @@ class AnchorHelper {
         return null
     }
 
-    fun setSelectedEarthAnchors(selectedWrappedEarthAnchors: List<WrappedEarthAnchor>? = null){
+    fun setSelectedEarthAnchors(selectedWrappedEarthAnchors: List<WrappedLineEarthAnchor>? = null){
         if(selectedWrappedEarthAnchors == null){
-            wrappedAnchors.forEach {
+//            wrappedAnchors.forEach {
+//                it.selected = false
+//            }
+            wrappedLineEarthAnchors.forEach {
                 it.selected = false
             }
         }
         else{
-            val selectedEarthAnchorIds = selectedWrappedEarthAnchors.map {
+            val selectedEarthLineAnchorIds = selectedWrappedEarthAnchors.map {
                 it.featureId
             }
 
-            wrappedAnchors.filter {
-                selectedEarthAnchorIds.contains(it.featureId)
+            wrappedLineEarthAnchors.filter {
+                selectedEarthLineAnchorIds.contains(it.featureId)
             }.forEach {
-                it.selected = true
+                Log.i("Selected Pipe With ID (setSelected): ", it.featureId)
+                it.selected
             }
+
+
+
+//            wrappedAnchors.filter {
+//                selectedEarthAnchorIds.contains(it.featureId)
+//            }.forEach {
+//                it.selected = true
+//            }
             //wrappedAnchors.find { selectedEarthAnchorIds.any{a -> it.featureId == a} }
         }
 
