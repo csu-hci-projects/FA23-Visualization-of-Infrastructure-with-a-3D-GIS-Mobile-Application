@@ -158,7 +158,7 @@ class MapViewFragment: Fragment(R.layout.fragment_map_view) {
 
             //This while loop ensures that the map is actually fully loaded
             //before we try to query features in the extent of where the map loads
-            while(mapView.drawStatus.value != DrawStatus.Completed && mapView.isNavigating){
+            while(mapView.drawStatus.value != DrawStatus.Completed){
                 Thread.sleep(1000)
             }
 
