@@ -17,6 +17,7 @@ import androidx.annotation.AttrRes
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.example.cs567_3d_ui_project.file_logging.LogFile
 import com.example.cs567_3d_ui_project.qgis_driver.QGisClient
 import com.example.cs567_3d_ui_project.qgis_driver.resource_objects.wms_resources.GetMapResponse
 import com.example.cs567_3d_ui_project.qgis_driver.resource_objects.wms_resources.wms_request_actions.GetMapHttpRequestAction
@@ -241,6 +242,7 @@ class QGisMapViewContainer(context: Context, attrs: AttributeSet?, @AttrRes defS
                 return@withContext getMapResponse.bitmap.asAndroidBitmap()
             }
             catch (e: Exception){
+                LogFile().createLog(e.message.toString(), "QGISMapViewContainer: ")
                 throw e
             }
 
@@ -310,6 +312,7 @@ class QGisMapViewContainer(context: Context, attrs: AttributeSet?, @AttrRes defS
                 return@withContext tiles
 
             } catch (e: Exception) {
+                LogFile().createLog(e.message.toString(), "QGISMapViewContainer: tiles")
                 throw e
             }
         }
@@ -326,6 +329,7 @@ class QGisMapViewContainer(context: Context, attrs: AttributeSet?, @AttrRes defS
             qgisMapRecyclerAdapter.notifyDataSetChanged()
 
         }catch (e: Exception){
+            LogFile().createLog(e.message.toString(), "QGISMapViewContainer: region")
             throw e
         }
 

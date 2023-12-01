@@ -1,6 +1,7 @@
 package com.example.cs567_3d_ui_project.qgis_driver
 
 import android.util.Log
+import com.example.cs567_3d_ui_project.file_logging.LogFile
 import com.example.cs567_3d_ui_project.qgis_driver.resource_objects.wfs_resources.GetCapabilitiesResponse
 import com.example.cs567_3d_ui_project.qgis_driver.resource_objects.wfs_resources.GetFeatureResponse
 import com.example.cs567_3d_ui_project.qgis_driver.resource_objects.wfs_resources.wfs_request_actions.GetFeatureRequestAction
@@ -90,7 +91,7 @@ class WFS(private val qgisUrl: String) {
                     }
                 }
             }catch (e: Exception){
-                Log.e("Error", e.message.toString())
+                LogFile().createLog(e.message.toString(), "WFS: Error in get feature")
                 throw e
             }
 

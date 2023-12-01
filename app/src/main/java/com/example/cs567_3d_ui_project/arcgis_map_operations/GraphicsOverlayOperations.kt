@@ -18,6 +18,7 @@ import com.arcgismaps.mapping.view.Graphic
 import com.arcgismaps.mapping.view.GraphicsOverlay
 import com.arcgismaps.mapping.view.MapView
 import com.arcgismaps.mapping.view.ScreenCoordinate
+import com.example.cs567_3d_ui_project.file_logging.*
 import com.example.cs567_3d_ui_project.qgis_driver.QGisClient
 import com.example.cs567_3d_ui_project.qgis_driver.resource_objects.wfs_resources.Feature
 import com.example.cs567_3d_ui_project.qgis_driver.resource_objects.wfs_resources.GetFeatureResponse
@@ -175,7 +176,7 @@ class GraphicsOverlayOperations(private var qGisClient: QGisClient, private var 
                 }
             }
             catch (e: Exception){
-                Log.e("setIdentifyGraphicsOverlay", e.message, e)
+                LogFile().createLog(e.message.toString(), "GraphicsOverlayOperations: issue with set identify graphics overlay")
                 throw e
             }
         }
