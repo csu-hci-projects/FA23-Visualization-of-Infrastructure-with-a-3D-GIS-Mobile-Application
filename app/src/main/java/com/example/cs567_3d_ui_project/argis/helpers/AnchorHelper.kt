@@ -38,7 +38,9 @@ class AnchorHelper {
     fun createEarthAnchorsFromLineGeometry(earth: Earth, lineFeature: Feature, geospatialPose: GeospatialPose): WrappedLineEarthAnchor{
         val lineGeometry = lineFeature.geometry.toLineGeometry()
 
+
         val lineAnchors = ArrayList<Anchor?>()
+        val modelMatrices = ArrayList<FloatArray>()
         lineGeometry!!.lineRoute.forEach{
             pointGeometry ->
             val earthAnchor = earth.createAnchor(
@@ -51,15 +53,20 @@ class AnchorHelper {
                 1f
             )
             lineAnchors.add(earthAnchor)
+
+            val modelMatrix = FloatArray(16)
+            earthAnchor.pose.toMatrix(modelMatrix, 0)
+            modelMatrices.add(modelMatrix)
         }
 
         return if(wrappedLineEarthAnchors.any{it.featureId == lineFeature.id}){
             val wrappedLineEarthAnchor = wrappedLineEarthAnchors.first{it.featureId == lineFeature.id}
             wrappedLineEarthAnchor.anchors = lineAnchors
             wrappedLineEarthAnchor.earth = earth
+            wrappedLineEarthAnchor.modelMatrices = modelMatrices
             wrappedLineEarthAnchor
         }else{
-            val wrappedLineEarthAnchor = WrappedLineEarthAnchor(lineAnchors, earth, lineFeature.id)
+            val wrappedLineEarthAnchor = WrappedLineEarthAnchor(lineAnchors, earth, lineFeature.id, modelMatrices = modelMatrices)
             wrappedLineEarthAnchors.add(wrappedLineEarthAnchor)
             wrappedLineEarthAnchor
         }
@@ -101,10 +108,6 @@ class AnchorHelper {
         return vectorArray.toFloatArray()
     }
 
-    fun interpolateLineGeometry(lineGeometry: LineGeometry, stepsPerSegment: Int = 1){
-
-
-    }
 
     fun getCenterVertexOfLineGeometry(lineGeometry: LineGeometry): Int{
         //We will round the value we calculated for the index up for now.
@@ -188,6 +191,8 @@ class AnchorHelper {
             //wrappedAnchors.find { selectedEarthAnchorIds.any{a -> it.featureId == a} }
         }
 
+
+
     }
 
 
@@ -209,6 +214,7 @@ data class WrappedLineEarthAnchor(
     var earth: Earth,
     var featureId: String,
     var selected: Boolean = false,
-    var angle: Float = 0.0f
+    var angle: Float = 0.0f,
+    var modelMatrices: ArrayList<FloatArray> = ArrayList(),
 )
 

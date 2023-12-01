@@ -420,6 +420,7 @@ class ARGISRenderer(val activity: ARGISActivity):
                             val theta = thetaArray[i]
                             val scaleFactor = scaleFactorArray[i]
 
+
                             if(activity.arGISSurfaceView.alignAssets){
                                 render.renderAssetAtAnchor(a, wrappedLineEarthAnchor.selected, theta, 1.0f)
                             }else{
@@ -644,7 +645,6 @@ class ARGISRenderer(val activity: ARGISActivity):
         Log.i("renderAssetAtAnchor", "Anchor Before Rotation")
         prettyPrintMatrix(modelMatrix)
 
-
         rotationMatrix = FloatArray(16)
         val rotatedModelMatrix = rotateAsset(modelMatrix, rotationMatrix, theta, activity.arGISSurfaceView.modelRotationAxis)
 
@@ -661,7 +661,6 @@ class ARGISRenderer(val activity: ARGISActivity):
         //Calculate model/view/projection matrices
         Matrix.multiplyMM(modelViewMatrix, 0, viewMatrix, 0, scaledRotatedModelMatrix, 0)
         Matrix.multiplyMM(modelViewProjectionMatrix, 0, projectionMatrix, 0, modelViewMatrix, 0)
-
 
         //Update shader properties and draw
         if(selected){
