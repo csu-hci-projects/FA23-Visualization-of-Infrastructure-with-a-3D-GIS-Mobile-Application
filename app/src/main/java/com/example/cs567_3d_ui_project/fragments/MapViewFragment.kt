@@ -16,6 +16,7 @@ import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import com.arcgismaps.ApiKey
 import com.arcgismaps.ArcGISEnvironment
+import com.arcgismaps.geometry.SpatialReference
 import com.arcgismaps.location.LocationDisplayAutoPanMode
 import com.arcgismaps.mapping.ArcGISMap
 import com.arcgismaps.mapping.BasemapStyle
@@ -47,6 +48,9 @@ class MapViewFragment: Fragment(R.layout.fragment_map_view) {
     private lateinit var locationCallBack: LocationCallback
     private lateinit var fusedLocationClient: FusedLocationProviderClient
     private lateinit var arExperienceButton: Button
+
+    private lateinit var latestGetFeaturesResponse: GetFeatureResponse
+    private lateinit var latestGetFeaturesResponseWGS84: GetFeatureResponse
 
     private var fusedLocationListening: Boolean = false
 
@@ -81,7 +85,15 @@ class MapViewFragment: Fragment(R.layout.fragment_map_view) {
             arExperienceButton = view.findViewById(R.id.arExperienceButton)
 
             arExperienceButton.setOnClickListener{
+
                 val intent = Intent(requireActivity(), ARGISActivity::class.java)
+
+                if(!this::latestGetFeaturesResponseWGS84.isInitialized){
+                    startActivity(intent)
+                }
+                val bundle = Bundle()
+                bundle.putString("getFeaturesResponse", latestGetFeaturesResponseWGS84.content)
+                intent.putExtras(bundle)
                 startActivity(intent)
             }
 
@@ -158,10 +170,11 @@ class MapViewFragment: Fragment(R.layout.fragment_map_view) {
 
             //Layer is hard coded for now but maybe we should let the user pick the layers they want shown?
             //"phonelocation_z,test_lines,test_polys"
-            val getFeaturesResponse = graphicsOverlayOperations.queryFeaturesFromLayer("lines,points,polygons")
-            graphicsOverlayOperations.drawFeaturesInGraphicsOverlay(getFeaturesResponse)
+            latestGetFeaturesResponse = graphicsOverlayOperations.queryFeaturesFromLayer("lines,points,polygons")
+            latestGetFeaturesResponseWGS84 = graphicsOverlayOperations.queryFeaturesFromLayer("lines,points,polygons", SpatialReference.wgs84())
+            graphicsOverlayOperations.drawFeaturesInGraphicsOverlay(latestGetFeaturesResponse)
 
-            determineIfFeaturesAreInBufferFromGetFeatureResponse(getFeaturesResponse)
+            determineIfFeaturesAreInBufferFromGetFeatureResponse(latestGetFeaturesResponse)
 
         }
         listenToOnSingleTapEvents()
@@ -171,8 +184,9 @@ class MapViewFragment: Fragment(R.layout.fragment_map_view) {
     private fun drawGraphicsOnEventRaised(){
         lifecycleScope.launch(Dispatchers.IO) {
             try{
-                val getFeaturesResponse = graphicsOverlayOperations.queryFeaturesFromLayer("lines,points,polygons")
-                graphicsOverlayOperations.drawFeaturesInGraphicsOverlay(getFeaturesResponse)
+                latestGetFeaturesResponse = graphicsOverlayOperations.queryFeaturesFromLayer("lines,points,polygons")
+                latestGetFeaturesResponseWGS84 = graphicsOverlayOperations.queryFeaturesFromLayer("lines,points,polygons", SpatialReference.wgs84())
+                graphicsOverlayOperations.drawFeaturesInGraphicsOverlay(latestGetFeaturesResponse)
             }
             catch (e: Exception){
                 LogFile().createLog(e.message.toString(), "MapViewFragment: Graphics Overlay Issue")

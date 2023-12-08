@@ -69,7 +69,7 @@ class WFS(private val qgisUrl: String) {
                         "=" + URLEncoder.encode(getFeatureRequestAction.boundingBox.toString(), "UTF-8")
 
                 reqParam += "&" + URLEncoder.encode("SRSNAME", "UTF-8") +
-                        "=" + URLEncoder.encode(getFeatureRequestAction.boundingBox!!.crs, "UTF-8")
+                        "=" + URLEncoder.encode(getFeatureRequestAction.srs.toString(), "UTF-8")
             }
 
             val url = URL("$qgisUrl?$reqParam")

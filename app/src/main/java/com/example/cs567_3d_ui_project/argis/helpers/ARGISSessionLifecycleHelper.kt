@@ -10,6 +10,7 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
 import com.google.ar.core.ArCoreApk
+import com.google.ar.core.Config
 import com.google.ar.core.Session
 
 class ARGISSessionLifecycleHelper(val activity: Activity,
@@ -32,6 +33,11 @@ class ARGISSessionLifecycleHelper(val activity: Activity,
     override fun onResume(owner: LifecycleOwner) {
         val session = mySession ?: tryCreateSession() ?: return
         try{
+            session.configure(
+                session.config.apply {
+                    geospatialMode = Config.GeospatialMode.ENABLED
+                }
+            )
             beforeSessionResume?.invoke(session)
             session.resume()
             mySession = session

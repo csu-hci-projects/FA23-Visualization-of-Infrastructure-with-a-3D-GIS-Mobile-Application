@@ -3,6 +3,7 @@ package com.example.cs567_3d_ui_project.argis.renderers
 import android.content.res.AssetManager
 import android.opengl.GLES30
 import android.opengl.GLSurfaceView
+import android.util.Log
 import com.example.cs567_3d_ui_project.argis.GLError
 import com.example.cs567_3d_ui_project.argis.Mesh
 import com.example.cs567_3d_ui_project.argis.Shader
@@ -29,14 +30,12 @@ class ARRenderer(glSurfaceView: GLSurfaceView, renderer: Renderer, assetManager:
 
         glSurfaceView.setRenderer(object: GLSurfaceView.Renderer {
             override fun onSurfaceCreated(p0: GL10?, p1: EGLConfig?) {
-//                GLES30.glClearColor(1.0f, 1.0f, 0.4f, 0.4f)
                 GLES30.glEnable(GLES30.GL_BLEND)
                 GLError.maybeThrowGLException("Failed to enable blending", "glEnable")
                 renderer.onSurfaceCreated(this@ARRenderer)
             }
 
             override fun onSurfaceChanged(gl: GL10?, w: Int, h: Int) {
-//                GLES30.glViewport(0,0,w,h)
                 viewPortHeight = h
                 viewPortWidth = w
                 renderer.onSurfaceChanged(this@ARRenderer, w, h)
@@ -45,7 +44,6 @@ class ARRenderer(glSurfaceView: GLSurfaceView, renderer: Renderer, assetManager:
             override fun onDrawFrame(p0: GL10?) {
                 clear(null, 0f, 0f, 0f, 0f)
                 renderer.onDrawFrame(this@ARRenderer)
-//                GLES30.glClear(GLES30.GL_COLOR_BUFFER_BIT)
             }
 
         })
@@ -58,6 +56,8 @@ class ARRenderer(glSurfaceView: GLSurfaceView, renderer: Renderer, assetManager:
         useFrameBuffer(frameBuffer)
         shader!!.lowLevelUse()
         mesh!!.lowLevelDraw()
+        Log.i("Draw-LowLevel", "Drew Object")
+
     }
 
     fun clear(frameBuffer: Framebuffer?, r: Float, g: Float, b: Float, a: Float){

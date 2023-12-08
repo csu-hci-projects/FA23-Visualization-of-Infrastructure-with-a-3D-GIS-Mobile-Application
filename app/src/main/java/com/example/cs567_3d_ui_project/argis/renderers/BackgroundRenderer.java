@@ -232,7 +232,7 @@ public class BackgroundRenderer {
 
   /**
    * Draws the virtual scene. Any objects rendered in the given {@link com.example.cs567_3d_ui_project.argis.buffers.Framebuffer} will be drawn
-   * given the previously specified {@link OcclusionMOde}.
+   * given the previously specified {@link OcclusionMode}.
    *
    * <p>Virtual content should be rendered using the matrices provided by {@link
    * com.google.ar.core.Camera#getViewMatrix(float[], int)} and {@link
