@@ -1,7 +1,8 @@
 # FA23-Visualization-of-Infrastructure-with-a-3D-GIS-Mobile-Application
+Rene Martinez, Audrey Dorin and Lindsey Nielsen
 
 ## A short description of your application
-
+We created an Augmented Reality Geographical Information System application for utility workers in infastructure to help with time, costs and stress. This app lets these workers locate buried assets like pipes in a AR mobile application. We researched, developed and tested our app to create the best application we could make. We used a a GeoServer to manage the assets for the android application and used ARCore and Blender for the Augmented Reality aspect of the mobile app. We then tested our app on 8 participants including 4 GIS professionals with a series of surveys and semi-structure interviews to get feedback and direction of where to go next with this app. Overall the app was well recieved and we think it could really make a difference in utility workers day to day life on the job. We hope you enjoy!
 
 ## Hardware/Software Requirements and Instructions
 
@@ -43,8 +44,8 @@ Note that you will have to change the target hostname for in the MapViewFragment
 
 ## Links to our short and presentation videos
 [Demo+Code Video.mp4]()
-[Presentation Video.mp4]()
-[Short Video.mp4]()
+[Presentation Video.mp4](https://youtu.be/fIRqFf2k25I)
+[Short Video.mp4](https://youtu.be/SeqPhlnhU8w)
 
 ## Link to our GitHub project
 [Link to our Github project](https://github.com/csu-hci-projects/FA23-Visualization-of-Infrastructure-with-a-3D-GIS-Mobile-Application)
