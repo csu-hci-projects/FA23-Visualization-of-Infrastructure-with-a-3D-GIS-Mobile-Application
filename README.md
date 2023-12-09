@@ -1,8 +1,9 @@
 # FA23-Visualization-of-Infrastructure-with-a-3D-GIS-Mobile-Application
 
+## A short description of your application
 
 
-Hardware/Software Requirements and Instructions
+## Hardware/Software Requirements and Instructions
 
 Linux Environment:  
 RAM: 16 GB  
@@ -39,3 +40,15 @@ by the steps found here: https://developers.google.com/ar/develop/java/geospatia
 
 Simply build and run the application after debugging has been enabled on your device!  
 Note that you will have to change the target hostname for in the MapViewFragment to match your GeoServer Instance!  
+
+## Links to our short and presentation videos
+[Demo+Code Video.mp4]()
+[Presentation Video.mp4]()
+[Short Video.mp4]()
+
+## Link to our GitHub project
+[Link to our Github project](https://github.com/csu-hci-projects/FA23-Visualization-of-Infrastructure-with-a-3D-GIS-Mobile-Application)
+
+## Link to our Overleaf project
+[Link to our Overleaf project](https://www.overleaf.com/read/mpvgkjbrqcfx#a887c1 )
+
