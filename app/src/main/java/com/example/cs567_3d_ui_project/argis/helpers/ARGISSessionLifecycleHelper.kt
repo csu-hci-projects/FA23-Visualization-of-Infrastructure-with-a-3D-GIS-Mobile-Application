@@ -79,8 +79,6 @@ class ARGISSessionLifecycleHelper(val activity: Activity,
             Log.e("Session Creation Failure", e.message.toString())
             null
         }
-
-
     }
 
     private fun hasCameraPermissions(): Boolean {
@@ -117,7 +115,4 @@ class ARGISSessionLifecycleHelper(val activity: Activity,
         }
 
     }
-
-
-
 }

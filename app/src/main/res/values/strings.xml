@@ -4,6 +4,7 @@
     <string name="drawer_open">Open navigation drawer</string>
     <string name="drawer_close">Close navigation drawer</string>
     <string name="enter_ar_experience">Enter AR Experience</string>
+    <string name="depth_camera">Depth Camera</string>
     <string name="edit">Edit</string>
     <string name="low_accuracy">Location Accuracy: Low</string>
     <string name="medium_accuracy">Location Accuracy: Medium</string>

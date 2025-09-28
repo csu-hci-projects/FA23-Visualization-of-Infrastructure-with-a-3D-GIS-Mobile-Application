@@ -25,6 +25,7 @@ import com.arcgismaps.mapping.view.LocationDisplay
 import com.arcgismaps.mapping.view.MapView
 import com.example.cs567_3d_ui_project.R
 import com.example.cs567_3d_ui_project.activities.ARGISActivity
+import com.example.cs567_3d_ui_project.activities.DepthAPIActivity
 import com.example.cs567_3d_ui_project.arcgis_map_operations.GraphicsOverlayOperations
 import com.example.cs567_3d_ui_project.databinding.FragmentMapViewBinding
 import com.example.cs567_3d_ui_project.file_logging.LogFile
@@ -48,6 +49,7 @@ class MapViewFragment: Fragment(R.layout.fragment_map_view) {
     private lateinit var locationCallBack: LocationCallback
     private lateinit var fusedLocationClient: FusedLocationProviderClient
     private lateinit var arExperienceButton: Button
+    private lateinit var depthCameraButton: Button
 
     private lateinit var latestGetFeaturesResponse: GetFeatureResponse
     private lateinit var latestGetFeaturesResponseWGS84: GetFeatureResponse
@@ -63,7 +65,8 @@ class MapViewFragment: Fragment(R.layout.fragment_map_view) {
     private val qGisClient: QGisClient by lazy {
         //QGisClient("http://192.168.1.24/cgi-bin/qgis_mapserv.fcgi")
         //QGisClient("http://38.147.239.146/cgi-bin/qgis_mapserv.fcgi")
-        QGisClient("http://38.147.239.145/geoserver/cs567/ows")
+        //QGisClient("http://38.147.239.145/geoserver/cs567/ows")
+        QGisClient("http://192.168.1.24/geoserver/cs567/ows")
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
@@ -96,6 +99,13 @@ class MapViewFragment: Fragment(R.layout.fragment_map_view) {
                 intent.putExtras(bundle)
                 startActivity(intent)
             }
+
+            depthCameraButton = view.findViewById(R.id.depthCamera)
+            depthCameraButton.setOnClickListener {
+                val intent = Intent(requireActivity(), DepthAPIActivity::class.java)
+                startActivity(intent)
+            }
+
 
         }catch (e: Exception){
             LogFile().createLog(e.message.toString(), "MapViewFragment: Error During onViewCreated")
@@ -147,7 +157,7 @@ class MapViewFragment: Fragment(R.layout.fragment_map_view) {
     private fun setApiKey() {
         // It is not best practice to store API keys in source code. We have you insert one here
         // to streamline project development.
-        ArcGISEnvironment.apiKey = ApiKey.create("AAPK5765e56473df40e88e5b67060f23c50dZBL9XDYTJyBFAz9VIhUjp4YzVHVZzFfDC860MQFqpMr9Ji1tJtYZtP-d370P5FLs")
+        ArcGISEnvironment.apiKey = ApiKey.create("AAPTxy8BH1VEsoebNVZXo8HurOzaU4rlE0cIRw1TfuwFzohc2am9TY7t73E-M7FkIjTww_GIZZFRhs_zLWiBAo_g1BofurOkON8kgqiho7QK3GrpZd6hEc2VURp5mnDPT605uVNt2ZxxeSCwUZHTZr2crfxGlzYhUNAoOIHCq8cvr52x-kbSu1xkh1iJlCyF2FfECIVlcI6VPE46SRE3FSONS0lEkzT4DydUkhlQlBiDOrQ.AT1_ivx1aDCP")
     }
 
     //Loads the basemap and queries for the features in the extent
