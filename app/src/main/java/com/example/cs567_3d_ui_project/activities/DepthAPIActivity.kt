@@ -3,6 +3,7 @@ package com.example.cs567_3d_ui_project.activities
 import android.Manifest
 import android.app.Activity
 import android.content.pm.PackageManager
+import android.opengl.GLSurfaceView
 import android.os.Bundle
 import android.util.Log
 import androidx.appcompat.app.AppCompatActivity
@@ -16,8 +17,10 @@ import com.google.ar.core.exceptions.UnavailableApkTooOldException
 import com.google.ar.core.exceptions.UnavailableDeviceNotCompatibleException
 import com.google.ar.core.exceptions.UnavailableSdkTooOldException
 import com.google.ar.core.exceptions.UnavailableUserDeclinedInstallationException
+import javax.microedition.khronos.egl.EGLConfig
+import javax.microedition.khronos.opengles.GL10
 
-class DepthAPIActivity: AppCompatActivity() {
+class DepthAPIActivity: AppCompatActivity(), GLSurfaceView.Renderer {
     var installRequested = false
 
     var beforeSessionResume: ((Session) -> Unit)? = null
@@ -61,9 +64,10 @@ class DepthAPIActivity: AppCompatActivity() {
             session.configure(
                 session.config.apply {
                     geospatialMode = Config.GeospatialMode.ENABLED
-                    val isDepthSupported = session.isDepthModeSupported(Config.DepthMode.AUTOMATIC)
+                    val isDepthSupported = session.isDepthModeSupported(Config.DepthMode.RAW_DEPTH_ONLY)
                     if(isDepthSupported){
-                        depthMode = Config.DepthMode.AUTOMATIC
+                        depthMode = Config.DepthMode.RAW_DEPTH_ONLY
+                        focusMode = Config.FocusMode.AUTO
                     }
                 }
             )
@@ -112,5 +116,17 @@ class DepthAPIActivity: AppCompatActivity() {
             ActivityCompat.requestPermissions(activity, arrayOf(CAMERA_PERMISSION),
                 CAMERA_PERMISSION_CODE)
         }
+    }
+
+    override fun onSurfaceCreated(gl: GL10?, config: EGLConfig?) {
+        TODO("Not yet implemented")
+    }
+
+    override fun onSurfaceChanged(gl: GL10?, width: Int, height: Int) {
+        TODO("Not yet implemented")
+    }
+
+    override fun onDrawFrame(gl: GL10?) {
+        TODO("Not yet implemented")
     }
 }
