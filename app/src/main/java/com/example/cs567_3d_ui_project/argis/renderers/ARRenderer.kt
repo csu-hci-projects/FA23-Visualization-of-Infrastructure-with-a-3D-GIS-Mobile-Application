@@ -57,7 +57,6 @@ class ARRenderer(glSurfaceView: GLSurfaceView, renderer: Renderer, assetManager:
         shader!!.lowLevelUse()
         mesh!!.lowLevelDraw()
         Log.i("Draw-LowLevel", "Drew Object")
-
     }
 
     fun clear(frameBuffer: Framebuffer?, r: Float, g: Float, b: Float, a: Float){

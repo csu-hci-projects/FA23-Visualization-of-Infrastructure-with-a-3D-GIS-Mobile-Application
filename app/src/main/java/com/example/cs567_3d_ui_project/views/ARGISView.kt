@@ -1,7 +1,12 @@
 package com.example.cs567_3d_ui_project.views
 
 import android.annotation.SuppressLint
+import android.content.Intent
+import android.net.Uri
 import android.opengl.GLSurfaceView
+import android.os.Build
+import android.provider.DocumentsContract
+import android.provider.MediaStore
 import android.util.Log
 import android.view.View
 import android.widget.ImageButton
@@ -12,6 +17,8 @@ import com.example.cs567_3d_ui_project.R
 import com.example.cs567_3d_ui_project.activities.ARGISActivity
 import com.example.cs567_3d_ui_project.argis.Axis
 import com.example.cs567_3d_ui_project.argis.helpers.TapHelper
+import com.google.ar.core.PlaybackStatus
+import com.google.ar.core.exceptions.CameraNotAvailableException
 
 class ARGISView(val activity: ARGISActivity): DefaultLifecycleObserver {
 
@@ -26,6 +33,26 @@ class ARGISView(val activity: ARGISActivity): DefaultLifecycleObserver {
     var modelScaleAxis = Axis.Y
 
     var scaleFactor = 1.0f
+
+    public final enum class AppState {
+        Idle,
+        Playingback
+    }
+
+    companion object{
+        const val TAG = "ARGISView"
+    }
+
+    private val scaleFactorTextView: TextView = root.findViewById(R.id.scaleFactor)
+
+    private val locationAccuracyTextView: TextView = root.findViewById(R.id.location_accuracy)
+
+    val session
+        get() = activity.arGISSessionHelper.mySession
+
+    val tapHelper = TapHelper(activity).also { surfaceView.setOnTouchListener(it) }
+
+    var appState = AppState.Idle
 
     val saveButton:ImageButton = root.findViewById<ImageButton>(R.id.save).apply {
         setOnClickListener{
@@ -97,7 +124,6 @@ class ARGISView(val activity: ARGISActivity): DefaultLifecycleObserver {
             else if(stopScalingButton.visibility == View.VISIBLE){
                 modelScaleAxis = Axis.X
             }
-
         }
     }
 
@@ -183,7 +209,6 @@ class ARGISView(val activity: ARGISActivity): DefaultLifecycleObserver {
             if( scaleFactor < 10.0f) {
                 scaleFactor += 0.5f
             }
-
             scaleFactorTextView.text = "ScaleFactor: ${scaleFactor}x"
         }
     }
@@ -196,7 +221,6 @@ class ARGISView(val activity: ARGISActivity): DefaultLifecycleObserver {
             if(scaleFactor > 0.5f){
                 scaleFactor -= 0.5f
             }
-
             scaleFactorTextView.text = "ScaleFactor: ${scaleFactor}x"
         }
     }
@@ -218,16 +242,45 @@ class ARGISView(val activity: ARGISActivity): DefaultLifecycleObserver {
         }
     }
 
-    private val scaleFactorTextView: TextView = root.findViewById(R.id.scaleFactor)
+    val playbackRecording: ImageButton = root.findViewById<ImageButton>(R.id.playRecording).apply {
+        setOnClickListener{
+            v ->
+            v.visibility = View.GONE
+            pausePlayback.visibility = View.VISIBLE
+            stopPlayback.visibility = View.VISIBLE
 
-    private val locationAccuracyTextView: TextView = root.findViewById(R.id.location_accuracy)
+            when(session!!.playbackStatus){
+                PlaybackStatus.NONE -> {
+                    onClickPlayback()
+                }
+                PlaybackStatus.OK -> {
+                    resumeARCoreSession()
+                }
 
+                PlaybackStatus.IO_ERROR -> TODO()
+                PlaybackStatus.FINISHED -> TODO()
+            }
+        }
+    }
 
+    val pausePlayback: ImageButton = root.findViewById<ImageButton>(R.id.pausePlayback).apply {
+        setOnClickListener{
+            v ->
+            v.visibility = View.GONE
+            playbackRecording.visibility = View.VISIBLE
+            pauseARCoreSession()
+        }
+    }
 
-    val session
-        get() = activity.arGISSessionHelper.mySession
-
-    val tapHelper = TapHelper(activity).also { surfaceView.setOnTouchListener(it) }
+    val stopPlayback: ImageButton = root.findViewById<ImageButton>(R.id.stopPlayback).apply {
+        setOnClickListener{
+            v->
+            v.visibility = View.GONE
+            playbackRecording.visibility = View.VISIBLE
+            pausePlayback.visibility = View.GONE
+            stopPlayback()
+        }
+    }
 
     override fun onResume(owner: LifecycleOwner) {
 
@@ -261,5 +314,116 @@ class ARGISView(val activity: ARGISActivity): DefaultLifecycleObserver {
         activity.runOnUiThread {
             locationAccuracyTextView.text = locationAccuracyStatus
         }
+    }
+
+
+
+    fun onClickPlayback(){
+        Log.d(TAG, "onClickPlayback")
+
+        when(appState){
+            AppState.Idle -> {
+                pauseARCoreSession()
+
+                val videoCollection: Uri = if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q){
+                    MediaStore.Video.Media.getContentUri(
+                        MediaStore.VOLUME_EXTERNAL_PRIMARY
+                    )
+                }
+                else{
+                    MediaStore.Video.Media.EXTERNAL_CONTENT_URI
+                }
+
+                val MP4_VIDEO_MIME_TYPE = "video/mp4"
+                val intent = Intent(Intent.ACTION_OPEN_DOCUMENT)
+                intent.setType(MP4_VIDEO_MIME_TYPE)
+                intent.putExtra(DocumentsContract.EXTRA_INITIAL_URI, videoCollection)
+                intent.addCategory(Intent.CATEGORY_OPENABLE)
+
+                val hasStarted = activity.selectFileToPlayBack.launch(intent)
+
+                Log.d(TAG, String.format("onClickPlayback start: selectFileToPlayback $hasStarted"))
+            }
+
+            AppState.Playingback -> {
+                val hasStopped = stopPlayback()
+                Log.d(TAG, String.format("onClickPlayback stop: hasStopped $hasStopped"))
+            }
+        }
+    }
+
+    fun startPlayingback(mp4FileUri: Uri?): Boolean {
+        if(mp4FileUri == null){
+            return false
+        }
+
+        Log.d(TAG, "startPlayingback at: $mp4FileUri")
+
+        try{
+            pauseARCoreSession()
+            session!!.setPlaybackDatasetUri(mp4FileUri)
+        }
+        catch (e: Exception){
+            Log.e(TAG, "startPlayingback - setPlaybackDataset failed", e)
+        }
+
+        val canResume = resumeARCoreSession()
+        if(!canResume)
+            return false
+
+        val playbackStatus = session!!.playbackStatus
+        Log.d(TAG, String.format("startPlayingback - playbackStatus $playbackStatus"))
+
+        if(playbackStatus != PlaybackStatus.OK){
+            return false
+        }
+        appState = AppState.Playingback
+
+        return true
+    }
+
+    fun stopPlayback(): Boolean {
+        if(appState != AppState.Playingback)
+            return false
+
+        try{
+            pauseARCoreSession()
+            activity.recreateSession()
+            val canResume = resumeARCoreSession()
+            if(!canResume)
+                return false
+
+            appState = AppState.Idle
+
+            return true
+
+        }
+        catch(e: Exception) {
+            Log.e(TAG, "Error in return to Idle state. Cannot create new ARCore session", e);
+            return false;
+        }
+    }
+
+    private fun pauseARCoreSession() {
+        // Pause the GLSurfaceView so that it doesn't update the ARCore session.
+        // Pause the ARCore session so that we can update its configuration.
+        // If the GLSurfaceView is not paused,
+        //   onDrawFrame() will try to update the ARCore session
+        //   while it's paused, resulting in a crash.
+        surfaceView.onPause()
+        session!!.pause()
+    }
+
+    private fun resumeARCoreSession(): Boolean {
+        // We must resume the ARCore session before the GLSurfaceView.
+        // Otherwise, the GLSurfaceView will try to update the ARCore session.
+        try {
+            session!!.resume()
+        } catch (e: CameraNotAvailableException) {
+            Log.e(TAG, "CameraNotAvailableException in resumeARCoreSession", e)
+            return false
+        }
+        surfaceView.onResume()
+        return true
     }
 }

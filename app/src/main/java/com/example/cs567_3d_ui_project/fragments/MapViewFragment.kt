@@ -62,7 +62,8 @@ class MapViewFragment: Fragment(R.layout.fragment_map_view) {
     private val qGisClient: QGisClient by lazy {
         //QGisClient("http://192.168.1.24/cgi-bin/qgis_mapserv.fcgi")
         //QGisClient("http://38.147.239.146/cgi-bin/qgis_mapserv.fcgi")
-        QGisClient("http://38.147.239.145/geoserver/cs567/ows")
+        //QGisClient("http://38.147.239.145/geoserver/cs567/ows")
+        QGisClient("http://192.168.1.24/geoserver/cs567/ows")
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
@@ -100,8 +101,6 @@ class MapViewFragment: Fragment(R.layout.fragment_map_view) {
             Log.e("Error During onViewCreated", e.message, e)
             throw e
         }
-
-
     }
 
     private fun setupMap(){
@@ -146,7 +145,7 @@ class MapViewFragment: Fragment(R.layout.fragment_map_view) {
     private fun setApiKey() {
         // It is not best practice to store API keys in source code. We have you insert one here
         // to streamline project development.
-        ArcGISEnvironment.apiKey = ApiKey.create("AAPK5765e56473df40e88e5b67060f23c50dZBL9XDYTJyBFAz9VIhUjp4YzVHVZzFfDC860MQFqpMr9Ji1tJtYZtP-d370P5FLs")
+        ArcGISEnvironment.apiKey = ApiKey.create("AAPTxy8BH1VEsoebNVZXo8HurOzaU4rlE0cIRw1TfuwFzohc2am9TY7t73E-M7FkIjTww_GIZZFRhs_zLWiBAo_g1BofurOkON8kgqiho7QK3GrpZd6hEc2VURp5mnDPT605uVNt2ZxxeSCwUZHTZr2crfxGlzYhUNAoOIHCq8cvr52x-kbSu1xkh1iJlCyF2FfECIVlcI6VPE46SRE3FSONS0lEkzT4DydUkhlQlBiDOrQ.AT1_ivx1aDCP")
     }
 
     //Loads the basemap and queries for the features in the extent
@@ -169,8 +168,8 @@ class MapViewFragment: Fragment(R.layout.fragment_map_view) {
 
             //Layer is hard coded for now but maybe we should let the user pick the layers they want shown?
             //"phonelocation_z,test_lines,test_polys"
-            latestGetFeaturesResponse = graphicsOverlayOperations.queryFeaturesFromLayer("lines,points,polygons")
-            latestGetFeaturesResponseWGS84 = graphicsOverlayOperations.queryFeaturesFromLayer("lines,points,polygons", SpatialReference.wgs84())
+            latestGetFeaturesResponse = graphicsOverlayOperations.queryFeaturesFromLayer("linez,pointz,polygons")
+            latestGetFeaturesResponseWGS84 = graphicsOverlayOperations.queryFeaturesFromLayer("linez,pointz,polygons", SpatialReference.wgs84())
             graphicsOverlayOperations.drawFeaturesInGraphicsOverlay(latestGetFeaturesResponse)
 
             determineIfFeaturesAreInBufferFromGetFeatureResponse(latestGetFeaturesResponse)
@@ -183,14 +182,13 @@ class MapViewFragment: Fragment(R.layout.fragment_map_view) {
     private fun drawGraphicsOnEventRaised(){
         lifecycleScope.launch(Dispatchers.IO) {
             try{
-                latestGetFeaturesResponse = graphicsOverlayOperations.queryFeaturesFromLayer("lines,points,polygons")
-                latestGetFeaturesResponseWGS84 = graphicsOverlayOperations.queryFeaturesFromLayer("lines,points,polygons", SpatialReference.wgs84())
+                latestGetFeaturesResponse = graphicsOverlayOperations.queryFeaturesFromLayer("linez,pointz,polygons")
+                latestGetFeaturesResponseWGS84 = graphicsOverlayOperations.queryFeaturesFromLayer("linez,pointz,polygons", SpatialReference.wgs84())
                 graphicsOverlayOperations.drawFeaturesInGraphicsOverlay(latestGetFeaturesResponse)
             }
             catch (e: Exception){
                 Log.e("Graphics Overlay Issue", e.message.toString())
             }
-
         }
     }
 
@@ -234,7 +232,6 @@ class MapViewFragment: Fragment(R.layout.fragment_map_view) {
                     super.onLocationResult(locationResult)
                 }
             }
-
         }
 
         if(!fusedLocationListening){
@@ -246,7 +243,6 @@ class MapViewFragment: Fragment(R.layout.fragment_map_view) {
             catch (e: Exception){
                 Log.e("Error Trying to listen to location updates", e.message.toString())
             }
-
         }
     }
 

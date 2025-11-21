@@ -1,7 +1,13 @@
 package com.example.cs567_3d_ui_project.activities
 
+import android.content.Intent
+import android.net.Uri
+import android.os.Build
 import android.os.Bundle
+import android.provider.DocumentsContract
+import android.provider.MediaStore
 import android.util.Log
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import com.example.cs567_3d_ui_project.argis.helpers.ARGISSessionLifecycleHelper
 import com.example.cs567_3d_ui_project.argis.helpers.DepthSettings
@@ -30,6 +36,40 @@ class ARGISActivity: AppCompatActivity() {
     companion object{
         private const val TAG = "ARGISActivity"
     }
+
+    val selectFileToPlayBack =  registerForActivityResult(getFilePlaybackIntent()) { it ->
+        if (it.resultCode != android.app.Activity.RESULT_OK) {
+            Log.e(TAG, "onActivityResult select file failed");
+        } else {
+            val mp4FileUri: Uri? = it.data?.data
+            Log.d(TAG, String.format("onActivityResult result is %s", mp4FileUri))
+
+            // Begin playback.
+            arGISSurfaceView.startPlayingback(mp4FileUri)
+        }
+    }
+
+    fun getFilePlaybackIntent(): ActivityResultContracts.StartActivityForResult {
+        val videoCollection: Uri = if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q){
+            MediaStore.Video.Media.getContentUri(
+                MediaStore.VOLUME_EXTERNAL_PRIMARY
+            )
+        }
+        else{
+            MediaStore.Video.Media.EXTERNAL_CONTENT_URI
+        }
+
+        val MP4_VIDEO_MIME_TYPE = "video/mp4"
+        val intent = Intent(Intent.ACTION_OPEN_DOCUMENT)
+        intent.setType(MP4_VIDEO_MIME_TYPE)
+        intent.putExtra(DocumentsContract.EXTRA_INITIAL_URI, videoCollection)
+        intent.addCategory(Intent.CATEGORY_OPENABLE)
+
+        val startActivityForResult = ActivityResultContracts.StartActivityForResult()
+        startActivityForResult.createIntent(this, intent)
+        return startActivityForResult
+    }
+
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -90,5 +130,23 @@ class ARGISActivity: AppCompatActivity() {
         FullScreenHelper.setFullScreenOnWindowFocusChanged(this, hasFocus)
     }
 
+    fun recreateSession(): Session? {
+        var session = arGISSessionHelper.recreateSession()
+        createSession(session!!)
+
+        lifecycle.removeObserver(argisRenderer)
+        argisRenderer = ARGISRenderer(this)
+        lifecycle.addObserver(argisRenderer)
+
+        arGISSurfaceView = ARGISView(this)
+
+        setContentView(arGISSurfaceView.root)
+
+        ARRenderer(arGISSurfaceView.surfaceView, argisRenderer, assets)
+
+        depthSettings.onCreate(this)
+
+        return session
+    }
 
 }

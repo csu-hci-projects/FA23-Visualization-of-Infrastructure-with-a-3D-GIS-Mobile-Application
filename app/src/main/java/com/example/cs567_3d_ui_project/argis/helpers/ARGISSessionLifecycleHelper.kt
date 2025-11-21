@@ -32,14 +32,18 @@ class ARGISSessionLifecycleHelper(val activity: Activity,
 
     override fun onResume(owner: LifecycleOwner) {
         val session = mySession ?: tryCreateSession() ?: return
+        configureSession(session)
+    }
+
+    fun configureSession(session: Session?){
         try{
-            session.configure(
+            session?.configure(
                 session.config.apply {
                     geospatialMode = Config.GeospatialMode.ENABLED
                 }
             )
-            beforeSessionResume?.invoke(session)
-            session.resume()
+            beforeSessionResume?.invoke(session!!)
+            session?.resume()
             mySession = session
         }
         catch(e: Exception){
@@ -54,6 +58,12 @@ class ARGISSessionLifecycleHelper(val activity: Activity,
     override fun onDestroy(owner: LifecycleOwner) {
         mySession?.close()
         mySession = null
+    }
+
+    fun recreateSession(): Session? {
+        var session = tryCreateSession()
+        configureSession(session)
+        return session
     }
 
     private fun tryCreateSession(): Session?
@@ -79,8 +89,6 @@ class ARGISSessionLifecycleHelper(val activity: Activity,
             Log.e("Session Creation Failure", e.message.toString())
             null
         }
-
-
     }
 
     private fun hasCameraPermissions(): Boolean {

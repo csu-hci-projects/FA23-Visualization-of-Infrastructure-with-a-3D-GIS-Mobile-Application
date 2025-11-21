@@ -6,6 +6,9 @@
     android:layout_height="match_parent"
     tools:context="com.example.cs567_3d_ui_project.activities.ARGISActivity">
 
+    <!--Icons are found here and are editable: https://www.flaticon.com-->
+    <!-- How to add an icon https://www.geeksforgeeks.org/android/how-to-add-image-to-drawable-folder-in-android-studio/-->
+
     <android.opengl.GLSurfaceView
         android:id="@+id/surfaceview"
         android:layout_width="fill_parent"
@@ -73,6 +76,32 @@
             android:layout_height="wrap_content"
             android:layout_margin="25dp"
             android:src="@drawable/eraser_tool"
+            android:background="@android:color/transparent"/>
+
+        <ImageButton
+            android:id="@+id/playRecording"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_margin="25dp"
+            android:src="@drawable/play"
+            android:background="@android:color/transparent"/>
+
+        <ImageButton
+            android:id="@+id/pausePlayback"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_margin="25dp"
+            android:src="@drawable/pause"
+            android:visibility="invisible"
+            android:background="@android:color/transparent"/>
+
+        <ImageButton
+            android:id="@+id/stopPlayback"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_margin="25dp"
+            android:src="@drawable/stop"
+            android:visibility="invisible"
             android:background="@android:color/transparent"/>
 
         <LinearLayout

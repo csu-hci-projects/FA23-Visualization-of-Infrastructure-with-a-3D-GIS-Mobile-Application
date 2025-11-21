@@ -41,18 +41,21 @@ class AnchorHelper {
         val lineAnchors = ArrayList<Anchor?>()
         lineGeometry!!.lineRoute.forEach{
             pointGeometry ->
-            val earthAnchor = earth.createAnchor(
-                pointGeometry.y,
-                pointGeometry.x,
-                geospatialPose.altitude - 3,
-                0f,
-                0f,
-                0f,
-                1f
-            )
+
+            val earthAnchor =
+                earth.createAnchor(
+                    pointGeometry.y,
+                    pointGeometry.x,
+                    pointGeometry.z ?: (geospatialPose.altitude - 3),
+                    0f,
+                    0f,
+                    0f,
+                    1f
+                )
+
             lineAnchors.add(earthAnchor)
         }
-
+        //altitude in office 1535.966018864885
         return if(wrappedLineEarthAnchors.any{it.featureId == lineFeature.id}){
             val wrappedLineEarthAnchor = wrappedLineEarthAnchors.first{it.featureId == lineFeature.id}
             wrappedLineEarthAnchor.anchors = lineAnchors
@@ -119,11 +122,11 @@ class AnchorHelper {
 
         Log.i("Point Feature Geometry", "${pointGeometry!!.y},${pointGeometry.x}")
 
-        //pointGeometry.z ?: geospatialPose.altitude,
+
         val earthAnchor = earth.createAnchor(
             pointGeometry.y,
             pointGeometry.x,
-            geospatialPose.altitude - 1,
+            pointGeometry.z ?: (geospatialPose.altitude - 1),
             0f,
             0f,
             0f,
@@ -149,7 +152,6 @@ class AnchorHelper {
         val geospatialAnchorPoints = wrappedAnchors.map {
             Pair(it.earth.getGeospatialPose(it.anchor!!.pose), it)
         }
-
 
         geospatialAnchorPoints.forEach {
             val distanceLat = kotlin.math.abs(it.first.latitude - geospatialHitPose.latitude)
@@ -187,13 +189,7 @@ class AnchorHelper {
             }
             //wrappedAnchors.find { selectedEarthAnchorIds.any{a -> it.featureId == a} }
         }
-
     }
-
-
-
-
-
 }
 
 data class WrappedEarthAnchor(
