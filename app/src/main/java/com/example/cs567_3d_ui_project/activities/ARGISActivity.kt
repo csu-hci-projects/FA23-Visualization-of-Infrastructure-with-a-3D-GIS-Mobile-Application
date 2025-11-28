@@ -93,7 +93,7 @@ class ARGISActivity: AppCompatActivity() {
                         is CameraNotAvailableException -> "Camera not available. Try restarting the app."
                         else -> "Failed to create AR session: $exception"
                     }
-                Log.e(TAG, "ARCore threw an exception: ${message!!}", exception)
+                Log.e(TAG, "ARCore threw an exception: $message", exception)
             }
 
         arGISSessionHelper.beforeSessionResume = ::createSession
@@ -130,7 +130,7 @@ class ARGISActivity: AppCompatActivity() {
         FullScreenHelper.setFullScreenOnWindowFocusChanged(this, hasFocus)
     }
 
-    fun recreateSession(): Session? {
+    fun recreateSession(){
         var session = arGISSessionHelper.recreateSession()
         createSession(session!!)
 
@@ -145,8 +145,6 @@ class ARGISActivity: AppCompatActivity() {
         ARRenderer(arGISSurfaceView.surfaceView, argisRenderer, assets)
 
         depthSettings.onCreate(this)
-
-        return session
     }
 
 }

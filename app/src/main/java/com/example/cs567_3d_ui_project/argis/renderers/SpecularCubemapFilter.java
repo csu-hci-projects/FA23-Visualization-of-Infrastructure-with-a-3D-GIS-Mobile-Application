@@ -230,7 +230,7 @@ public class SpecularCubemapFilter implements Closeable {
    *
    * <p>This method should be called every frame with the result of {@link
    * com.google.ar.core.LightEstimate} to update the filtered
-   * cubemap texture, accessible via {@link getFilteredCubeTexture()}.
+   * cubemap texture, accessible via {@link //getFilteredCubeTexture()}.
    *
    * <p>The given {@link Image}s will be closed by this method, even if an exception occurs.
    */

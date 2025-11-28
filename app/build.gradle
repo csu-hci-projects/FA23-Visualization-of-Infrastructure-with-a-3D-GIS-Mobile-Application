@@ -20,6 +20,10 @@ android {
         }
     }
 
+    aaptOptions {
+        noCompress "tflite"
+    }
+
     buildTypes {
         release {
             minifyEnabled false
@@ -39,6 +43,7 @@ android {
         //this is needed to actually work with fragments
         viewBinding true
         dataBinding true
+        mlModelBinding true
     }
 
     composeOptions {
@@ -58,6 +63,17 @@ dependencies {
     // Obj - a simple Wavefront OBJ file loader
     // https://github.com/javagl/Obj
     implementation 'de.javagl:obj:0.2.1'
+
+    // TFLite
+    /*implementation 'org.tensorflow:tensorflow-lite-support:0.3.1'
+    implementation 'org.tensorflow:tensorflow-lite-metadata:0.3.1'
+    implementation 'org.tensorflow:tensorflow-lite-task-vision:0.3.1'
+    implementation 'org.tensorflow:tensorflow-lite:1.1.0'*/
+
+    implementation("org.tensorflow:tensorflow-lite:2.16.1")
+    implementation("org.tensorflow:tensorflow-lite-support:0.4.4")
+    implementation("org.tensorflow:tensorflow-lite-metadata:0.4.4")
+
     def appcompat_version = "1.6.1"
     implementation 'com.google.ar:core:1.37.0'
     implementation 'androidx.core:core-ktx:1.10.1'

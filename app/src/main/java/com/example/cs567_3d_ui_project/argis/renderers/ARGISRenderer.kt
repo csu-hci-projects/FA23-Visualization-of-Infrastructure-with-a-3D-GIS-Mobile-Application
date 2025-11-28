@@ -1,5 +1,10 @@
 package com.example.cs567_3d_ui_project.argis.renderers
 
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.graphics.ImageFormat
+import android.graphics.Rect
+import android.graphics.YuvImage
 import android.opengl.GLES30
 import android.opengl.Matrix
 import android.os.Build
@@ -18,6 +23,8 @@ import com.example.cs567_3d_ui_project.argis.buffers.Framebuffer
 import com.example.cs567_3d_ui_project.argis.helpers.AnchorHelper
 import com.example.cs567_3d_ui_project.argis.helpers.DisplayRotationHelper
 import com.example.cs567_3d_ui_project.argis.helpers.TrackingStateHelper
+import com.example.cs567_3d_ui_project.argis.helpers.WrappedLineEarthAnchor
+import com.example.cs567_3d_ui_project.ml.Yolov1111725Float32
 import com.example.cs567_3d_ui_project.qgis_driver.resource_objects.wfs_resources.LineGeometry
 import com.example.cs567_3d_ui_project.qgis_driver.resource_objects.wfs_resources.PointGeometry
 import com.google.ar.core.Anchor
@@ -34,10 +41,22 @@ import com.google.ar.core.TrackingFailureReason
 import com.google.ar.core.TrackingState
 import com.google.ar.core.exceptions.CameraNotAvailableException
 import com.google.ar.core.exceptions.NotYetAvailableException
+import com.google.ar.core.exceptions.SessionPausedException
+import org.tensorflow.lite.DataType
+import org.tensorflow.lite.support.common.ops.CastOp
+import org.tensorflow.lite.support.common.ops.NormalizeOp
+import org.tensorflow.lite.support.image.ImageProcessor
+import org.tensorflow.lite.support.image.TensorImage
+import java.io.BufferedReader
+import java.io.ByteArrayOutputStream
 import java.io.IOException
+import java.io.InputStream
+import java.io.InputStreamReader
 import java.nio.ByteBuffer
+import kotlin.math.abs
 import kotlin.math.atan
 import kotlin.math.pow
+import kotlin.math.sqrt
 
 class ARGISRenderer(val activity: ARGISActivity):
     ARRenderer.Renderer,
@@ -75,6 +94,10 @@ class ARGISRenderer(val activity: ARGISActivity):
 
     private val Z_Near = 0.1f
     private val Z_Far = 100f
+
+    private val EPSILON = 0.00001f;
+    private val DEG2RAD = 3.141593f / 180.0f;
+    private val RAD2DEG = 180.0f / 3.141593f;
 
     var earthAnchor: Anchor? = null
 
@@ -278,6 +301,21 @@ class ARGISRenderer(val activity: ARGISActivity):
         virtualSceneFrameBuffer.resize(width, height)
     }
 
+    private fun readFileInputStream(inputStream: InputStream): List<String> {
+        val reader = BufferedReader(InputStreamReader(inputStream))
+
+        val list = mutableListOf<String>()
+        var index = 0
+        var line = ""
+        while (reader.readLine().also { if (it != null) line = it } != null) {
+            list.add(line)
+            index++
+        }
+
+        reader.close()
+        return list
+    }
+
     override fun onDrawFrame(renderer: ARRenderer?) {
         val session = session ?: return
 
@@ -296,8 +334,280 @@ class ARGISRenderer(val activity: ARGISActivity):
                 Log.e(TAG, "Camera not available during onDrawFrame", e)
                 return
             }
+            catch (cpe: SessionPausedException){
+                Log.e(TAG, "Can't update paused session!!!")
+                return
+            }
 
         val camera = frame.camera
+
+        try{
+            /*val options = ObjectDetector.ObjectDetectorOptions.builder()
+                .setMaxResults(5)
+                .setScoreThreshold(0.3f)
+                .build()
+            val detector = ObjectDetector.createFromFileAndOptions(
+                this.activity,
+                "yolov11_11_7_25_float32.tflite",
+                options
+            )*/
+          /*  val litertBuffer = FileUtil.loadMappedFile(this.activity, "yolov11_11_7_25_float32.tflite")
+            val metadataExtractor = MetadataExtractor(litertBuffer)
+            val labels = mutableListOf<String>()
+            if (metadataExtractor.hasMetadata()) {
+                val inputStream = metadataExtractor.getAssociatedFile("labelmap.txt")
+                labels.addAll(readFileInputStream(inputStream))
+                Log.i(
+                    TAG, "Successfully loaded model metadata ${metadataExtractor.associatedFileNames}"
+                )
+            }
+
+            val interpreter = Interpreter(litertBuffer)*/
+
+          /*  CompiledModel.create(
+                context.assets,
+                "selfie_multiclass.tflite",
+                CompiledModel.Options(toAccelerator(acceleratorEnum)),
+                null,
+            )*/
+
+            val model = Yolov1111725Float32.newInstance(this.activity)
+            Log.i(TAG, "Model Load Success!")
+            val test = frame.acquireCameraImage()
+
+            try{
+
+                val INPUT_MEAN = 0f
+                val INPUT_STANDARD_DEVIATION = 255f
+                val INPUT_IMAGE_TYPE = DataType.FLOAT32
+                val OUTPUT_IMAGE_TYPE = DataType.FLOAT32
+                val CONFIDENCE_THRESHOLD = 0.3F
+                val IOU_THRESHOLD = 0.5F
+
+                val imageProcessor = ImageProcessor.Builder()
+                    .add(NormalizeOp(INPUT_MEAN, INPUT_STANDARD_DEVIATION))
+                    .add(CastOp(INPUT_IMAGE_TYPE))
+                    .build()
+
+
+                //https://stackoverflow.com/questions/48191513/how-to-take-picture-with-camera-using-arcore
+               /* val pixelData = IntArray(test.width*test.height)
+                val buffer = IntBuffer.wrap(pixelData)
+                buffer.rewind()
+                GLES30.glReadPixels(0, 0, test.width,
+                    test.height, GLES30.GL_RGBA, GLES30.GL_UNSIGNED_BYTE, buffer)*/
+
+              /*  val mHeight = test.height
+                val mWidth = test.width
+
+                val bitmapData = IntArray(pixelData.size)
+                for(i in 0 until mHeight){
+                    for(j in 0 until mWidth){
+                        val p = pixelData[i * mWidth + j]
+                        val b = p and 0x00ff0000 shr 16
+                        val r = p and 0x000000ff shl 16
+                        val ga = p and -0xff0100
+                        bitmapData[(mHeight - i - 1) * mWidth + j] = ga or r or b
+                    }
+                }
+
+                val bitmap = Bitmap.createBitmap(
+                    bitmapData,
+                    test.width,
+                    test.height,
+                    Bitmap.Config.ARGB_8888
+                )
+
+                val resizedBitmap = Bitmap.createScaledBitmap(bitmap,  test.width,
+                    test.height, false)
+
+                val tensorImage = TensorImage(INPUT_IMAGE_TYPE)
+                tensorImage.load(resizedBitmap)*/
+
+                //val processedImage = imageProcessor.process(tensorImage)
+
+             var nv21: ByteArray
+                val yBuffer = test.planes[0].buffer
+                val uBuffer = test.planes[1].buffer
+                val vBuffer = test.planes[2].buffer
+
+                val ySize = yBuffer.remaining()
+                val uSize = uBuffer.remaining()
+                val vSize = uBuffer.remaining()
+
+                nv21 = ByteArray(ySize + uSize + vSize)
+
+                yBuffer.get(nv21, 0, ySize)
+                vBuffer.get(nv21, ySize, vSize)
+                uBuffer.get(nv21, ySize + vSize, uSize)
+
+                val outputStream = ByteArrayOutputStream()
+                val yuvImage = YuvImage(nv21, ImageFormat.NV21, test.width, test.height, null)
+                yuvImage.compressToJpeg(Rect(0, 0, test.width, test.height), 100, outputStream)
+                val byteBuffer = outputStream.toByteArray()
+                val bitmap = BitmapFactory.decodeByteArray(byteBuffer, 0, byteBuffer.size)
+                val resizedBitmap = Bitmap.createScaledBitmap(bitmap, 640, 640, false)
+
+                val tensorImage = TensorImage(INPUT_IMAGE_TYPE)
+                tensorImage.load(resizedBitmap)
+
+                val processedImage = imageProcessor.process(tensorImage)
+                val outputs = model.process(processedImage.tensorBuffer)
+                val outputFeature0 = outputs.outputFeature0AsTensorBuffer
+
+             /*   val matrix = android.graphics.Matrix()
+
+                val bitmapBuffer = Bitmap.createBitmap(
+                    test.width,
+                    test.height,
+                    Bitmap.Config.ARGB_8888
+                )
+
+                bitmapBuffer.copyPixelsFromBuffer(nv21.toBuffer())
+
+                val rotatedBitmap = Bitmap.createBitmap(bitmapBuffer,
+                    0,
+                    0,
+                    test.width,
+                    test.height,
+                    matrix,
+                    true)
+
+                try {
+
+                    val photoDirectory = File("/storage/emulated/0/Download").apply { mkdirs() }
+                    val timestamp = System.currentTimeMillis()
+                    val photoFile = File(photoDirectory, "combined_image_$timestamp.jpg")
+
+                    FileOutputStream(photoFile).use { out ->
+                        rotatedBitmap.compress(Bitmap.CompressFormat.JPEG, 100, out)
+                        out.flush()
+                    }
+
+                    val values = ContentValues().apply {
+                        put(MediaStore.Images.Media.DISPLAY_NAME, photoFile.name)
+                        put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg")
+                        put(MediaStore.Images.Media.DATA, photoFile.absolutePath)
+                    }
+                    this.activity.contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values)
+                    Log.d("CameraX", "Image added to gallery: ${photoFile.absolutePath}")
+                } catch (e: Exception) {
+                    Log.e("CameraX", "Error adding image to gallery: ${e.message}", e)
+                }*/
+
+               // val resizedBitmap = Bitmap.createScaledBitmap(rotatedBitmap, )
+               /* val buffer = test.planes[0].buffer
+                val bytes = ByteArray(buffer.remaining()).apply { buffer.get(this) }
+                val byteBuffer = ByteBuffer.wrap(bytes)
+                byteBuffer.rewind()*/
+
+              /*  val inputFeature0 = TensorBuffer.createFixedSize(intArrayOf(1, test.width, test.height, 3), DataType.FLOAT32)
+                inputFeature0.loadBuffer(nv21.toBuffer())
+
+                val outputs = model.process(inputFeature0)
+                val outputFeature0 = outputs.outputFeature0AsTensorBuffer*/
+
+                //bitmapBuffer.copyPixelsFromBuffer(byteBuffer)
+                //val bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+/*
+                val imageProcessor = ImageProcessor.Builder()
+                    .add(NormalizeOp(INPUT_MEAN, INPUT_STANDARD_DEVIATION))
+                    .add(CastOp(INPUT_IMAGE_TYPE))
+                    .build()*/
+
+               /* val imageProperties =
+                    ImageProperties
+                        .builder()
+                        .setHeight(test.height)
+                        .setWidth(test.width)
+                        .setColorSpaceType(ColorSpaceType.NV21)
+                        .build()*/
+
+               /* val imageProperties =
+                    ImageProperties
+                        .builder()
+                        .setHeight(test.height)
+                        .setWidth(test.width)
+                        .setColorSpaceType(ColorSpaceType.RGB)
+                        .build()
+*/
+                //imageProcessor.process()
+                //
+
+               /* val tensorImage = TensorImage(INPUT_IMAGE_TYPE)
+
+                tensorImage.load(nv21.toBuffer(), imageProperties)
+
+                val processedImage = imageProcessor.process(tensorImage)
+
+                val outputs = model.process(processedImage.tensorBuffer)
+                val outputFeature0 = outputs.outputFeature0AsTensorBuffer*/
+                /*val processedImage = imageProcessor.process(tensorImage)
+
+                val imageBuffer = arrayOf(processedImage.buffer)*/
+
+            /*    val buffer = test.planes[0].buffer
+
+                val bytes = ByteArray(buffer.remaining()).apply { buffer.get(this) }
+
+                val bitmapBuffer = Bitmap.createBitmap(
+                    test.width,
+                    test.height,
+                    Bitmap.Config.ARGB_8888
+                )
+
+
+                bitmapBuffer.copyPixelsFromBuffer(bytes.toBuffer())
+*//*
+                val resizedBitmap = Bitmap.createScaledBitmap(frame, w, h, false)
+                val tensorImage = TensorImage(INPUT_IMAGE_TYPE)
+                tensorImage.load(resizedBitmap)
+
+
+                val byteBuffer = byteArrayList.toByteArray().toBuffer()*//*
+                *//*byteArray += planes[0].buffer.array()
+                byteArray += planes[1].buffer.array()
+                byteArray += planes[2].buffer.array()*//*
+                //var byteBuffer = byteArrayOf().toBuffer()
+                *//*byteBuffer.put(planes[0].buffer)
+                byteBuffer.put(planes[1].buffer)
+                byteBuffer.put(planes[2].buffer)*//*
+
+                val inputFeature0 = TensorBuffer.createFixedSize(intArrayOf(1, test.width, test.height, 3), DataType.FLOAT32)
+
+                val shape = inputFeature0.shape
+
+                var flatSize = 1
+                val var3 = shape.size
+
+                for (var4 in 0 until var3) {
+                    val s = shape[var4]
+                    flatSize *= s
+                }
+
+                val expectedSize = DataType.FLOAT32.byteSize() * flatSize
+
+
+                inputFeature0.loadBuffer(bytes.toBuffer())
+
+// Runs model inference and gets result.
+                val outputs = model.process(inputFeature0)
+                val outputFeature0 = outputs.outputFeature0AsTensorBuffer*/
+            }
+            catch (e: Exception){
+                Log.e(TAG, "Failed to run inference", e)
+            }
+
+
+// Releases model resources if no longer used.
+            model.close()
+            test.close()
+        }
+        catch (e: Exception)
+        {
+            Log.e(TAG, "Failed to read model", e)
+        }
+
 
         try{
             backgroundRenderer.setUseDepthVisualization(renderer!!,
@@ -374,7 +684,7 @@ class ARGISRenderer(val activity: ARGISActivity):
             Log.i("Camera Location", "${cameraGeospatialPose.latitude},${cameraGeospatialPose.longitude},${cameraGeospatialPose.altitude}")
 
             updateLocationAccuracy(cameraGeospatialPose)
-
+            activity.arGISSurfaceView.updateEarthStatusText(earth, cameraGeospatialPose)
             //Attempt to place an anchor at the first point feature
             if(activity.latestGetFeatureResponse != null){
                 val features = activity.latestGetFeatureResponse!!.getFeatureResponseContent.features
@@ -401,7 +711,7 @@ class ARGISRenderer(val activity: ARGISActivity):
                 if(lineFeatures.any()){
 
                     Log.i("Count", lineFeatures.size.toString())
-
+                    //TODO: Filter out the lines that are not close to the camera's pose
                     lineFeatures.forEach {
                         lineFeature ->
                         //val lineFeature = lineFeatures.first()
@@ -412,7 +722,9 @@ class ARGISRenderer(val activity: ARGISActivity):
                         val thetaArray = calculateAngleForLineSegments(lineGeometry)
                         val scaleFactorArray = calculateScaleFactorsForLineSegments(lineGeometry)
 
-                        wrappedLineEarthAnchor.anchors.forEachIndexed{
+                        render.renderAssetsAtVertices(wrappedLineEarthAnchor);
+
+                      /*  wrappedLineEarthAnchor.anchors.forEachIndexed{
                             i,a ->
                             if(a == null) return@forEach
                             //TODO: Make use of the angles found in the theta array
@@ -426,9 +738,7 @@ class ARGISRenderer(val activity: ARGISActivity):
                                 render.renderAssetAtAnchor(a, wrappedLineEarthAnchor.selected, wrappedLineEarthAnchor.angle,
                                     activity.arGISSurfaceView.scaleFactor)
                             }
-
-
-                        }
+                        }*/
 
                         if(activity.arGISSurfaceView.allModelsRotate){
                             //Set Next Angle for asset to rotate at
@@ -471,7 +781,6 @@ class ARGISRenderer(val activity: ARGISActivity):
         backgroundRenderer.drawVirtualScene(renderer, virtualSceneFrameBuffer, Z_Near, Z_Far)
 
     }
-
 
     private fun Session.hasTrackingPlane() =
         getAllTrackables(Plane::class.java).any{it.trackingState == TrackingState.TRACKING}
@@ -601,7 +910,6 @@ class ARGISRenderer(val activity: ARGISActivity):
         val ySquared = y.pow(2)
 
         return kotlin.math.sqrt(xSquared + ySquared).toFloat()
-
     }
 
     private fun scaleAsset(modelMatrix: FloatArray, transformationMatrix: FloatArray, scaleFactor: Float, axis: Axis): FloatArray{
@@ -634,6 +942,171 @@ class ARGISRenderer(val activity: ARGISActivity):
         return scaledModelMatrix
     }
 
+    private fun ARRenderer.lookAt(matrix: FloatArray, anchorFrom: Anchor, anchorTo: Anchor): FloatArray {
+        val distanceX = anchorTo.pose.tx() - anchorFrom.pose.tx();
+        val distanceY = anchorTo.pose.ty() - anchorFrom.pose.ty();
+        val distanceZ = anchorTo.pose.tz() - anchorFrom.pose.tz();
+
+        val v = floatArrayOf(distanceX, distanceY, distanceZ);
+        val xxyyzz = v[0] * v[0] + v[1] * v[1] + v[2] * v[2];
+        val invLength = 1.0f/sqrt(xxyyzz);
+
+        val normalizedV = floatArrayOf(v[0] * invLength, v[1] * invLength, v[2] * invLength);
+        var up = floatArrayOf(0f, 0f, 0f);
+
+        if(abs(normalizedV[0]) < EPSILON && abs(normalizedV[2]) < EPSILON)
+        {
+            if(normalizedV[1] > 0)
+            {
+                up[2] = -1.0f
+            }
+            else
+            {
+                up[2] = 1.0f
+            }
+        }
+        else
+        {
+            up[1] = 1.0f
+            up[2] = 0f
+        }
+
+        val left = cross(up, normalizedV);
+        val xxyyzz2 = left[0] * left[0] + left[1] * left[1] + left[2] * left[2]
+        val invLength2 = 1.0f / sqrt(xxyyzz2);
+
+        val normalizedLeft = floatArrayOf(left[0] * invLength2, left[1] * invLength2, left[2] * invLength2)
+
+        up = cross(normalizedV, normalizedLeft);
+
+        val leftInt = 0;
+        val upInt = 1 * 4;
+        val forwardInt = 2 * 4;
+
+        matrix[leftInt] = left[0]
+        matrix[leftInt + 1] = left[1]
+        matrix[leftInt + 2] = left[2]
+
+        matrix[upInt] = up[0]
+        matrix[upInt + 1] = up[1]
+        matrix[upInt + 2] = up[2]
+
+        matrix[forwardInt] = normalizedV[0]
+        matrix[forwardInt + 1] = normalizedV[1]
+        matrix[forwardInt + 2] = normalizedV[2]
+
+        return matrix;
+    }
+
+    private fun cross(lhs: FloatArray, rhs: FloatArray): FloatArray
+    {
+        return floatArrayOf(
+            lhs[1] * rhs[2] - rhs[1] * lhs[2],
+            lhs[2] * rhs[0] - rhs[2] * lhs[0],
+            lhs[0] * rhs[1] - rhs[0] * lhs[1]
+        );
+    }
+
+    private fun ARRenderer.renderAssetsAtVertices(wrappedLineEarthAnchor: WrappedLineEarthAnchor)
+    {
+        wrappedLineEarthAnchor.anchors.forEachIndexed { i, anchor ->
+
+            if(anchor == null) return
+            val matrix = FloatArray(16);
+            anchor?.pose?.toMatrix(matrix, 0);
+
+            if(i + 1 < wrappedLineEarthAnchor.anchors.size)
+            {
+                val lookAtMatrix = lookAt(matrix, wrappedLineEarthAnchor.anchors[i]!!,
+                    wrappedLineEarthAnchor.anchors[i+1]!!);
+
+                //Scale Models (Must be last)
+                scaleMatrix = FloatArray(16)
+                val scaledRotatedModelMatrix = scaleAsset(lookAtMatrix,
+                    scaleMatrix, activity.arGISSurfaceView.scaleFactor, activity.arGISSurfaceView.modelZAxis)
+
+                Matrix.multiplyMM(modelViewMatrix, 0, viewMatrix, 0, scaledRotatedModelMatrix, 0)
+                Matrix.multiplyMM(modelViewProjectionMatrix, 0, projectionMatrix, 0, modelViewMatrix, 0)
+                Log.i("Draw", "Draw Unselected Object")
+                //mapMarkerObjectShader.setMat4("u_ModelViewProjection", modelViewProjectionMatrix)
+                pipeObjectShader.setMat4("u_ModelViewProjection", modelViewProjectionMatrix)
+                draw(pipeObjectMesh, pipeObjectShader, virtualSceneFrameBuffer)
+            }
+            else
+            {
+                render.renderAssetAtAnchor(anchor, wrappedLineEarthAnchor.selected, wrappedLineEarthAnchor.angle,
+                    activity.arGISSurfaceView.scaleFactor)
+            }
+
+
+        }
+
+       /* val matrix = FloatArray(16);
+        anchors[0]?.pose?.toMatrix(matrix, 0);
+        val lookAtMatrix = lookAt(matrix, anchors[0]!!, anchors[1]!!);*/
+
+
+       //First get the distances the assets are in X
+       /* val xCoordinates = ArrayList<Float>();
+        anchors.forEach{ anchor ->
+            //var currentMatrix = FloatArray(16);
+            //it?.pose?.toMatrix(currentMatrix, 0);
+            anchor?.pose?.let { p -> xCoordinates.add(p.tx()) }
+            //modelMatrices.add(currentMatrix);
+        }
+
+        //Then get the scale factor that each asset should increase by (which is why we divide by 2)
+        var equiDistantXs = 0.0f;
+        xCoordinates.forEachIndexed{ i, x ->
+            if(i + 1 < xCoordinates.size){
+                val xPrime = xCoordinates[i + 1]
+                equiDistantXs += (xPrime - x) / 2.0f
+            }
+        }
+
+        //Then apply the scaling to each asset in the line
+        val modelMatrices = ArrayList<FloatArray>()
+        anchors.forEach{ anchor ->
+            var currentMatrix = FloatArray(16)
+            anchor?.pose?.toMatrix(currentMatrix, 0)
+            modelMatrices.add(currentMatrix)
+        }*/
+
+      /*  var modelMatrix = FloatArray(16);
+        modelMatrices.forEach { mm ->
+            modelMatrix += mm;
+       }
+*/
+      /*  var modelMatrix = FloatArray(16);
+        modelMatrices.reversed().forEachIndexed {
+                i, mm ->
+
+            if(i == 0)
+            {
+                Matrix.multiplyMM(modelMatrix, 0, mm, 0, modelMatrices[1], 0)
+            }
+
+            else if(i != 1 && i + 1 < modelMatrices.size){
+                Matrix.multiplyMM(modelMatrix, 0, modelMatrix, 0, mm , 0);
+            }
+        }*/
+      /*  val modelMatrix = modelMatrices[modelMatrices.size - 1];
+        //Scale Models (Must be last)
+        scaleMatrix = FloatArray(16)
+        val scaledRotatedModelMatrix = scaleAsset(modelMatrix, scaleMatrix, 1.0f, activity.arGISSurfaceView.modelZAxis)*/
+
+     /*   //Calculate model/view/projection matrices
+        Matrix.multiplyMM(modelViewMatrix, 0, viewMatrix, 0, scaledRotatedModelMatrix, 0)
+        Matrix.multiplyMM(modelViewProjectionMatrix, 0, projectionMatrix, 0, modelViewMatrix, 0)
+
+        Log.i("Draw", "Draw Unselected Object")
+        //mapMarkerObjectShader.setMat4("u_ModelViewProjection", modelViewProjectionMatrix)
+        pipeObjectShader.setMat4("u_ModelViewProjection", modelViewProjectionMatrix)
+        draw(pipeObjectMesh, pipeObjectShader, virtualSceneFrameBuffer)*/
+    }
+
+    //private fun calculateDistancesAlongLine()
+
 //TODO: Create a method just for rendering line strings as these changes will likely break for other feature types
     private fun ARRenderer.renderAssetAtAnchor(anchor: Anchor, selected: Boolean=false, theta: Float = 0.0f, scaleFactor: Float = 1.0f){
 
@@ -643,7 +1116,6 @@ class ARGISRenderer(val activity: ARGISActivity):
 
         Log.i("renderAssetAtAnchor", "Anchor Before Rotation")
         prettyPrintMatrix(modelMatrix)
-
 
         rotationMatrix = FloatArray(16)
         val rotatedModelMatrix = rotateAsset(modelMatrix, rotationMatrix, theta, activity.arGISSurfaceView.modelRotationAxis)
@@ -662,20 +1134,18 @@ class ARGISRenderer(val activity: ARGISActivity):
         Matrix.multiplyMM(modelViewMatrix, 0, viewMatrix, 0, scaledRotatedModelMatrix, 0)
         Matrix.multiplyMM(modelViewProjectionMatrix, 0, projectionMatrix, 0, modelViewMatrix, 0)
 
-
         //Update shader properties and draw
         if(selected){
             selectedMapMarkerShader.setMat4("u_ModelViewProjection", modelViewProjectionMatrix)
             Log.i("Drawing Selected Feature Texture", "Drew Object Selected")
             draw(mapMarkerObjectMesh, selectedMapMarkerShader, virtualSceneFrameBuffer)
         }else{
-            Log.i("Draw", "Draw Normal Object")
+            Log.i("Draw", "Draw Unselected Object")
             //mapMarkerObjectShader.setMat4("u_ModelViewProjection", modelViewProjectionMatrix)
             pipeObjectShader.setMat4("u_ModelViewProjection", modelViewProjectionMatrix)
             draw(pipeObjectMesh, pipeObjectShader, virtualSceneFrameBuffer)
             //draw(mapMarkerObjectMesh, mapMarkerObjectShader, virtualSceneFrameBuffer)
         }
-
     }
 
     private fun handleTap(frame: Frame, camera: Camera, geospatialPose: GeospatialPose){
@@ -732,8 +1202,6 @@ class ARGISRenderer(val activity: ARGISActivity):
         catch (e: Exception){
             Log.e("Error an Hit Result Processing", e.message.toString())
         }
-
-
     }
 
     //Implemented this based off this thread
@@ -771,7 +1239,6 @@ class ARGISRenderer(val activity: ARGISActivity):
         val anchor2d = world2Screen(width, height, world2ScreenMatrix)
 
         Log.i("Anchor 2D Screen Coord", "${anchor2d[0]},${anchor2d[1]}")
-
     }
 
     private fun world2Screen(screenWidth: Int, screenHeight: Int, world2ScreenMatrix: FloatArray): DoubleArray {

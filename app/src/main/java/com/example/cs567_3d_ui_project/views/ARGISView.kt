@@ -17,6 +17,8 @@ import com.example.cs567_3d_ui_project.R
 import com.example.cs567_3d_ui_project.activities.ARGISActivity
 import com.example.cs567_3d_ui_project.argis.Axis
 import com.example.cs567_3d_ui_project.argis.helpers.TapHelper
+import com.google.ar.core.Earth
+import com.google.ar.core.GeospatialPose
 import com.google.ar.core.PlaybackStatus
 import com.google.ar.core.exceptions.CameraNotAvailableException
 
@@ -31,6 +33,8 @@ class ARGISView(val activity: ARGISActivity): DefaultLifecycleObserver {
 
     var modelRotationAxis = Axis.Y
     var modelScaleAxis = Axis.Y
+
+    var modelZAxis = Axis.Z;
 
     var scaleFactor = 1.0f
 
@@ -263,7 +267,7 @@ class ARGISView(val activity: ARGISActivity): DefaultLifecycleObserver {
         }
     }
 
-    val pausePlayback: ImageButton = root.findViewById<ImageButton>(R.id.pausePlayback).apply {
+    val pausePlayback: ImageButton = root.findViewById<ImageButton>(R.id.pause).apply {
         setOnClickListener{
             v ->
             v.visibility = View.GONE
@@ -283,7 +287,6 @@ class ARGISView(val activity: ARGISActivity): DefaultLifecycleObserver {
     }
 
     override fun onResume(owner: LifecycleOwner) {
-
         try{
             Log.i("SurfaceView", surfaceView!!.toString())
             surfaceView.onResume()
@@ -295,7 +298,6 @@ class ARGISView(val activity: ARGISActivity): DefaultLifecycleObserver {
     }
 
     override fun onPause(owner: LifecycleOwner) {
-
         try{
             Log.i("SurfaceView", surfaceView!!.toString())
             surfaceView.onPause()
@@ -307,7 +309,6 @@ class ARGISView(val activity: ARGISActivity): DefaultLifecycleObserver {
     }
 
     fun updateLocationAccuracy(locationAccuracyStatus: String){
-
         if(locationAccuracyTextView.text == locationAccuracyStatus){
             return
         }
@@ -315,8 +316,6 @@ class ARGISView(val activity: ARGISActivity): DefaultLifecycleObserver {
             locationAccuracyTextView.text = locationAccuracyStatus
         }
     }
-
-
 
     fun onClickPlayback(){
         Log.d(TAG, "onClickPlayback")
@@ -426,4 +425,29 @@ class ARGISView(val activity: ARGISActivity): DefaultLifecycleObserver {
         surfaceView.onResume()
         return true
     }
+
+    val earthStatusText = root.findViewById<TextView>(R.id.earthStatusText)
+
+    fun updateEarthStatusText(earth: Earth, cameraGeospatialPose: GeospatialPose?) {
+        activity.runOnUiThread {
+            val poseText = if (cameraGeospatialPose == null) "" else
+                activity.getString(
+                    R.string.geospatial_pose,
+                    cameraGeospatialPose.latitude,
+                    cameraGeospatialPose.longitude,
+                    cameraGeospatialPose.horizontalAccuracy,
+                    cameraGeospatialPose.altitude,
+                    cameraGeospatialPose.verticalAccuracy,
+                    cameraGeospatialPose.heading,
+                    cameraGeospatialPose.headingAccuracy
+                )
+            earthStatusText.text = activity.resources.getString(
+                R.string.earth_state,
+                earth.earthState.toString(),
+                earth.trackingState.toString(),
+                poseText
+            )
+        }
+    }
+
 }

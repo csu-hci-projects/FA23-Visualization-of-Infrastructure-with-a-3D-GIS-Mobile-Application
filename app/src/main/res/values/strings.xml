@@ -1,6 +1,8 @@
 <resources>
     <string name="app_name">CS567_3D_UI_Project</string>
     <string name="re_center_map_on_location_update">Center Map on Device Location</string>
+    <string translatable="false" name="geospatial_pose">LAT/LNG: %.6f˚, %.6f˚\n\t\t\tACCURACY: %.2fm\nALTITUDE: %.2fm\n\t\t\tACCURACY: %.2fm\nHEADING: %.1f˚\n\t\t\tACCURACY: %.1f˚</string>
+    <string name="earth_state">EarthState: %1$s\nTrackingState: %2$s\n%3$s</string>
     <string name="drawer_open">Open navigation drawer</string>
     <string name="drawer_close">Close navigation drawer</string>
     <string name="enter_ar_experience">Enter AR Experience</string>
