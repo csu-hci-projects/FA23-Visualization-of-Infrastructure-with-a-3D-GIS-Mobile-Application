@@ -8,6 +8,7 @@ import android.graphics.YuvImage
 import android.opengl.GLES30
 import android.opengl.Matrix
 import android.os.Build
+import android.os.SystemClock
 import android.util.DisplayMetrics
 import android.util.Log
 import androidx.lifecycle.DefaultLifecycleObserver
@@ -24,7 +25,7 @@ import com.example.cs567_3d_ui_project.argis.helpers.AnchorHelper
 import com.example.cs567_3d_ui_project.argis.helpers.DisplayRotationHelper
 import com.example.cs567_3d_ui_project.argis.helpers.TrackingStateHelper
 import com.example.cs567_3d_ui_project.argis.helpers.WrappedLineEarthAnchor
-import com.example.cs567_3d_ui_project.ml.Yolov1111725Float32
+import com.example.cs567_3d_ui_project.ml.Yolov1111725Float16
 import com.example.cs567_3d_ui_project.qgis_driver.resource_objects.wfs_resources.LineGeometry
 import com.example.cs567_3d_ui_project.qgis_driver.resource_objects.wfs_resources.PointGeometry
 import com.google.ar.core.Anchor
@@ -371,7 +372,9 @@ class ARGISRenderer(val activity: ARGISActivity):
                 null,
             )*/
 
-            val model = Yolov1111725Float32.newInstance(this.activity)
+            //val model = Yolov1111725Float32.newInstance(this.activity)
+            val model = Yolov1111725Float16.newInstance(this.activity)
+
             Log.i(TAG, "Model Load Success!")
             val test = frame.acquireCameraImage()
 
@@ -426,7 +429,9 @@ class ARGISRenderer(val activity: ARGISActivity):
 
                 //val processedImage = imageProcessor.process(tensorImage)
 
-             var nv21: ByteArray
+                var preProcessTime = SystemClock.uptimeMillis()
+
+                var nv21: ByteArray
                 val yBuffer = test.planes[0].buffer
                 val uBuffer = test.planes[1].buffer
                 val vBuffer = test.planes[2].buffer
@@ -452,9 +457,20 @@ class ARGISRenderer(val activity: ARGISActivity):
                 tensorImage.load(resizedBitmap)
 
                 val processedImage = imageProcessor.process(tensorImage)
+
+                preProcessTime = SystemClock.uptimeMillis() - preProcessTime
+
+                Log.i(TAG, "Preprocess Time: ${preProcessTime / 1000.0f} seconds")
+
+                var interfaceTime = SystemClock.uptimeMillis()
+
                 val outputs = model.process(processedImage.tensorBuffer)
                 val outputFeature0 = outputs.outputFeature0AsTensorBuffer
 
+                interfaceTime = SystemClock.uptimeMillis() - interfaceTime
+
+                Log.i(TAG, "Inference Ran! Shape: ${outputFeature0.shape.size}")
+                Log.i(TAG, "Inference Time: ${interfaceTime / 1000.0f} seconds")
              /*   val matrix = android.graphics.Matrix()
 
                 val bitmapBuffer = Bitmap.createBitmap(
