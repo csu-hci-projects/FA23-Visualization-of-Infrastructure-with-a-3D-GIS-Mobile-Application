@@ -1,14 +1,8 @@
 package com.example.cs567_3d_ui_project.argis.renderers
 
-import android.graphics.Bitmap
-import android.graphics.BitmapFactory
-import android.graphics.ImageFormat
-import android.graphics.Rect
-import android.graphics.YuvImage
 import android.opengl.GLES30
 import android.opengl.Matrix
 import android.os.Build
-import android.os.SystemClock
 import android.util.DisplayMetrics
 import android.util.Log
 import androidx.lifecycle.DefaultLifecycleObserver
@@ -47,9 +41,7 @@ import org.tensorflow.lite.DataType
 import org.tensorflow.lite.support.common.ops.CastOp
 import org.tensorflow.lite.support.common.ops.NormalizeOp
 import org.tensorflow.lite.support.image.ImageProcessor
-import org.tensorflow.lite.support.image.TensorImage
 import java.io.BufferedReader
-import java.io.ByteArrayOutputStream
 import java.io.IOException
 import java.io.InputStream
 import java.io.InputStreamReader
@@ -343,7 +335,7 @@ class ARGISRenderer(val activity: ARGISActivity):
         val camera = frame.camera
 
         try{
-            /*val options = ObjectDetector.ObjectDetectorOptions.builder()
+ /*           val options = ObjectDetector.ObjectDetectorOptions.builder()
                 .setMaxResults(5)
                 .setScoreThreshold(0.3f)
                 .build()
@@ -352,7 +344,8 @@ class ARGISRenderer(val activity: ARGISActivity):
                 "yolov11_11_7_25_float32.tflite",
                 options
             )*/
-          /*  val litertBuffer = FileUtil.loadMappedFile(this.activity, "yolov11_11_7_25_float32.tflite")
+
+           /* val litertBuffer = FileUtil.loadMappedFile(this.activity, "yolov11_11_7_25_float32.tflite")
             val metadataExtractor = MetadataExtractor(litertBuffer)
             val labels = mutableListOf<String>()
             if (metadataExtractor.hasMetadata()) {
@@ -373,12 +366,16 @@ class ARGISRenderer(val activity: ARGISActivity):
             )*/
 
             //val model = Yolov1111725Float32.newInstance(this.activity)
-            val model = Yolov1111725Float16.newInstance(this.activity)
 
-            Log.i(TAG, "Model Load Success!")
+
+
             val test = frame.acquireCameraImage()
-
+            var model: Yolov1111725Float16? = null
             try{
+
+                model = Yolov1111725Float16.newInstance(this.activity)
+
+                Log.i(TAG, "Model Load Success!")
 
                 val INPUT_MEAN = 0f
                 val INPUT_STANDARD_DEVIATION = 255f
@@ -429,48 +426,55 @@ class ARGISRenderer(val activity: ARGISActivity):
 
                 //val processedImage = imageProcessor.process(tensorImage)
 
-                var preProcessTime = SystemClock.uptimeMillis()
+              /*  if(SystemClock.uptimeMillis() % 5.0f == 0.0f){
 
-                var nv21: ByteArray
-                val yBuffer = test.planes[0].buffer
-                val uBuffer = test.planes[1].buffer
-                val vBuffer = test.planes[2].buffer
+                    var preProcessTime = SystemClock.uptimeMillis()
 
-                val ySize = yBuffer.remaining()
-                val uSize = uBuffer.remaining()
-                val vSize = uBuffer.remaining()
+                    var nv21: ByteArray
+                    val yBuffer = test.planes[0].buffer
+                    val uBuffer = test.planes[1].buffer
+                    val vBuffer = test.planes[2].buffer
 
-                nv21 = ByteArray(ySize + uSize + vSize)
+                    val ySize = yBuffer.remaining()
+                    val uSize = uBuffer.remaining()
+                    val vSize = uBuffer.remaining()
 
-                yBuffer.get(nv21, 0, ySize)
-                vBuffer.get(nv21, ySize, vSize)
-                uBuffer.get(nv21, ySize + vSize, uSize)
+                    nv21 = ByteArray(ySize + uSize + vSize)
 
-                val outputStream = ByteArrayOutputStream()
-                val yuvImage = YuvImage(nv21, ImageFormat.NV21, test.width, test.height, null)
-                yuvImage.compressToJpeg(Rect(0, 0, test.width, test.height), 100, outputStream)
-                val byteBuffer = outputStream.toByteArray()
-                val bitmap = BitmapFactory.decodeByteArray(byteBuffer, 0, byteBuffer.size)
-                val resizedBitmap = Bitmap.createScaledBitmap(bitmap, 640, 640, false)
+                    yBuffer.get(nv21, 0, ySize)
+                    vBuffer.get(nv21, ySize, vSize)
+                    uBuffer.get(nv21, ySize + vSize, uSize)
 
-                val tensorImage = TensorImage(INPUT_IMAGE_TYPE)
-                tensorImage.load(resizedBitmap)
+                    val outputStream = ByteArrayOutputStream()
+                    val yuvImage = YuvImage(nv21, ImageFormat.NV21, test.width, test.height, null)
+                    yuvImage.compressToJpeg(Rect(0, 0, test.width, test.height), 100, outputStream)
+                    val byteBuffer = outputStream.toByteArray()
+                    val bitmap = BitmapFactory.decodeByteArray(byteBuffer, 0, byteBuffer.size)
+                    val resizedBitmap = Bitmap.createScaledBitmap(bitmap, 640, 640, false)
 
-                val processedImage = imageProcessor.process(tensorImage)
+                    val tensorImage = TensorImage(INPUT_IMAGE_TYPE)
+                    tensorImage.load(resizedBitmap)
 
-                preProcessTime = SystemClock.uptimeMillis() - preProcessTime
+                    val processedImage = imageProcessor.process(tensorImage)
 
-                Log.i(TAG, "Preprocess Time: ${preProcessTime / 1000.0f} seconds")
+                    preProcessTime = SystemClock.uptimeMillis() - preProcessTime
 
-                var interfaceTime = SystemClock.uptimeMillis()
+                    Log.i(TAG, "Preprocess Time: ${preProcessTime / 1000.0f} seconds")
 
-                val outputs = model.process(processedImage.tensorBuffer)
-                val outputFeature0 = outputs.outputFeature0AsTensorBuffer
+                    var interfaceTime = SystemClock.uptimeMillis()
 
-                interfaceTime = SystemClock.uptimeMillis() - interfaceTime
+                    val outputs = model.process(processedImage.tensorBuffer)
+                    val outputFeature0 = outputs.outputFeature0AsTensorBuffer
 
-                Log.i(TAG, "Inference Ran! Shape: ${outputFeature0.shape.size}")
-                Log.i(TAG, "Inference Time: ${interfaceTime / 1000.0f} seconds")
+                    interfaceTime = SystemClock.uptimeMillis() - interfaceTime
+
+
+                    Log.i(TAG, "Inference Time: ${interfaceTime / 1000.0f} seconds")
+                    Log.i(TAG, "Result: Size ${outputFeature0.floatArray.size}")
+                    Log.i(TAG, "Inference Ran! Shape: ${outputFeature0.shape.size}")
+                }*/
+
+
              /*   val matrix = android.graphics.Matrix()
 
                 val bitmapBuffer = Bitmap.createBitmap(
@@ -613,10 +617,13 @@ class ARGISRenderer(val activity: ARGISActivity):
             catch (e: Exception){
                 Log.e(TAG, "Failed to run inference", e)
             }
+            finally {
+                // Releases model resources if no longer used.
+                model?.close()
+            }
 
 
-// Releases model resources if no longer used.
-            model.close()
+
             test.close()
         }
         catch (e: Exception)

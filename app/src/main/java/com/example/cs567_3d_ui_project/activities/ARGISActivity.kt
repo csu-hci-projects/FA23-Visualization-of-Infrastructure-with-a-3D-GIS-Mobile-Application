@@ -30,7 +30,6 @@ class ARGISActivity: AppCompatActivity() {
     lateinit var arGISSessionHelper: ARGISSessionLifecycleHelper
     lateinit var argisRenderer: ARGISRenderer
     var latestGetFeatureResponse: GetFeatureResponse? = null
-
     val depthSettings = DepthSettings()
 
     companion object{
@@ -109,6 +108,11 @@ class ARGISActivity: AppCompatActivity() {
         ARRenderer(arGISSurfaceView.surfaceView, argisRenderer, assets)
 
         depthSettings.onCreate(this)
+
+        /*val imageAnalysis = ImageAnalysis.Builder().setTargetAspectRatio(RATIO_4_3)
+            .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+            .setOutputImageFormat(ImageAnalysis.OUTPUT_IMAGE_FORMAT_RGBA_8888).build()*/
+
     }
 
     private fun createSession(session: Session){
