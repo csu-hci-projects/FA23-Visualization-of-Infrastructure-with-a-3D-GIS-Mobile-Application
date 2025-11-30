@@ -1,8 +1,12 @@
 package com.example.cs567_3d_ui_project.argis.renderers
 
+import android.content.ContentValues
+import android.graphics.Bitmap
+import android.media.Image
 import android.opengl.GLES30
 import android.opengl.Matrix
 import android.os.Build
+import android.provider.MediaStore
 import android.util.DisplayMetrics
 import android.util.Log
 import androidx.lifecycle.DefaultLifecycleObserver
@@ -17,9 +21,10 @@ import com.example.cs567_3d_ui_project.argis.Texture
 import com.example.cs567_3d_ui_project.argis.buffers.Framebuffer
 import com.example.cs567_3d_ui_project.argis.helpers.AnchorHelper
 import com.example.cs567_3d_ui_project.argis.helpers.DisplayRotationHelper
+import com.example.cs567_3d_ui_project.argis.helpers.ObjectDetectionHelper
 import com.example.cs567_3d_ui_project.argis.helpers.TrackingStateHelper
 import com.example.cs567_3d_ui_project.argis.helpers.WrappedLineEarthAnchor
-import com.example.cs567_3d_ui_project.ml.Yolov1111725Float16
+import com.example.cs567_3d_ui_project.argis.mlutils.YuvToRgbConverter
 import com.example.cs567_3d_ui_project.qgis_driver.resource_objects.wfs_resources.LineGeometry
 import com.example.cs567_3d_ui_project.qgis_driver.resource_objects.wfs_resources.PointGeometry
 import com.google.ar.core.Anchor
@@ -37,11 +42,11 @@ import com.google.ar.core.TrackingState
 import com.google.ar.core.exceptions.CameraNotAvailableException
 import com.google.ar.core.exceptions.NotYetAvailableException
 import com.google.ar.core.exceptions.SessionPausedException
-import org.tensorflow.lite.DataType
-import org.tensorflow.lite.support.common.ops.CastOp
-import org.tensorflow.lite.support.common.ops.NormalizeOp
-import org.tensorflow.lite.support.image.ImageProcessor
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
 import java.io.BufferedReader
+import java.io.File
+import java.io.FileOutputStream
 import java.io.IOException
 import java.io.InputStream
 import java.io.InputStreamReader
@@ -50,6 +55,7 @@ import kotlin.math.abs
 import kotlin.math.atan
 import kotlin.math.pow
 import kotlin.math.sqrt
+
 
 class ARGISRenderer(val activity: ARGISActivity):
     ARRenderer.Renderer,
@@ -106,6 +112,9 @@ class ARGISRenderer(val activity: ARGISActivity):
     val anchorHelper = AnchorHelper()
 
     private lateinit var earth: Earth
+
+    private val _detectionResult = MutableSharedFlow<ObjectDetectionHelper.DetectionResult>()
+    val detectionResult: SharedFlow<ObjectDetectionHelper.DetectionResult> = _detectionResult
 
     companion object{
         val TAG: String = ARGISRenderer::class.java.simpleName
@@ -309,198 +318,128 @@ class ARGISRenderer(val activity: ARGISActivity):
         return list
     }
 
-    override fun onDrawFrame(renderer: ARRenderer?) {
-        val session = session ?: return
-
-        if(!hasSetTextureNames){
-            session.setCameraTextureNames(intArrayOf(backgroundRenderer.cameraColorTexture.getTextureId()))
-            hasSetTextureNames = true
+    fun Frame.tryAcquireCameraImage() =
+        try {
+            acquireCameraImage()
+        } catch (e: Exception) {
+            Log.e(TAG, "Camera not available during onDrawFrame", e)
+            null
         }
 
-        displayRotationHelper.updateSessionIfNeeded(session)
-
-        val frame =
-            try{
-                session.update()
-            }
-            catch (e: CameraNotAvailableException){
-                Log.e(TAG, "Camera not available during onDrawFrame", e)
-                return
-            }
-            catch (cpe: SessionPausedException){
-                Log.e(TAG, "Can't update paused session!!!")
-                return
-            }
-
-        val camera = frame.camera
-
+    fun runInference(frame: Frame){
         try{
- /*           val options = ObjectDetector.ObjectDetectorOptions.builder()
-                .setMaxResults(5)
-                .setScoreThreshold(0.3f)
-                .build()
-            val detector = ObjectDetector.createFromFileAndOptions(
-                this.activity,
-                "yolov11_11_7_25_float32.tflite",
-                options
-            )*/
+            /*           val options = ObjectDetector.ObjectDetectorOptions.builder()
+                           .setMaxResults(5)
+                           .setScoreThreshold(0.3f)
+                           .build()
+                       val detector = ObjectDetector.createFromFileAndOptions(
+                           this.activity,
+                           "yolov11_11_7_25_float32.tflite",
+                           options
+                       )*/
 
-           /* val litertBuffer = FileUtil.loadMappedFile(this.activity, "yolov11_11_7_25_float32.tflite")
-            val metadataExtractor = MetadataExtractor(litertBuffer)
-            val labels = mutableListOf<String>()
-            if (metadataExtractor.hasMetadata()) {
-                val inputStream = metadataExtractor.getAssociatedFile("labelmap.txt")
-                labels.addAll(readFileInputStream(inputStream))
-                Log.i(
-                    TAG, "Successfully loaded model metadata ${metadataExtractor.associatedFileNames}"
-                )
-            }
+            /* val litertBuffer = FileUtil.loadMappedFile(this.activity, "yolov11_11_7_25_float32.tflite")
+             val metadataExtractor = MetadataExtractor(litertBuffer)
+             val labels = mutableListOf<String>()
+             if (metadataExtractor.hasMetadata()) {
+                 val inputStream = metadataExtractor.getAssociatedFile("labelmap.txt")
+                 labels.addAll(readFileInputStream(inputStream))
+                 Log.i(
+                     TAG, "Successfully loaded model metadata ${metadataExtractor.associatedFileNames}"
+                 )
+             }
 
-            val interpreter = Interpreter(litertBuffer)*/
+             val interpreter = Interpreter(litertBuffer)*/
 
-          /*  CompiledModel.create(
-                context.assets,
-                "selfie_multiclass.tflite",
-                CompiledModel.Options(toAccelerator(acceleratorEnum)),
-                null,
-            )*/
+            /*  CompiledModel.create(
+                  context.assets,
+                  "selfie_multiclass.tflite",
+                  CompiledModel.Options(toAccelerator(acceleratorEnum)),
+                  null,
+              )*/
 
             //val model = Yolov1111725Float32.newInstance(this.activity)
+            var image: Image? = null
+            /**/
 
 
 
-            val test = frame.acquireCameraImage()
-            var model: Yolov1111725Float16? = null
-            try{
+            try
+            {
+                image = frame.acquireCameraImage()
 
-                model = Yolov1111725Float16.newInstance(this.activity)
+                val converter = YuvToRgbConverter(activity)
 
-                Log.i(TAG, "Model Load Success!")
-
-                val INPUT_MEAN = 0f
-                val INPUT_STANDARD_DEVIATION = 255f
-                val INPUT_IMAGE_TYPE = DataType.FLOAT32
-                val OUTPUT_IMAGE_TYPE = DataType.FLOAT32
-                val CONFIDENCE_THRESHOLD = 0.3F
-                val IOU_THRESHOLD = 0.5F
-
-                val imageProcessor = ImageProcessor.Builder()
-                    .add(NormalizeOp(INPUT_MEAN, INPUT_STANDARD_DEVIATION))
-                    .add(CastOp(INPUT_IMAGE_TYPE))
-                    .build()
-
-
-                //https://stackoverflow.com/questions/48191513/how-to-take-picture-with-camera-using-arcore
-               /* val pixelData = IntArray(test.width*test.height)
-                val buffer = IntBuffer.wrap(pixelData)
-                buffer.rewind()
-                GLES30.glReadPixels(0, 0, test.width,
-                    test.height, GLES30.GL_RGBA, GLES30.GL_UNSIGNED_BYTE, buffer)*/
-
-              /*  val mHeight = test.height
-                val mWidth = test.width
-
-                val bitmapData = IntArray(pixelData.size)
-                for(i in 0 until mHeight){
-                    for(j in 0 until mWidth){
-                        val p = pixelData[i * mWidth + j]
-                        val b = p and 0x00ff0000 shr 16
-                        val r = p and 0x000000ff shl 16
-                        val ga = p and -0xff0100
-                        bitmapData[(mHeight - i - 1) * mWidth + j] = ga or r or b
-                    }
+                val bm0 = Bitmap.createBitmap(image.width, image.height, Bitmap.Config.ARGB_8888).apply {
+                    converter.yuvToRgb(image, this)
                 }
 
-                val bitmap = Bitmap.createBitmap(
-                    bitmapData,
-                    test.width,
-                    test.height,
-                    Bitmap.Config.ARGB_8888
-                )
+                //val bm1 = converter.yuvToRgb3(image)
 
-                val resizedBitmap = Bitmap.createScaledBitmap(bitmap,  test.width,
-                    test.height, false)
+                //val bm1 = converter.yuvToRgb2(image)
 
-                val tensorImage = TensorImage(INPUT_IMAGE_TYPE)
-                tensorImage.load(resizedBitmap)*/
-
-                //val processedImage = imageProcessor.process(tensorImage)
-
-              /*  if(SystemClock.uptimeMillis() % 5.0f == 0.0f){
-
-                    var preProcessTime = SystemClock.uptimeMillis()
-
-                    var nv21: ByteArray
-                    val yBuffer = test.planes[0].buffer
-                    val uBuffer = test.planes[1].buffer
-                    val vBuffer = test.planes[2].buffer
-
-                    val ySize = yBuffer.remaining()
-                    val uSize = uBuffer.remaining()
-                    val vSize = uBuffer.remaining()
-
-                    nv21 = ByteArray(ySize + uSize + vSize)
-
-                    yBuffer.get(nv21, 0, ySize)
-                    vBuffer.get(nv21, ySize, vSize)
-                    uBuffer.get(nv21, ySize + vSize, uSize)
-
-                    val outputStream = ByteArrayOutputStream()
-                    val yuvImage = YuvImage(nv21, ImageFormat.NV21, test.width, test.height, null)
-                    yuvImage.compressToJpeg(Rect(0, 0, test.width, test.height), 100, outputStream)
-                    val byteBuffer = outputStream.toByteArray()
-                    val bitmap = BitmapFactory.decodeByteArray(byteBuffer, 0, byteBuffer.size)
-                    val resizedBitmap = Bitmap.createScaledBitmap(bitmap, 640, 640, false)
-
-                    val tensorImage = TensorImage(INPUT_IMAGE_TYPE)
-                    tensorImage.load(resizedBitmap)
-
-                    val processedImage = imageProcessor.process(tensorImage)
-
-                    preProcessTime = SystemClock.uptimeMillis() - preProcessTime
-
-                    Log.i(TAG, "Preprocess Time: ${preProcessTime / 1000.0f} seconds")
-
-                    var interfaceTime = SystemClock.uptimeMillis()
-
-                    val outputs = model.process(processedImage.tensorBuffer)
-                    val outputFeature0 = outputs.outputFeature0AsTensorBuffer
-
-                    interfaceTime = SystemClock.uptimeMillis() - interfaceTime
-
-
-                    Log.i(TAG, "Inference Time: ${interfaceTime / 1000.0f} seconds")
-                    Log.i(TAG, "Result: Size ${outputFeature0.floatArray.size}")
-                    Log.i(TAG, "Inference Ran! Shape: ${outputFeature0.shape.size}")
-                }*/
-
-
-             /*   val matrix = android.graphics.Matrix()
-
-                val bitmapBuffer = Bitmap.createBitmap(
-                    test.width,
-                    test.height,
-                    Bitmap.Config.ARGB_8888
-                )
-
-                bitmapBuffer.copyPixelsFromBuffer(nv21.toBuffer())
-
-                val rotatedBitmap = Bitmap.createBitmap(bitmapBuffer,
-                    0,
-                    0,
-                    test.width,
-                    test.height,
-                    matrix,
-                    true)
+//                val nv21 = converter.imageToByteArray2(image)
+//                val nv211 = converter.imageToByteArray3(image)
+//
+//                val outputStream = ByteArrayOutputStream()
+//                val yuvImage = YuvImage(nv21, ImageFormat.NV21, image.width, image.height, null)
+//                var success = yuvImage.compressToJpeg(Rect(0, 0, image.width, image.height), 100, outputStream)
+//
+//                success = false
+//
+//                val outputStream2 = ByteArrayOutputStream()
+//                val yuvImage2 = YuvImage(nv211, ImageFormat.NV21, image.width, image.height, null)
+//                val success2 = yuvImage2.compressToJpeg(Rect(0, 0, image.width, image.height), 100, outputStream2)
+//
+//                val output0 = outputStream.toByteArray()
+//                val output1 = outputStream2.toByteArray()
+//
+//                val bm1 = BitmapFactory.decodeByteArray(
+//                    output0,
+//                    0,
+//                    output0.size
+//                )
+//
+//                val bm2 = BitmapFactory.decodeByteArray(
+//                    output1,
+//                    0,
+//                    output1.size
+//                )
+//
+//                outputStream.close()
+//                outputStream2.close()
+//
+//                val mat0 = IntArray(bm0.height * bm0.width)
+//                val mat1 = IntArray(bm1.height * bm1.width)
+//                val mat2 = IntArray(bm2.height * bm2.width)
+//
+//                for(i in 0 until bm0.width){
+//                    for(j in 0 until bm0.height){
+//                        mat0[i + j] = bm0.getPixel(i,j)
+//                    }
+//                }
+//
+//
+//                for(i in 0 until bm1.width){
+//                    for(j in 0 until bm1.height){
+//                        mat1[i + j] = bm1.getPixel(i,j)
+//                    }
+//                }
+//
+//                for(i in 0 until bm2.width){
+//                    for(j in 0 until bm2.height){
+//                        mat2[i + j] = bm2.getPixel(i,j)
+//                    }
+//                }
 
                 try {
 
                     val photoDirectory = File("/storage/emulated/0/Download").apply { mkdirs() }
                     val timestamp = System.currentTimeMillis()
-                    val photoFile = File(photoDirectory, "combined_image_$timestamp.jpg")
+                    val photoFile = File(photoDirectory, "image_conv_$timestamp.jpg")
 
                     FileOutputStream(photoFile).use { out ->
-                        rotatedBitmap.compress(Bitmap.CompressFormat.JPEG, 100, out)
+                        bm0.compress(Bitmap.CompressFormat.JPEG, 100, out)
                         out.flush()
                     }
 
@@ -509,62 +448,617 @@ class ARGISRenderer(val activity: ARGISActivity):
                         put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg")
                         put(MediaStore.Images.Media.DATA, photoFile.absolutePath)
                     }
-                    this.activity.contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values)
+                    activity.contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values)
                     Log.d("CameraX", "Image added to gallery: ${photoFile.absolutePath}")
                 } catch (e: Exception) {
                     Log.e("CameraX", "Error adding image to gallery: ${e.message}", e)
+                }
+
+
+                //test = frame.acquireCameraImage()
+
+                //var preProcessTime = SystemClock.uptimeMillis()
+
+
+
+                //val mat0 = IntArray(bm0.height * bm0.width)
+
+
+
+//                this.activity.lifecycleScope.launch (Dispatchers.IO){
+//                    var interfaceTime = SystemClock.uptimeMillis()
+//
+//                    var objectDetectionHelper = ObjectDetectionHelper(activity)
+//
+//                    objectDetectionHelper.setupObjectDetector()
+//                    var model: Yolov1111725Float32? = null
+//                    var model2: Yolov1111725Float16? = null
+//
+//                    try{
+//                        val depthResults = activity.depthAnythingV2.predict(bm0)
+//                        Log.i(TAG, "Inference Time: ${depthResults.second}")
+//
+//                        val photoDirectory = File("/storage/emulated/0/Download").apply { mkdirs() }
+//                        val timestamp = System.currentTimeMillis()
+//                        val photoFile = File(photoDirectory, "depth_result_$timestamp.jpg")
+//
+//
+//                        FileOutputStream(photoFile).use { out ->
+//                            depthResults.first.compress(Bitmap.CompressFormat.JPEG, 100, out)
+//                            out.flush()
+//                        }
+//
+//                        val values = ContentValues().apply {
+//                            put(MediaStore.Images.Media.DISPLAY_NAME, photoFile.name)
+//                            put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg")
+//                            put(MediaStore.Images.Media.DATA, photoFile.absolutePath)
+//                        }
+//                        activity.contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values)
+//                    }
+//                    catch (e: Exception){
+//                        Log.e("INFERENCE", "Failed to run inference", e)
+//                    }
+//                    finally {
+//                        interfaceTime = SystemClock.uptimeMillis() - interfaceTime
+//                        Log.i(TAG, "Inference Time: ${interfaceTime / 1000.0f} seconds")
+//                                //model?.close();
+//                    }
+//                }
+
+                /*  val pixelCount = test.width * test.height
+                  val pixelSizeBits = ImageFormat.getBitsPerPixel(ImageFormat.YUV_420_888)
+                  val testSize = pixelCount * (pixelSizeBits/8)*/
+                // var nv21 = ByteArray(pixelCount * pixelSizeBits / 8)
+//                val nv21 = converter.imageToByteArray2(test)
+//                val nv211 = converter.imageToByteArray3(test)
+                /*   var nv21_2: ByteArray
+                   val yBuffer = test.planes[0].buffer
+                   val uBuffer = test.planes[1].buffer
+                   val vBuffer = test.planes[2].buffer
+
+                   val ySize = yBuffer.remaining()
+                   val uSize = uBuffer.remaining()
+                   val vSize = uBuffer.remaining()
+
+                   nv21_2 = ByteArray(ySize + uSize + vSize)
+
+                   yBuffer.get(nv21_2, 0, ySize)
+                   vBuffer.get(nv21_2, ySize, vSize)
+                   uBuffer.get(nv21_2, ySize + vSize, uSize)*/
+                // and nv21_2.all{ it.toFloat() != 0.0f }
+                //if(nv21.all { it.toFloat() != 0.0f }) {
+//
+//                    val outputStream = ByteArrayOutputStream()
+//                    val yuvImage = YuvImage(nv21, ImageFormat.NV21, test.width, test.height, null)
+//                    var success = yuvImage.compressToJpeg(Rect(0, 0, test.width, test.height), 100, outputStream)
+//
+//                    success = false
+//
+//                    val outputStream2 = ByteArrayOutputStream()
+//                    val yuvImage2 = YuvImage(nv211, ImageFormat.NV21, test.width, test.height, null)
+//                    val success2 = yuvImage2.compressToJpeg(Rect(0, 0, test.width, test.height), 100, outputStream2)
+//
+//                    val output0 = outputStream.toByteArray()
+//                    val output1 = outputStream2.toByteArray()
+//
+//                    val bm1 = BitmapFactory.decodeByteArray(
+//                        output0,
+//                        0,
+//                        output0.size
+//                    )
+//
+//                    val bm2 = BitmapFactory.decodeByteArray(
+//                        output1,
+//                        0,
+//                        output1.size
+//                    )
+//
+//                    val mat0 = IntArray(bm0.height * bm0.width)
+//                    val mat1 = IntArray(bm1.height * bm1.width)
+//                    val mat2 = IntArray(bm2.height * bm2.width)
+//
+//                    for(i in 0 until bm0.width){
+//                        for(j in 0 until bm0.height){
+//                            mat0[i + j] = bm0.getPixel(i,j)
+//                        }
+//                    }
+//                    for(i in 0 until bm1.width){
+//                        for(j in 0 until bm1.height){
+//                            mat1[i + j] = bm1.getPixel(i,j)
+//                        }
+//                    }
+//
+//                    for(i in 0 until bm2.width){
+//                        for(j in 0 until bm2.height){
+//                            mat2[i + j] = bm2.getPixel(i,j)
+//                        }
+//                    }
+
+
+
+//                    if(success)
+//                    {
+//                        //val output = outputStream.toByteArray()
+//                        /*  val outputStream2 = ByteArrayOutputStream()
+//                          val yuvImage2 = YuvImage(nv21_2, ImageFormat.NV21, test.width, test.height, null)
+//                          yuvImage2.compressToJpeg(Rect(0, 0, test.width, test.height), 80, outputStream2)
+//
+//                          val output2 = outputStream2.toByteArray()*/
+//
+//                        /*  val bitmap = Bitmap.createBitmap(
+//                              test.width,
+//                              test.height,
+//                              Bitmap.Config.ARGB_8888
+//                          )
+//                          bitmap.copyPixelsFromBuffer(ob)*/
+//
+////                        val bitmap = BitmapFactory.decodeByteArray(
+////                            output,
+////                            0,
+////                            output.size
+////                        )
+//
+//                        //outputStream.close()
+////
+////                        val INPUT_MEAN = 0f
+////                        val INPUT_STANDARD_DEVIATION = 255f
+////                        val INPUT_IMAGE_TYPE = DataType.FLOAT32
+////                        val OUTPUT_IMAGE_TYPE = DataType.FLOAT32
+////                        val CONFIDENCE_THRESHOLD = 0.3F
+////                        val IOU_THRESHOLD = 0.5F
+////
+////                        val imageProcessor = ImageProcessor.Builder()
+////                            .add(NormalizeOp(INPUT_MEAN, INPUT_STANDARD_DEVIATION))
+////                            .add(CastOp(INPUT_IMAGE_TYPE))
+////                            .add(Rot90Op(90))
+////                            .build()
+////
+////                        val resizedBitmap = Bitmap.createScaledBitmap(bitmap, 640, 640, false)
+////
+////                        val tensorImage = TensorImage(INPUT_IMAGE_TYPE)
+////                        tensorImage.load(resizedBitmap)
+////
+////                        val processedImage = imageProcessor.process(tensorImage)
+//
+//                        /* val matrix = android.graphics.Matrix()
+//                         matrix.postRotate(90.0f)
+//
+//                         val rotatedBitmap = Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
+//
+//                         if (rotatedBitmap != bitmap) {
+//                             bitmap.recycle();
+//                         }*/
+//                        val width = test.width.toFloat()
+//                        val height = test.height.toFloat()
+//
+//                        this.activity.lifecycleScope.launch (Dispatchers.IO){
+//                            var interfaceTime = SystemClock.uptimeMillis()
+//
+//                            var objectDetectionHelper = ObjectDetectionHelper(activity)
+//
+//                            objectDetectionHelper.setupObjectDetector()
+//                            var model: Yolov1111725Float32? = null
+//                            var model2: Yolov1111725Float16? = null
+//
+//                            try{
+////                                model = Yolov1111725Float32.newInstance(activity)
+////                                //model2 = Yolov1111725Float16.newInstance(activity)
+////
+////                                val outputs = model.process(processedImage.tensorBuffer)
+////                                val outputFeature0 = outputs.outputFeature0AsTensorBuffer
+////                                Log.i(TAG, "Result: Size ${outputFeature0.floatArray.size}")
+//////                                //Log.i(TAG, "Output Feature Class ${outputFeature0.floatArray[0]}")
+////                                Log.i(TAG, "Inference Ran! Shape: ${outputFeature0.shape.size}")
+////                                val bb1 = objectDetectionHelper.postProcess(outputFeature0.floatArray, width, height)
+////                                Log.i(TAG, "BBs: ${bb1.size}")
+//
+//
+////                                val depthResults = activity.depthAnythingV2.predict(bitmap)
+////                                Log.i(TAG, "Inference Time: ${depthResults.second}")
+//
+////                                try {
+////
+////                                    val photoDirectory = File("/storage/emulated/0/Download").apply { mkdirs() }
+////                                    val timestamp = System.currentTimeMillis()
+////                                    val photoFile = File(photoDirectory, "depth_result_$timestamp.jpg")
+////
+////                                    FileOutputStream(photoFile).use { out ->
+////                                        depthResults.first.compress(Bitmap.CompressFormat.JPEG, 100, out)
+////                                        out.flush()
+////                                    }
+////
+////                                    val values = ContentValues().apply {
+////                                        put(MediaStore.Images.Media.DISPLAY_NAME, photoFile.name)
+////                                        put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg")
+////                                        put(MediaStore.Images.Media.DATA, photoFile.absolutePath)
+////                                    }
+////                                    activity.contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values)
+////                                    Log.d("CameraX", "Image added to gallery: ${photoFile.absolutePath}")
+////                                } catch (e: Exception) {
+////                                    Log.e("CameraX", "Error adding image to gallery: ${e.message}", e)
+////                                }
+//
+////                                val boundingBoxes = objectDetectionHelper.bestBox(outputFeature0.floatArray)
+////                                Log.i(TAG, "BBs: ${boundingBoxes.size}")
+//
+////                                val outputs2 = model2.process(processedImage.tensorBuffer)
+////                                val outputFeature02 = outputs2.outputFeature0AsTensorBuffer
+////
+////                                //val bb2 = objectDetectionHelper.bestBox(outputFeature02.floatArray)
+////                                val bb2 = objectDetectionHelper.postProcess(outputFeature02.floatArray, height, width)
+////                                Log.i(TAG, "BBs: ${bb2.size}")
+////
+//                                //val otherOuts = objectDetectionHelper.detect(bitmap, 90)
+//
+//                                //Log.i(TAG, "Other Result: Size ${otherOuts.s}")
+//
+//
+//                            }
+//                            catch (e: Exception){
+//                                Log.e("INFERENCE", "Failed to run inference", e)
+//                            }finally {
+//                                interfaceTime = SystemClock.uptimeMillis() - interfaceTime
+//                                Log.i(TAG, "Inference Time: ${interfaceTime / 1000.0f} seconds")
+//
+//                                //model?.close();
+//                            }
+//                        }
+//
+//                    }
+
+
+                //}
+
+
+                //test.close()
+
+
+                //val resizedBitmap = Bitmap.createScaledBitmap(bitmap, 640, 640, false)
+
+//                val tensorImage = TensorImage(INPUT_IMAGE_TYPE)
+//                tensorImage.load(resizedBitmap)
+//                val processedImage = imageProcessor.process(tensorImage)
+
+
+                /* test = frame.acquireCameraImage()
+                 val converter = YuvToRgbConverter(this.activity)
+                 val bitmap = Bitmap.createBitmap(test.width, test.height, Bitmap.Config.ARGB_8888).apply {
+                     converter.yuvToRgb(test, this)
+                 }
+
+                 Log.i(TAG, "Result: Size ${bitmap.height}")
+                 Log.i(TAG, "Result: Size ${bitmap.width}")*/
+
+
+
+
+                /*this.activity.lifecycleScope.launch {
+
+                    val bitmapData = IntArray(pixelData.size)
+                    for(i in 0 until mHeight){
+                        for(j in 0 until mWidth){
+                            val p = pixelData[i * mWidth + j]
+                            val b = p and 0x00ff0000 shr 16
+                            val r = p and 0x000000ff shl 16
+                            val ga = p and -0xff0100
+                            bitmapData[(mHeight - i - 1) * mWidth + j] = ga or r or b
+                        }
+                    }
+
+                    val bitmap = Bitmap.createBitmap(
+                        bitmapData,
+                        mWidth,
+                        mHeight,
+                        Bitmap.Config.ARGB_8888
+                    )
+
+                    val resizedBitmap = Bitmap.createScaledBitmap(bitmap,  640,
+                        640, false)
+
+                    try {
+
+                        val photoDirectory = File("/storage/emulated/0/Download").apply { mkdirs() }
+                        val timestamp = System.currentTimeMillis()
+                        val photoFile = File(photoDirectory, "combined_image_$timestamp.jpg")
+
+                        FileOutputStream(photoFile).use { out ->
+                            resizedBitmap.compress(Bitmap.CompressFormat.JPEG, 100, out)
+                            out.flush()
+                        }
+
+                        val values = ContentValues().apply {
+                            put(MediaStore.Images.Media.DISPLAY_NAME, photoFile.name)
+                            put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg")
+                            put(MediaStore.Images.Media.DATA, photoFile.absolutePath)
+                        }
+                        activity.contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values)
+                        Log.d("CameraX", "Image added to gallery: ${photoFile.absolutePath}")
+                    } catch (e: Exception) {
+                        Log.e("CameraX", "Error adding image to gallery: ${e.message}", e)
+                    }
                 }*/
 
-               // val resizedBitmap = Bitmap.createScaledBitmap(rotatedBitmap, )
-               /* val buffer = test.planes[0].buffer
-                val bytes = ByteArray(buffer.remaining()).apply { buffer.get(this) }
-                val byteBuffer = ByteBuffer.wrap(bytes)
-                byteBuffer.rewind()*/
+                //Log.i(TAG, "Model Load Success!")
 
-              /*  val inputFeature0 = TensorBuffer.createFixedSize(intArrayOf(1, test.width, test.height, 3), DataType.FLOAT32)
-                inputFeature0.loadBuffer(nv21.toBuffer())
+                /* val INPUT_MEAN = 0f
+                 val INPUT_STANDARD_DEVIATION = 255f
+                 val INPUT_IMAGE_TYPE = DataType.FLOAT32
+                 val OUTPUT_IMAGE_TYPE = DataType.FLOAT32
+                 val CONFIDENCE_THRESHOLD = 0.3F
+                 val IOU_THRESHOLD = 0.5F
 
-                val outputs = model.process(inputFeature0)
-                val outputFeature0 = outputs.outputFeature0AsTensorBuffer*/
+                 val imageProcessor = ImageProcessor.Builder()
+                     .add(NormalizeOp(INPUT_MEAN, INPUT_STANDARD_DEVIATION))
+                     .add(CastOp(INPUT_IMAGE_TYPE))
+                     .build()
 
-                //bitmapBuffer.copyPixelsFromBuffer(byteBuffer)
-                //val bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
-/*
-                val imageProcessor = ImageProcessor.Builder()
-                    .add(NormalizeOp(INPUT_MEAN, INPUT_STANDARD_DEVIATION))
-                    .add(CastOp(INPUT_IMAGE_TYPE))
-                    .build()*/
+                 var preProcessTime = SystemClock.uptimeMillis()
 
-               /* val imageProperties =
-                    ImageProperties
-                        .builder()
-                        .setHeight(test.height)
-                        .setWidth(test.width)
-                        .setColorSpaceType(ColorSpaceType.NV21)
-                        .build()*/
+                 var nv21: ByteArray
+                 val yBuffer = test.planes[0].buffer
+                 val uBuffer = test.planes[1].buffer
+                 val vBuffer = test.planes[2].buffer
 
-               /* val imageProperties =
-                    ImageProperties
-                        .builder()
-                        .setHeight(test.height)
-                        .setWidth(test.width)
-                        .setColorSpaceType(ColorSpaceType.RGB)
-                        .build()
+                 val ySize = yBuffer.remaining()
+                 val uSize = uBuffer.remaining()
+                 val vSize = uBuffer.remaining()
+
+                 nv21 = ByteArray(ySize + uSize + vSize)
+
+                 yBuffer.get(nv21, 0, ySize)
+                 vBuffer.get(nv21, ySize, vSize)
+                 uBuffer.get(nv21, ySize + vSize, uSize)
+
+                 val outputStream = ByteArrayOutputStream()
+                 val yuvImage = YuvImage(nv21, ImageFormat.NV21, test.width, test.height, null)
+                 yuvImage.compressToJpeg(Rect(0, 0, test.width, test.height), 100, outputStream)
+                 val byteBuffer = outputStream.toByteArray()
+                 val bitmap = BitmapFactory.decodeByteArray(byteBuffer, 0, byteBuffer.size)
+                 val resizedBitmap = Bitmap.createScaledBitmap(bitmap, 640, 640, false)
+
+                 val tensorImage = TensorImage(INPUT_IMAGE_TYPE)
+                 tensorImage.load(resizedBitmap)
+
+                 val processedImage = imageProcessor.process(tensorImage)
+
+                 preProcessTime = SystemClock.uptimeMillis() - preProcessTime
+
+                 Log.i(TAG, "Preprocess Time: ${preProcessTime / 1000.0f} seconds")
+
+                 this.activity.lifecycleScope.launch(Dispatchers.IO){
+                     var interfaceTime = SystemClock.uptimeMillis()
+
+                     var objectDetectionHelper = ObjectDetectionHelper(activity)
+
+                     //objectDetectionHelper.setupObjectDetector()
+                     var model: Yolov1111725Float16? = null
+
+                     try{
+                         model = Yolov1111725Float16.newInstance(activity)
+                         val outputs = model.process(processedImage.tensorBuffer)
+                         val outputFeature0 = outputs.outputFeature0AsTensorBuffer
+                         Log.i(TAG, "Result: Size ${outputFeature0.floatArray.size}")
+                         Log.i(TAG, "Output Feature Class ${outputFeature0.floatArray[0]}")
+                         Log.i(TAG, "Inference Ran! Shape: ${outputFeature0.shape.size}")
+
+                     //objectDetectionHelper.detect(bitmap, 90)
+                     }
+                     catch (e: Exception){
+                         Log.e("INFERENCE", "Failed to run inference", e)
+                     }finally {
+                         interfaceTime = SystemClock.uptimeMillis() - interfaceTime
+                         Log.i(TAG, "Inference Time: ${interfaceTime / 1000.0f} seconds")
+
+                         model?.close();
+                     }
+                 }*/
+            }
+            catch (e: Exception)
+            {
+                Log.e(TAG, "Failed to run inference", e)
+            }
+            finally {
+                image?.close()
+
+            }
+
+
+            /*  val test = frame.acquireCameraImage()
+              var model: Yolov1111725Float16? = null*/
+            /* try{
+
+                 model = Yolov1111725Float16.newInstance(this.activity)
+
+                 Log.i(TAG, "Model Load Success!")
+
+                 val INPUT_MEAN = 0f
+                 val INPUT_STANDARD_DEVIATION = 255f
+                 val INPUT_IMAGE_TYPE = DataType.FLOAT32
+                 val OUTPUT_IMAGE_TYPE = DataType.FLOAT32
+                 val CONFIDENCE_THRESHOLD = 0.3F
+                 val IOU_THRESHOLD = 0.5F
+
+                 val imageProcessor = ImageProcessor.Builder()
+                     .add(NormalizeOp(INPUT_MEAN, INPUT_STANDARD_DEVIATION))
+                     .add(CastOp(INPUT_IMAGE_TYPE))
+                     .build()*/
+
+
+            //https://stackoverflow.com/questions/48191513/how-to-take-picture-with-camera-using-arcore
+            /* val pixelData = IntArray(test.width*test.height)
+             val buffer = IntBuffer.wrap(pixelData)
+             buffer.rewind()
+             GLES30.glReadPixels(0, 0, test.width,
+                 test.height, GLES30.GL_RGBA, GLES30.GL_UNSIGNED_BYTE, buffer)*/
+
+            /*  val mHeight = test.height
+              val mWidth = test.width
+
+              val bitmapData = IntArray(pixelData.size)
+              for(i in 0 until mHeight){
+                  for(j in 0 until mWidth){
+                      val p = pixelData[i * mWidth + j]
+                      val b = p and 0x00ff0000 shr 16
+                      val r = p and 0x000000ff shl 16
+                      val ga = p and -0xff0100
+                      bitmapData[(mHeight - i - 1) * mWidth + j] = ga or r or b
+                  }
+              }
+
+              val bitmap = Bitmap.createBitmap(
+                  bitmapData,
+                  test.width,
+                  test.height,
+                  Bitmap.Config.ARGB_8888
+              )
+
+              val resizedBitmap = Bitmap.createScaledBitmap(bitmap,  test.width,
+                  test.height, false)
+
+              val tensorImage = TensorImage(INPUT_IMAGE_TYPE)
+              tensorImage.load(resizedBitmap)*/
+
+            //val processedImage = imageProcessor.process(tensorImage)
+
+            /* if(SystemClock.uptimeMillis() % 5.0f == 0.0f){*/
+
+            /*   var preProcessTime = SystemClock.uptimeMillis()
+
+               var nv21: ByteArray
+               val yBuffer = test.planes[0].buffer
+               val uBuffer = test.planes[1].buffer
+               val vBuffer = test.planes[2].buffer
+
+               val ySize = yBuffer.remaining()
+               val uSize = uBuffer.remaining()
+               val vSize = uBuffer.remaining()
+
+               nv21 = ByteArray(ySize + uSize + vSize)
+
+               yBuffer.get(nv21, 0, ySize)
+               vBuffer.get(nv21, ySize, vSize)
+               uBuffer.get(nv21, ySize + vSize, uSize)
+
+               val outputStream = ByteArrayOutputStream()
+               val yuvImage = YuvImage(nv21, ImageFormat.NV21, test.width, test.height, null)
+               yuvImage.compressToJpeg(Rect(0, 0, test.width, test.height), 100, outputStream)
+               val byteBuffer = outputStream.toByteArray()
+               val bitmap = BitmapFactory.decodeByteArray(byteBuffer, 0, byteBuffer.size)
+               val resizedBitmap = Bitmap.createScaledBitmap(bitmap, 640, 640, false)
+
+               val tensorImage = TensorImage(INPUT_IMAGE_TYPE)
+               tensorImage.load(resizedBitmap)
+
+               val processedImage = imageProcessor.process(tensorImage)
+
+               preProcessTime = SystemClock.uptimeMillis() - preProcessTime
+
+               Log.i(TAG, "Preprocess Time: ${preProcessTime / 1000.0f} seconds")*/
+            /*
+                                var interfaceTime = SystemClock.uptimeMillis()
+
+                                val outputs = model.process(processedImage.tensorBuffer)
+                                val outputFeature0 = outputs.outputFeature0AsTensorBuffer
+
+                                interfaceTime = SystemClock.uptimeMillis() - interfaceTime
+
+
+                                Log.i(TAG, "Inference Time: ${interfaceTime / 1000.0f} seconds")
+                                Log.i(TAG, "Result: Size ${outputFeature0.floatArray.size}")
+                                Log.i(TAG, "Inference Ran! Shape: ${outputFeature0.shape.size}")*/
+            //}
+
+
+            /*   val matrix = android.graphics.Matrix()
+
+               val bitmapBuffer = Bitmap.createBitmap(
+                   test.width,
+                   test.height,
+                   Bitmap.Config.ARGB_8888
+               )
+
+               bitmapBuffer.copyPixelsFromBuffer(nv21.toBuffer())
+
+               val rotatedBitmap = Bitmap.createBitmap(bitmapBuffer,
+                   0,
+                   0,
+                   test.width,
+                   test.height,
+                   matrix,
+                   true)
+
+               try {
+
+                   val photoDirectory = File("/storage/emulated/0/Download").apply { mkdirs() }
+                   val timestamp = System.currentTimeMillis()
+                   val photoFile = File(photoDirectory, "combined_image_$timestamp.jpg")
+
+                   FileOutputStream(photoFile).use { out ->
+                       rotatedBitmap.compress(Bitmap.CompressFormat.JPEG, 100, out)
+                       out.flush()
+                   }
+
+                   val values = ContentValues().apply {
+                       put(MediaStore.Images.Media.DISPLAY_NAME, photoFile.name)
+                       put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg")
+                       put(MediaStore.Images.Media.DATA, photoFile.absolutePath)
+                   }
+                   this.activity.contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values)
+                   Log.d("CameraX", "Image added to gallery: ${photoFile.absolutePath}")
+               } catch (e: Exception) {
+                   Log.e("CameraX", "Error adding image to gallery: ${e.message}", e)
+               }*/
+
+            // val resizedBitmap = Bitmap.createScaledBitmap(rotatedBitmap, )
+            /* val buffer = test.planes[0].buffer
+             val bytes = ByteArray(buffer.remaining()).apply { buffer.get(this) }
+             val byteBuffer = ByteBuffer.wrap(bytes)
+             byteBuffer.rewind()*/
+
+            /*  val inputFeature0 = TensorBuffer.createFixedSize(intArrayOf(1, 640, 640, 3), DataType.FLOAT32)
+              inputFeature0.loadBuffer(nv21.toBuffer())
+
+              val outputs = model.process(inputFeature0)
+              val outputFeature0 = outputs.outputFeature0AsTensorBuffer*/
+
+            //bitmapBuffer.copyPixelsFromBuffer(byteBuffer)
+            //val bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+            /*
+                            val imageProcessor = ImageProcessor.Builder()
+                                .add(NormalizeOp(INPUT_MEAN, INPUT_STANDARD_DEVIATION))
+                                .add(CastOp(INPUT_IMAGE_TYPE))
+                                .build()*/
+
+            /* val imageProperties =
+                 ImageProperties
+                     .builder()
+                     .setHeight(test.height)
+                     .setWidth(test.width)
+                     .setColorSpaceType(ColorSpaceType.NV21)
+                     .build()*/
+
+            /* val imageProperties =
+                 ImageProperties
+                     .builder()
+                     .setHeight(test.height)
+                     .setWidth(test.width)
+                     .setColorSpaceType(ColorSpaceType.RGB)
+                     .build()
 */
-                //imageProcessor.process()
-                //
+            //imageProcessor.process()
+            //
 
-               /* val tensorImage = TensorImage(INPUT_IMAGE_TYPE)
+            /* val tensorImage = TensorImage(INPUT_IMAGE_TYPE)
 
-                tensorImage.load(nv21.toBuffer(), imageProperties)
+             tensorImage.load(nv21.toBuffer(), imageProperties)
 
-                val processedImage = imageProcessor.process(tensorImage)
+             val processedImage = imageProcessor.process(tensorImage)
 
-                val outputs = model.process(processedImage.tensorBuffer)
-                val outputFeature0 = outputs.outputFeature0AsTensorBuffer*/
-                /*val processedImage = imageProcessor.process(tensorImage)
+             val outputs = model.process(processedImage.tensorBuffer)
+             val outputFeature0 = outputs.outputFeature0AsTensorBuffer*/
+            /*val processedImage = imageProcessor.process(tensorImage)
 
-                val imageBuffer = arrayOf(processedImage.buffer)*/
+            val imageBuffer = arrayOf(processedImage.buffer)*/
 
             /*    val buffer = test.planes[0].buffer
 
@@ -607,29 +1101,54 @@ class ARGISRenderer(val activity: ARGISActivity):
 
                 val expectedSize = DataType.FLOAT32.byteSize() * flatSize
 
-
                 inputFeature0.loadBuffer(bytes.toBuffer())
 
 // Runs model inference and gets result.
                 val outputs = model.process(inputFeature0)
                 val outputFeature0 = outputs.outputFeature0AsTensorBuffer*/
-            }
-            catch (e: Exception){
-                Log.e(TAG, "Failed to run inference", e)
-            }
-            finally {
-                // Releases model resources if no longer used.
-                model?.close()
-            }
+            /*   }
+               catch (e: Exception){
+                   Log.e(TAG, "Failed to run inference", e)
+               }
+               finally {*/
+            // Releases model resources if no longer used.
+//                model?.close()
+            //}
 
 
 
-            test.close()
+
         }
         catch (e: Exception)
         {
-            Log.e(TAG, "Failed to read model", e)
+            Log.e(TAG, "Failed to execute inferencing", e)
         }
+    }
+
+    override fun onDrawFrame(renderer: ARRenderer?) {
+        val session = session ?: return
+
+        if(!hasSetTextureNames){
+            session.setCameraTextureNames(intArrayOf(backgroundRenderer.cameraColorTexture.getTextureId()))
+            hasSetTextureNames = true
+        }
+
+        displayRotationHelper.updateSessionIfNeeded(session)
+
+        val frame =
+            try{
+                session.update()
+            }
+            catch (e: CameraNotAvailableException){
+                Log.e(TAG, "Camera not available during onDrawFrame", e)
+                return
+            }
+            catch (cpe: SessionPausedException){
+                Log.e(TAG, "Can't update paused session!!!")
+                return
+            }
+
+        val camera = frame.camera
 
 
         try{
@@ -651,13 +1170,16 @@ class ARGISRenderer(val activity: ARGISActivity):
         activity.depthSettings.depthColorVisualizationEnabled()
 
         if(camera.trackingState == TrackingState.TRACKING && shouldGetDepthImage){
+            var depthImage: Image? = null
             try{
-                val depthImage = frame.acquireDepthImage16Bits()
+                depthImage = frame.acquireDepthImage16Bits()
                 backgroundRenderer.updateCameraDepthTexture(depthImage)
-                depthImage.close()
             }
             catch (e: NotYetAvailableException){
                 Log.w("Update Camera Depth Texture", e.message.toString())
+            }
+            finally {
+                depthImage?.close()
             }
         }
 
@@ -682,6 +1204,9 @@ class ARGISRenderer(val activity: ARGISActivity):
         if(frame.timestamp != 0L){
             //Suppress rendering if the camera did not produce the first frame yet.
             backgroundRenderer.drawBackground(renderer)
+
+
+
         }
 
         if(camera.trackingState == TrackingState.PAUSED){
@@ -802,6 +1327,8 @@ class ARGISRenderer(val activity: ARGISActivity):
         }
 
         backgroundRenderer.drawVirtualScene(renderer, virtualSceneFrameBuffer, Z_Near, Z_Far)
+
+        runInference(frame)
 
     }
 

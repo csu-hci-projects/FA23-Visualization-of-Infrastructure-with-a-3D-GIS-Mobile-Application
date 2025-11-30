@@ -6,27 +6,37 @@ import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.RectF
-import android.os.SystemClock
-import androidx.camera.core.ImageProxy
+import android.util.Log
+import com.example.cs567_3d_ui_project.argis.mlutils.BoundingBox
+import com.example.cs567_3d_ui_project.argis.mlutils.OBBDetection
+import com.example.cs567_3d_ui_project.argis.mlutils.OrientedBoundingBox
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.withContext
+import org.tensorflow.lite.DataType
 import org.tensorflow.lite.Interpreter
+import org.tensorflow.lite.support.common.FileUtil
+import org.tensorflow.lite.support.common.ops.CastOp
+import org.tensorflow.lite.support.common.ops.NormalizeOp
 import org.tensorflow.lite.support.image.ImageProcessor
 import org.tensorflow.lite.support.image.TensorImage
 import org.tensorflow.lite.support.image.ops.Rot90Op
-import java.nio.FloatBuffer
+import org.tensorflow.lite.support.tensorbuffer.TensorBuffer
+import java.nio.ByteBuffer
+import kotlin.math.cos
+import kotlin.math.pow
+import kotlin.math.sin
 
 class ObjectDetectionHelper(
     val context: Context,
     var threshold: Float = THRESHOLD_DEFAULT,
     var maxResults: Int = MAX_RESULTS_DEFAULT,
-    var delegate: Delegate = Delegate.CPU
+    var delegate: Delegate = Delegate.CPU,
+    var model: Model = MODEL_DEFAULT
 ) {
 
     private var interpreter: Interpreter? = null
-    private lateinit var labels: List<String>
 
     private val _detectionResult = MutableSharedFlow<DetectionResult>()
     val detectionResult: SharedFlow<DetectionResult> = _detectionResult
@@ -35,9 +45,16 @@ class ObjectDetectionHelper(
     val error: SharedFlow<Throwable> = _error
 
     companion object {
-        val MODEL_DEFAULT = Model.EfficientDetLite2
-        const val MAX_RESULTS_DEFAULT = 5
+        val MODEL_DEFAULT = Model.YoloV1111725float32
+        const val MAX_RESULTS_DEFAULT = 10
         const val THRESHOLD_DEFAULT = 0.5F
+
+        private const val INPUT_MEAN = 0f
+        private const val INPUT_STANDARD_DEVIATION = 255f
+        private val INPUT_IMAGE_TYPE = DataType.FLOAT32
+        private val OUTPUT_IMAGE_TYPE = DataType.FLOAT32
+        private const val CONFIDENCE_THRESHOLD = 0.20F
+        private const val IOU_THRESHOLD = 0.5F
 
         const val TAG = "ObjectDetectorHelper"
     }
@@ -47,7 +64,38 @@ class ObjectDetectionHelper(
     }
 
     enum class Model(val fileName: String) {
-        EfficientDetLite2("yolov11_11_7_25.float16.tflite"),
+        YoloV1111725float16("yolov11_11_7_25_float16.tflite"),
+        YoloV1111725float32("yolov11_11_7_25_float32.tflite"),
+    }
+
+    // Initialize the object detector using current settings on the
+    // thread that is using it. CPU can be used with detectors
+    // that are created on the main thread and used on a background thread, but
+    // the GPU delegate needs to be used on the thread that initialized the detector
+    suspend fun setupObjectDetector() {
+        try {
+            val litertBuffer = FileUtil.loadMappedFile(context, model.fileName)
+            /*labels = getModelMetadata(litertBuffer)*/
+            interpreter = Interpreter(litertBuffer, Interpreter.Options().apply {
+                numThreads = 5
+                useNNAPI = delegate == Delegate.NNAPI
+            })
+            Log.i(TAG, "Successfully init Interpreter!")
+
+
+         /*   val (_, tensorHeight, tensorWidth, _) = interpreter!!.getInputTensor(0).shape()
+            Log.i(TAG, "Input tensor shape Height: $tensorHeight, Width: $tensorWidth")
+
+            val outputShape = interpreter!!.getOutputTensor(0).shape()
+            numChannel = outputShape[1]
+            numElements = outputShape[2]
+
+            Log.i(TAG, "Output tensor shape Channels: $numChannel, NumElements: $numElements")*/
+
+        } catch (e: Exception) {
+            _error.emit(e)
+            Log.e(TAG, "TFLite failed to load model with error: " + e.message)
+        }
     }
 
     private fun getDetections(
@@ -64,7 +112,7 @@ class ObjectDetectionHelper(
             val categoryIndex = categories[i].toInt()
             detections.add(
                 Detection(
-                    label = labels[categoryIndex],
+                    label = labels()[categoryIndex],
                     boundingBox = boundingBoxList[i],
                     score = scores[i]
                 )
@@ -76,82 +124,454 @@ class ObjectDetectionHelper(
             .sortedByDescending { it.score }
     }
 
+    suspend fun detectRaw(bitmap: Bitmap, rotationDegrees: Int): ByteArray
+    {
+        if (interpreter == null) return ByteArray(0)
+        return withContext(Dispatchers.IO) {
+            val (_, tensorHeight, tensorWidth, _) = interpreter!!.getInputTensor(0).shape()
+            Log.i(TAG, "Input tensor shape Height: $tensorHeight, Width: $tensorWidth")
+
+            if (tensorWidth == 0 || tensorHeight == 0) {
+                return@withContext ByteArray(0)
+            }
+
+            val scaledBitmap = scaleBitmap(bitmap, tensorWidth, tensorHeight)
+
+            // Preprocess the image and convert it into a TensorImage for classification.
+            val tensorImage = createTensorImage(
+                bitmap = scaledBitmap, rotationDegrees = rotationDegrees
+            )
+
+            return@withContext detectImageRaw(tensorImage).array()
+        }
+
+    }
+
     // Runs object detection on live streaming cameras frame-by-frame and returns the results
     // asynchronously to the caller.
     suspend fun detect(bitmap: Bitmap, rotationDegrees: Int) {
         if (interpreter == null) return
         withContext(Dispatchers.IO) {
-            val startTime = SystemClock.uptimeMillis()
-            val (_, h, w, _) = interpreter!!.getInputTensor(0).shape()
+            val (_, tensorHeight, tensorWidth, _) = interpreter!!.getInputTensor(0).shape()
+            Log.i(TAG, "Input tensor shape Height: $tensorHeight, Width: $tensorWidth")
+
+            if(tensorWidth == 0 || tensorHeight == 0){
+                return@withContext
+            }
+
+            val scaledBitmap = scaleBitmap(bitmap, tensorWidth, tensorHeight)
+/*
+            try {
+
+                val photoDirectory = File("/storage/emulated/0/Download").apply { mkdirs() }
+                val timestamp = System.currentTimeMillis()
+                val photoFile = File(photoDirectory, "combined_image_$timestamp.jpg")
+
+                FileOutputStream(photoFile).use { out ->
+                    scaledBitmap.compress(Bitmap.CompressFormat.JPEG, 100, out)
+                    out.flush()
+                }
+
+                val values = ContentValues().apply {
+                    put(MediaStore.Images.Media.DISPLAY_NAME, photoFile.name)
+                    put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg")
+                    put(MediaStore.Images.Media.DATA, photoFile.absolutePath)
+                }
+
+                context.contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values)
+                Log.d("CameraX", "Image added to gallery: ${photoFile.absolutePath}")
+            } catch (e: Exception) {
+                Log.e("CameraX", "Error adding image to gallery: ${e.message}", e)
+            }
+*/
 
             // Preprocess the image and convert it into a TensorImage for classification.
             val tensorImage = createTensorImage(
-                bitmap = bitmap, width = w, height = h, rotationDegrees = rotationDegrees
+                bitmap = scaledBitmap, rotationDegrees = rotationDegrees
             )
 
-            val output = detectImage(tensorImage)
+            val detections = detectImage(tensorImage)
 
-            val locationOutput = output[0]
-            val categoryOutput = output[1]
-            val scoreOutput = output[2]
-            val detections = getDetections(
-                locations = locationOutput,
-                categories = categoryOutput,
-                scores = scoreOutput,
-                width = w,
-                scaleRatio = h.toFloat() / tensorImage.height
-            )
-            val inferenceTime = SystemClock.uptimeMillis() - startTime
+            Log.i(TAG, "Completed Detection! Count: ${detections.size}")
 
             val detectionResult = DetectionResult(
-                detections = detections,
-                inferenceTime = inferenceTime,
-                inputImageWidth = w,
-                inputImageHeight = h,
-            )
+                    detections = detections,
+                    inputImageWidth = tensorWidth,
+                    inputImageHeight = tensorHeight,
+                )
             _detectionResult.emit(detectionResult)
         }
     }
 
-    suspend fun detect(imageProxy: ImageProxy) {
-        detect(
-            bitmap = imageProxy.toBitmap(), rotationDegrees = imageProxy.imageInfo.rotationDegrees
-        )
+    fun detectImageRaw(tensorImage: TensorImage): ByteBuffer {
+        val imageBuffer = tensorImage.buffer
+
+        val outputShape = interpreter!!.getOutputTensor(0).shape()
+
+        val numChannel = outputShape[1]
+        val numElements = outputShape[2]
+
+        val output = TensorBuffer.createFixedSize(intArrayOf(1, numChannel, numElements), DataType.FLOAT32)
+        interpreter!!.run(imageBuffer, output.buffer)
+
+        return output.buffer
     }
 
-    private fun detectImage(tensorImage: TensorImage): List<FloatArray> {
-        val locationOutputShape = interpreter!!.getOutputTensor(0).shape()
-        val categoryOutputShape = interpreter!!.getOutputTensor(1).shape()
-        val scoreOutputShape = interpreter!!.getOutputTensor(2).shape()
+    fun detectImage(tensorImage: TensorImage): List<BoundingBox> {
 
-        val locationOutputBuffer =
-            FloatBuffer.allocate(locationOutputShape[1] * locationOutputShape[2])
-        val scoreOutputBuffer = FloatBuffer.allocate(scoreOutputShape[1])
-        val categoryOutputBuffer = FloatBuffer.allocate(categoryOutputShape[1])
+        val imageBuffer = tensorImage.buffer
 
-        locationOutputBuffer.rewind()
-        scoreOutputBuffer.rewind()
-        categoryOutputBuffer.rewind()
-        interpreter?.runForMultipleInputsOutputs(
-            arrayOf(tensorImage.tensorBuffer.buffer), mapOf(
-                Pair(0, locationOutputBuffer),
-                Pair(1, categoryOutputBuffer),
-                Pair(2, scoreOutputBuffer),
-            )
-        )
+        val outputShape = interpreter!!.getOutputTensor(0).shape()
 
-        locationOutputBuffer.rewind()
-        scoreOutputBuffer.rewind()
-        categoryOutputBuffer.rewind()
-        val locationOutput = FloatArray(locationOutputBuffer.capacity())
-        val scoreOutput = FloatArray(scoreOutputBuffer.capacity())
-        val categoryOutput = FloatArray(categoryOutputBuffer.capacity())
+        val numChannel = outputShape[1]
+        val numElements = outputShape[2]
 
-        locationOutputBuffer.get(locationOutput)
-        scoreOutputBuffer.get(scoreOutput)
-        categoryOutputBuffer.get(categoryOutput)
+        val output = TensorBuffer.createFixedSize(intArrayOf(1, numChannel, numElements), DataType.FLOAT32)
+        interpreter!!.run(imageBuffer, output.buffer)
 
-        return listOf(locationOutput, categoryOutput, scoreOutput)
+
+        return bestBox(output.floatArray)
+    }
+
+    fun postProcess(array: FloatArray, originalImageWidth: Float, originalImageHeight: Float): List<OBBDetection> {
+        val detections = ArrayList<OBBDetection>()
+        val obbs = ArrayList<OrientedBoundingBox>()
+        val scores = ArrayList<Float>()
+        val labels = ArrayList<Int>()
+
+        val (_, tensorHeight, tensorWidth, _) = interpreter!!.getInputTensor(0).shape()
+        Log.i(TAG, "Input tensor shape Height: $tensorHeight, Width: $tensorWidth")
+
+        val outputShape = interpreter!!.getOutputTensor(0).shape()
+
+        val inputImageHeight = tensorHeight.toFloat()
+        val inputImageWidth = tensorWidth.toFloat()
+
+//        val originalImageWidth = originalImage.width.toFloat()
+//        val originalImageHeight = originalImage.height.toFloat()
+
+        val batchSize = outputShape[0]
+        val numFeatures = outputShape[1]
+        val numDetections = outputShape[2]
+
+        if(numDetections == 0){
+            return detections
+        }
+
+        val numLabels = numFeatures -5
+        if(numLabels <= 0){
+            return detections
+        }
+
+        val scalingFactor = Math.min(inputImageHeight/originalImageHeight, inputImageWidth/originalImageWidth)
+
+        val padW = Math.round(originalImageWidth * scalingFactor)
+        val padH = Math.round(originalImageHeight * scalingFactor)
+
+        val dw = (inputImageWidth - padW) / 2.0f
+        val dh = (inputImageHeight - padH) / 2.0f
+        val ratio = 1.0f/scalingFactor
+
+        for (c in 0 until numDetections step batchSize * numFeatures) {
+            val x = array[c]
+            val y = array[c + 1]
+            val w = array[c + 2]
+            val h = array[c + 3]
+
+            val scoresIdx = c + 4
+            var maxScore = -Float.MAX_VALUE
+            var classId = -1
+
+            for(j in 0 until numLabels){
+                val score = array[scoresIdx + j]
+                if(score > maxScore){
+                    maxScore = score
+                    classId = j
+                }
+            }
+
+            val angle = array[c + 4 + numLabels]
+
+            if(maxScore > CONFIDENCE_THRESHOLD)
+            {
+                var cx = (x - dw) * ratio
+                var cy = (y - dh) * ratio
+                var bw = w * ratio
+                var bh = h * ratio
+
+//                // Discard boxes that are too small.
+//                if (bw < 1.0f || bh < 1.0f)
+//                    continue;
+
+                cx = Math.min(Math.max(cx, 0f), originalImageWidth)
+                cy = Math.min(Math.max(cy, 0f), originalImageHeight)
+                bw = Math.min(Math.max(bw, 0f), originalImageWidth)
+                bh = Math.min(Math.max(bh, 0f), originalImageHeight)
+
+                val angleDegrees = (angle / Math.PI * 180f).toFloat()
+
+                val obb = OrientedBoundingBox(cx, cy, bw, bh, angleDegrees)
+                obbs.add(obb)
+                scores.add(maxScore)
+                labels.add(classId)
+            }
+        }
+
+        //apply non-maximum suppression (NMS)
+        val indices = ArrayList<Int>()
+        val numBoxes = obbs.size
+
+        if(numBoxes == 0){
+            return detections
+        }
+
+        //Filter again
+        val sortedIndices = ArrayList<Int>()
+        for(i in 0 until numBoxes){
+            if(scores[i] >= CONFIDENCE_THRESHOLD) {
+                sortedIndices.add(i)
+            }
+        }
+
+        if(sortedIndices.isEmpty()){
+            return detections
+        }
+
+        //Very important step to ensure we are focused on the high confidence predictions first
+        sortedIndices.sortedWith( compareBy {scores[it]}).sortedDescending()
+
+        val areas = ArrayList<Float>()
+        for(i in 0 until numBoxes)
+        {
+            areas[i] = obbs[i].width * obbs[i].height
+        }
+
+        //https://github.com/ultralytics/ultralytics/blob/main/ultralytics/utils/metrics.py#L254
+
+        val suppressed = ArrayList<Boolean>()
+        for(i in 0 until sortedIndices.size){
+            val currentIndex = sortedIndices[i]
+
+            if(suppressed[currentIndex]){
+                continue
+            }
+
+            indices.add(currentIndex)
+            val obb = obbs[currentIndex]
+
+            val x0 = obb.x
+            val y1 = obb.y
+
+            var a0 = obb.width.pow(2) / 12
+            var b0 = obb.height.pow(2) / 12
+            var c0 = obb.angle
+
+            val cos0 = cos(c0.toDouble())
+            val sin0 = sin(c0.toDouble())
+
+            val cos0Squared = cos0.pow(2)
+            val sin0Squared = sin0.pow(2)
+
+            var a0f = a0 * cos0Squared + b0 * sin0Squared
+            var b0f = a0 * sin0Squared + b0 * cos0Squared
+            var c0f = (a0 - b0) * cos0 * sin0
+
+            for(j in i + 1 until sortedIndices.size){
+                val compareIdx = sortedIndices[j]
+
+                val compareObb = obbs[compareIdx]
+
+                val x1 = compareObb.x
+                val y1 = compareObb.y
+
+                val a1 = compareObb.width.pow(2) / 12
+                val b1 = compareObb.height.pow(2) / 12
+                val c1 = compareObb.angle
+
+                val cos1 = cos(c1.toDouble())
+                val sin1 = sin(c1.toDouble())
+                val cos1Squared = cos1.pow(2)
+                val sin1Squared = sin1.pow(2)
+
+                var a1f = a1 * cos1Squared + b1 * sin1Squared
+                var b1f = a1 * sin1Squared + b1 * cos1Squared
+                var c1f = (a1 - b1) * cos1 * sin1
+
+            }
+
+
+        }
+
+        return detections
+    }
+
+
+
+    fun bestBox(array: FloatArray) : List<BoundingBox> {
+
+        val (_, tensorHeight, tensorWidth, _) = interpreter!!.getInputTensor(0).shape()
+        Log.i(TAG, "Input tensor shape Height: $tensorHeight, Width: $tensorWidth")
+
+        val outputShape = interpreter!!.getOutputTensor(0).shape()
+
+        val batchSize = outputShape[0]
+        val numChannel = outputShape[1]
+        val numElements = outputShape[2]
+
+        val numClasses = numChannel - 4
+        val extra = numChannel - numClasses - 4
+        val maskIndex = 4 + numClasses
+
+        val xIndices = arrayOf(0 until numChannel)
+
+        Log.i(TAG, "Output tensor shape, Index0: ${outputShape[0]} Channels: $numChannel, NumElements: $numElements")
+
+        val boundingBoxes = mutableListOf<BoundingBox>()
+
+        val x0 = array[0]
+        val y0 = array[1]
+        val w0 = array[2]
+        val h0 = array[3]
+
+        val con0 = array[4]
+        val classId = array[5]
+
+        val t = array[6]
+
+        val angle = t % (Math.PI/2)
+        //https://github.com/RNoahG/YoloXPythonAndroid/blob/main/Test3/app/src/main/java/de/yolox/anonymizationtest3/model/Model.kt
+        for (c in 0 until numElements step batchSize * numChannel) {
+
+            Log.i(TAG, "C: $c")
+            var maxConf = CONFIDENCE_THRESHOLD
+            var maxIdx = 0
+            val objectness = array[c+4]
+
+            for (id in 0 until labels().size){
+                val conf = array[c+5+id] * objectness
+                if (conf > maxConf){
+                    maxIdx = id
+                    maxConf = conf
+                }
+            }
+
+            if (maxConf > CONFIDENCE_THRESHOLD) {
+                val clsName = labels()[maxIdx]
+
+                val cx = array[c] / tensorWidth
+                val cy = array[c+1] / tensorWidth
+                val w = array[c+2] / tensorWidth
+                val h = array[c+3] / tensorWidth
+
+                val x1 = cx - (w/2F)
+                val y1 = cy - (h/2F)
+                val x2 = cx + (w/2F)
+                val y2 = cy + (h/2F)
+
+                if (x1 < 0F || x1 > 1F) continue
+                if (y1 < 0F || y1 > 1F) continue
+                if (x2 < 0F || x2 > 1F) continue
+                if (y2 < 0F || y2 > 1F) continue
+
+                boundingBoxes.add(
+                    BoundingBox(
+                        x1 = x1, y1 = y1, x2 = x2, y2 = y2,
+                        cx = cx, cy = cy, w = w, h = h,
+                        cnf = maxConf, cls = maxIdx, clsName = clsName))
+            }
+        }
+
+        if(boundingBoxes.isEmpty()) return boundingBoxes
+
+//        for (c in 0 until numElements) {
+//            var maxConf = CONFIDENCE_THRESHOLD
+//            var maxIdx = -1
+//            var j = 4
+//            var arrayIdx = c + numElements * j
+//            while (j < numChannel){
+//                if (array[arrayIdx] > maxConf) {
+//                    maxConf = array[arrayIdx]
+//                    maxIdx = j - 4
+//                }
+//                j++
+//                arrayIdx += numElements
+//            }
+//
+//            if (maxConf > CONFIDENCE_THRESHOLD) {
+//                //TODO somehow Array out of bounds except
+//                //java.lang.ArrayIndexOutOfBoundsException: length=3; index=3
+//                //at java.util.Arrays$ArrayList.get(Arrays.java:4599)
+//                //at com.example.cs567_3d_ui_project.argis.helpers.ObjectDetectionHelper.bestBox(ObjectDetectionHelper.kt:235)
+//
+//                var clsName : String = "Unknown"
+//                if(maxIdx < labels().size){
+//                     clsName = labels()[maxIdx]
+//                }
+//
+//                val cx = array[c] // 0
+//                val cy = array[c + numElements] // 1
+//                val w = array[c + numElements * 2]
+//                val h = array[c + numElements * 3]
+//                val x1 = cx - (w/2F)
+//                val y1 = cy - (h/2F)
+//                val x2 = cx + (w/2F)
+//                val y2 = cy + (h/2F)
+//                if (x1 < 0F || x1 > 1F) continue
+//                if (y1 < 0F || y1 > 1F) continue
+//                if (x2 < 0F || x2 > 1F) continue
+//                if (y2 < 0F || y2 > 1F) continue
+//
+//                boundingBoxes.add(
+//                    BoundingBox(
+//                        x1 = x1, y1 = y1, x2 = x2, y2 = y2,
+//                        cx = cx, cy = cy, w = w, h = h,
+//                        cnf = maxConf, cls = maxIdx, clsName = clsName
+//                    )
+//                )
+//            }
+//        }
+//
+//        if (boundingBoxes.isEmpty()) return boundingBoxes
+
+        return applyNMS(boundingBoxes)
+    }
+
+    private fun applyNMS(boxes: List<BoundingBox>) : MutableList<BoundingBox> {
+        val sortedBoxes = boxes.sortedByDescending { it.cnf }.toMutableList()
+        val selectedBoxes = mutableListOf<BoundingBox>()
+
+        while(sortedBoxes.isNotEmpty()) {
+            val first = sortedBoxes.first()
+            selectedBoxes.add(first)
+            sortedBoxes.remove(first)
+
+            val iterator = sortedBoxes.iterator()
+            while (iterator.hasNext()) {
+                val nextBox = iterator.next()
+                val iou = calculateIoU(first, nextBox)
+                if (iou >= IOU_THRESHOLD) {
+                    iterator.remove()
+                }
+            }
+        }
+
+        return selectedBoxes
+    }
+
+    private fun calculateOBB_IOU(box1: OrientedBoundingBox, box2: OrientedBoundingBox): Float
+    {
+        return 0f
+    }
+
+    private fun calculateIoU(box1: BoundingBox, box2: BoundingBox): Float {
+        val x1 = maxOf(box1.x1, box2.x1)
+        val y1 = maxOf(box1.y1, box2.y1)
+        val x2 = minOf(box1.x2, box2.x2)
+        val y2 = minOf(box1.y2, box2.y2)
+        val intersectionArea = maxOf(0F, x2 - x1) * maxOf(0F, y2 - y1)
+        val box1Area = box1.w * box1.h
+        val box2Area = box2.w * box2.h
+        return intersectionArea / (box1Area + box2Area - intersectionArea)
     }
 
     private fun fitCenterBitmap(
@@ -178,15 +598,23 @@ class ObjectDetectionHelper(
     }
 
     private fun createTensorImage(
-        bitmap: Bitmap, width: Int, height: Int, rotationDegrees: Int
+        bitmap: Bitmap, rotationDegrees: Int
     ): TensorImage {
         val rotation = -rotationDegrees / 90
-        val scaledBitmap = fitCenterBitmap(bitmap, width, height)
-
-        val imageProcessor = ImageProcessor.Builder().add(Rot90Op(rotation)).build()
+        val imageProcessor = ImageProcessor
+            .Builder()
+            .add(NormalizeOp(INPUT_MEAN, INPUT_STANDARD_DEVIATION))
+            .add(CastOp(INPUT_IMAGE_TYPE))
+            .add(Rot90Op(rotation)).build()
 
         // Preprocess the image and convert it into a TensorImage for classification.
-        return imageProcessor.process(TensorImage.fromBitmap(scaledBitmap))
+        return imageProcessor.process(TensorImage.fromBitmap(bitmap))
+    }
+
+    private fun scaleBitmap(
+        bitmap: Bitmap, width: Int, height: Int
+    ): Bitmap {
+        return fitCenterBitmap(bitmap, width, height)
     }
 
     /**
@@ -223,13 +651,21 @@ class ObjectDetectionHelper(
     // Wraps results from inference, the time it takes for inference to be performed, and
     // the input image and height for properly scaling UI to return back to callers
     data class DetectionResult(
-        val detections: List<Detection>,
-        val inferenceTime: Long,
+        val detections: List<BoundingBox>,
+        //val inferenceTime: Long,
         val inputImageHeight: Int,
         val inputImageWidth: Int,
     )
 
+
     data class Detection(
         val label: String, val boundingBox: RectF, val score: Float
     )
-}
+
+    fun labels(): List<String>{
+        return listOf(
+            "Insulator",
+            "Pole",
+            "Wire")
+        }
+    }

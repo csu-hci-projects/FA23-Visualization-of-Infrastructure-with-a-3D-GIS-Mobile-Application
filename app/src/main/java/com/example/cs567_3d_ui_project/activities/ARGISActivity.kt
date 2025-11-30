@@ -12,6 +12,7 @@ import androidx.appcompat.app.AppCompatActivity
 import com.example.cs567_3d_ui_project.argis.helpers.ARGISSessionLifecycleHelper
 import com.example.cs567_3d_ui_project.argis.helpers.DepthSettings
 import com.example.cs567_3d_ui_project.argis.helpers.FullScreenHelper
+import com.example.cs567_3d_ui_project.argis.mlutils.DepthAnything
 import com.example.cs567_3d_ui_project.argis.renderers.ARGISRenderer
 import com.example.cs567_3d_ui_project.argis.renderers.ARRenderer
 import com.example.cs567_3d_ui_project.qgis_driver.resource_objects.wfs_resources.GetFeatureResponse
@@ -29,8 +30,11 @@ class ARGISActivity: AppCompatActivity() {
     lateinit var arGISSurfaceView: ARGISView
     lateinit var arGISSessionHelper: ARGISSessionLifecycleHelper
     lateinit var argisRenderer: ARGISRenderer
+
     var latestGetFeatureResponse: GetFeatureResponse? = null
     val depthSettings = DepthSettings()
+
+    lateinit var depthAnythingV2: DepthAnything
 
     companion object{
         private const val TAG = "ARGISActivity"
@@ -47,6 +51,30 @@ class ARGISActivity: AppCompatActivity() {
             arGISSurfaceView.startPlayingback(mp4FileUri)
         }
     }
+
+//    val takePictureLauncher =
+//        registerForActivityResult(ActivityResultContracts.TakePicture()) {
+//            if (it) {
+//                var bitmap = BitmapFactory.decodeFile(currentPhotoPath)
+//                val exifInterface = ExifInterface(currentPhotoPath)
+//                bitmap =
+//                    when (
+//                        exifInterface.getAttributeInt(
+//                            ExifInterface.TAG_ORIENTATION,
+//                            ExifInterface.ORIENTATION_UNDEFINED
+//                        )
+//                    ) {
+//                        ExifInterface.ORIENTATION_ROTATE_90 -> rotateBitmap(bitmap, 90f)
+//                        ExifInterface.ORIENTATION_ROTATE_180 -> rotateBitmap(bitmap, 180f)
+//                        ExifInterface.ORIENTATION_ROTATE_270 -> rotateBitmap(bitmap, 270f)
+//                        else -> bitmap
+//                    }
+//
+//                CoroutineScope(Dispatchers.Default).launch {
+//                    val (depthMap, inferenceTime) = depthAnythingV2.predict(bitmap)
+//                }
+//            }
+//        }
 
     fun getFilePlaybackIntent(): ActivityResultContracts.StartActivityForResult {
         val videoCollection: Uri = if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q){
@@ -109,11 +137,10 @@ class ARGISActivity: AppCompatActivity() {
 
         depthSettings.onCreate(this)
 
-        /*val imageAnalysis = ImageAnalysis.Builder().setTargetAspectRatio(RATIO_4_3)
-            .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
-            .setOutputImageFormat(ImageAnalysis.OUTPUT_IMAGE_FORMAT_RGBA_8888).build()*/
-
+        depthAnythingV2 = DepthAnything(this)
+        Log.i(ARGISRenderer.TAG, "Model Load Success!")
     }
+
 
     private fun createSession(session: Session){
         session.configure(session.config.apply {
