@@ -1,10 +1,9 @@
 package com.example.cs567_3d_ui_project.views
 
 import android.annotation.SuppressLint
-import android.content.ContentValues
 import android.graphics.Bitmap
 import android.graphics.Matrix
-import android.provider.MediaStore
+import android.os.SystemClock
 import android.util.Log
 import android.util.Size
 import android.view.View
@@ -18,20 +17,24 @@ import androidx.camera.view.PreviewView
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
+import androidx.lifecycle.lifecycleScope
 import com.example.cs567_3d_ui_project.R
 import com.example.cs567_3d_ui_project.activities.DetectionActivity
+import com.example.cs567_3d_ui_project.argis.helpers.ObjectDetectionHelper
+import com.example.cs567_3d_ui_project.argis.mlutils.DepthAnything
+import com.example.cs567_3d_ui_project.ml.Yolov1111725Float32
+import kotlinx.coroutines.launch
 import org.tensorflow.lite.DataType
 import org.tensorflow.lite.Interpreter
 import org.tensorflow.lite.nnapi.NnApiDelegate
 import org.tensorflow.lite.support.common.FileUtil
+import org.tensorflow.lite.support.common.ops.CastOp
 import org.tensorflow.lite.support.common.ops.NormalizeOp
 import org.tensorflow.lite.support.image.ImageProcessor
 import org.tensorflow.lite.support.image.TensorImage
 import org.tensorflow.lite.support.image.ops.ResizeOp
 import org.tensorflow.lite.support.image.ops.ResizeWithCropOrPadOp
 import org.tensorflow.lite.support.image.ops.Rot90Op
-import java.io.File
-import java.io.FileOutputStream
 import java.util.concurrent.ExecutorService
 
 class DetectionView(val activity: DetectionActivity, val executor: ExecutorService): DefaultLifecycleObserver {
@@ -57,6 +60,7 @@ class DetectionView(val activity: DetectionActivity, val executor: ExecutorServi
         // Release TFLite resources.
         tflite.close()
         nnApiDelegate.close()
+
     }
 
 
@@ -110,29 +114,79 @@ class DetectionView(val activity: DetectionActivity, val executor: ExecutorServi
                 val uprightImage = Bitmap.createBitmap(
                     bitmapBuffer, 0, 0, bitmapBuffer.width, bitmapBuffer.height, matrix, true)
 
+                var interfaceTime = SystemClock.uptimeMillis()
 
-                try {
+                var depthAnything = DepthAnything(activity)
+                activity.lifecycleScope.launch {
+                    var model: Yolov1111725Float32? = null
+                    var objectDetectionHelper = ObjectDetectionHelper(activity)
 
-                    val photoDirectory = File("/storage/emulated/0/Download").apply { mkdirs() }
-                    val timestamp = System.currentTimeMillis()
-                    val photoFile = File(photoDirectory, "combined_image_$timestamp.jpg")
+                    try{
+                        objectDetectionHelper.setupObjectDetector()
 
-                    FileOutputStream(photoFile).use { out ->
-                        uprightImage.compress(Bitmap.CompressFormat.JPEG, 100, out)
-                        out.flush()
-                        out.close()
+                        val INPUT_MEAN = 0f
+                        val INPUT_STANDARD_DEVIATION = 255f
+                        val INPUT_IMAGE_TYPE = DataType.FLOAT32
+                        val OUTPUT_IMAGE_TYPE = DataType.FLOAT32
+                        val CONFIDENCE_THRESHOLD = 0.3F
+                        val IOU_THRESHOLD = 0.5F
+
+                        val imageProcessor = ImageProcessor.Builder()
+                            .add(NormalizeOp(INPUT_MEAN, INPUT_STANDARD_DEVIATION))
+                            .add(CastOp(INPUT_IMAGE_TYPE))
+                            .build()
+                        val resizedBitmap = Bitmap.createScaledBitmap(uprightImage, 640, 640, false)
+                        val tensorImage = TensorImage(INPUT_IMAGE_TYPE)
+                        tensorImage.load(resizedBitmap)
+
+                        val processedImage = imageProcessor.process(tensorImage)
+
+                        model = Yolov1111725Float32.newInstance(activity)
+                        val outputs = model.process(processedImage.tensorBuffer)
+                        val outputFeature0 = outputs.outputFeature0AsTensorBuffer
+                        val bb1 = objectDetectionHelper.postProcess(outputFeature0.floatArray, uprightImage.width.toFloat(), uprightImage.height.toFloat())
+
+                        var out = depthAnything.predict(uprightImage)
+                        var image = out.first
+                        Log.i("MDE", "Test")
+
+
+
+                    }
+                    catch (e: Exception){
+
                     }
 
-                    val values = ContentValues().apply {
-                        put(MediaStore.Images.Media.DISPLAY_NAME, photoFile.name)
-                        put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg")
-                        put(MediaStore.Images.Media.DATA, photoFile.absolutePath)
-                    }
-                    activity.contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values)
-                    Log.d("CameraX", "Image added to gallery: ${photoFile.absolutePath}")
-                } catch (e: Exception) {
-                    Log.e("CameraX", "Error adding image to gallery: ${e.message}", e)
+
+
                 }
+
+                //var objectDetectionHelper = ObjectDetectionHelper(activity)
+//                var model: Yolov1111725Float32? = null
+                //var model2: Yolov1111725Float16? = null
+
+//                try {
+//
+//                    val photoDirectory = File("/storage/emulated/0/Download").apply { mkdirs() }
+//                    val timestamp = System.currentTimeMillis()
+//                    val photoFile = File(photoDirectory, "combined_image_$timestamp.jpg")
+//
+//                    FileOutputStream(photoFile).use { out ->
+//                        uprightImage.compress(Bitmap.CompressFormat.JPEG, 100, out)
+//                        out.flush()
+//                        out.close()
+//                    }
+//
+//                    val values = ContentValues().apply {
+//                        put(MediaStore.Images.Media.DISPLAY_NAME, photoFile.name)
+//                        put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg")
+//                        put(MediaStore.Images.Media.DATA, photoFile.absolutePath)
+//                    }
+//                    activity.contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values)
+//                    Log.d("CameraX", "Image added to gallery: ${photoFile.absolutePath}")
+//                } catch (e: Exception) {
+//                    Log.e("CameraX", "Error adding image to gallery: ${e.message}", e)
+//                }
 //                activityCameraBinding.imagePredicted.setImageBitmap(uprightImage)
 //                activityCameraBinding.imagePredicted.visibility = View.VISIBLE
             }

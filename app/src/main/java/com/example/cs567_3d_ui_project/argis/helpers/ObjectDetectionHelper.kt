@@ -299,9 +299,9 @@ class ObjectDetectionHelper(
                 var bw = w * ratio
                 var bh = h * ratio
 
-//                // Discard boxes that are too small.
-//                if (bw < 1.0f || bh < 1.0f)
-//                    continue;
+                // Discard boxes that are too small.
+                if (bw < 1.0f || bh < 1.0f)
+                    continue;
 
                 cx = Math.min(Math.max(cx, 0f), originalImageWidth)
                 cy = Math.min(Math.max(cy, 0f), originalImageHeight)
@@ -338,7 +338,10 @@ class ObjectDetectionHelper(
         }
 
         //Very important step to ensure we are focused on the high confidence predictions first
-        sortedIndices.sortedWith( compareBy {scores[it]}).sortedDescending()
+        //THis does not look to be sorting properly: TODO
+        sortedIndices.sortedWith( compareByDescending {
+            scores[it]
+        })
 
         val areas = ArrayList<Float>()
         for(i in 0 until numBoxes)

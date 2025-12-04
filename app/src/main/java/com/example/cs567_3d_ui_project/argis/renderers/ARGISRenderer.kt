@@ -1,9 +1,6 @@
 package com.example.cs567_3d_ui_project.argis.renderers
 
-import android.graphics.BitmapFactory
-import android.graphics.ImageFormat
-import android.graphics.Rect
-import android.graphics.YuvImage
+import android.graphics.Bitmap
 import android.media.Image
 import android.opengl.GLES30
 import android.opengl.Matrix
@@ -46,7 +43,6 @@ import com.google.ar.core.exceptions.SessionPausedException
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import java.io.BufferedReader
-import java.io.ByteArrayOutputStream
 import java.io.IOException
 import java.io.InputStream
 import java.io.InputStreamReader
@@ -107,7 +103,7 @@ class ARGISRenderer(val activity: ARGISActivity):
     var rotationMatrix = FloatArray(16)
     var scaleMatrix = FloatArray(16)
 
-    private var imageRotationDegrees: Int = 0
+    private var imageRotationDegrees: Int = 90
 
     val modelViewProjectionMatrix = FloatArray(16)
 
@@ -320,13 +316,6 @@ class ARGISRenderer(val activity: ARGISActivity):
         return list
     }
 
-    fun Frame.tryAcquireCameraImage() =
-        try {
-            acquireCameraImage()
-        } catch (e: Exception) {
-            Log.e(TAG, "Camera not available during onDrawFrame", e)
-            null
-        }
 
     fun runInference(frame: Frame){
         try{
@@ -364,8 +353,6 @@ class ARGISRenderer(val activity: ARGISActivity):
             var image: Image? = null
             /**/
 
-
-
             try
             {
                 image = frame.acquireCameraImage()
@@ -376,105 +363,23 @@ class ARGISRenderer(val activity: ARGISActivity):
                     postRotate(imageRotationDegrees.toFloat())
                 }
 
-//                val bm0 = Bitmap.createBitmap(image.width, image.height, Bitmap.Config.ARGB_8888).apply {
-//                    converter.yuvToRgb(image, this)
-//                }
+                val bm0 = Bitmap.createBitmap(image.width, image.height, Bitmap.Config.ARGB_8888).apply {
+                    converter.yuvToRgb(image, this)
+                }
 
-                //bm0.
+                val rotatedBitmap = Bitmap.createBitmap(bm0, 0, 0, bm0.width, bm0.height, matrix, true)
 
+                if(rotatedBitmap != bm0){
+                    bm0.recycle()
+                }
 
-                //val bm1 = converter.yuvToRgb3(image)
+                val resizedBitmap = Bitmap.createScaledBitmap(rotatedBitmap, 640, 640, false)
 
-                //val bm1 = converter.yuvToRgb2(image)
-                //Log.i("Test", "Test")
+                if(resizedBitmap != rotatedBitmap){
+                    rotatedBitmap.recycle()
+                }
 
-                val nv21 = converter.imageToByteArray2(image)
-//                val nv211 = converter.imageToByteArray3(image)
-//
-                val outputStream = ByteArrayOutputStream()
-                val yuvImage = YuvImage(nv21, ImageFormat.NV21, image.width, image.height, null)
-                var success = yuvImage.compressToJpeg(Rect(0, 0, image.width, image.height), 100, outputStream)
-//
-//                success = false
-//
-//                val outputStream2 = ByteArrayOutputStream()
-//                val yuvImage2 = YuvImage(nv211, ImageFormat.NV21, image.width, image.height, null)
-//                val success2 = yuvImage2.compressToJpeg(Rect(0, 0, image.width, image.height), 100, outputStream2)
-//
-                val output0 = outputStream.toByteArray()
-//                val output1 = outputStream2.toByteArray()
-//
-                val bm1 = BitmapFactory.decodeByteArray(
-                    output0,
-                    0,
-                    output0.size
-                )
-//
-//                val bm2 = BitmapFactory.decodeByteArray(
-//                    output1,
-//                    0,
-//                    output1.size
-//                )
-//
-                outputStream.close()
-//                outputStream2.close()
-//
-//                val mat0 = IntArray(bm0.height * bm0.width)
-//                val mat1 = IntArray(bm1.height * bm1.width)
-//                val mat2 = IntArray(bm2.height * bm2.width)
-//
-//                for(i in 0 until bm0.width){
-//                    for(j in 0 until bm0.height){
-//                        mat0[i + j] = bm0.getPixel(i,j)
-//                    }
-//                }
-//
-//
-//                for(i in 0 until bm1.width){
-//                    for(j in 0 until bm1.height){
-//                        mat1[i + j] = bm1.getPixel(i,j)
-//                    }
-//                }
-//
-//                for(i in 0 until bm2.width){
-//                    for(j in 0 until bm2.height){
-//                        mat2[i + j] = bm2.getPixel(i,j)
-//                    }
-//                }
-
-//                try {
-//
-//                    val photoDirectory = File("/storage/emulated/0/Download").apply { mkdirs() }
-//                    val timestamp = System.currentTimeMillis()
-//                    val photoFile = File(photoDirectory, "image_conv_$timestamp.jpg")
-//
-//                    FileOutputStream(photoFile).use { out ->
-//                        bm0.compress(Bitmap.CompressFormat.JPEG, 100, out)
-//                        out.flush()
-//                        out.close()
-//                    }
-//
-//                    val values = ContentValues().apply {
-//                        put(MediaStore.Images.Media.DISPLAY_NAME, photoFile.name)
-//                        put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg")
-//                        put(MediaStore.Images.Media.DATA, photoFile.absolutePath)
-//                    }
-//                    activity.contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values)
-//                    Log.d("CameraX", "Image added to gallery: ${photoFile.absolutePath}")
-//                } catch (e: Exception) {
-//                    Log.e("CameraX", "Error adding image to gallery: ${e.message}", e)
-//                }
-
-
-                //test = frame.acquireCameraImage()
-
-                //var preProcessTime = SystemClock.uptimeMillis()
-
-
-
-                //val mat0 = IntArray(bm0.height * bm0.width)
-
-
+                Log.i("Resized Image", "Stop")
 
 //                this.activity.lifecycleScope.launch (Dispatchers.IO){
 //                    var interfaceTime = SystemClock.uptimeMillis()
@@ -516,100 +421,7 @@ class ARGISRenderer(val activity: ARGISActivity):
 //                    }
 //                }
 
-                /*  val pixelCount = test.width * test.height
-                  val pixelSizeBits = ImageFormat.getBitsPerPixel(ImageFormat.YUV_420_888)
-                  val testSize = pixelCount * (pixelSizeBits/8)*/
-                // var nv21 = ByteArray(pixelCount * pixelSizeBits / 8)
-//                val nv21 = converter.imageToByteArray2(test)
-//                val nv211 = converter.imageToByteArray3(test)
-                /*   var nv21_2: ByteArray
-                   val yBuffer = test.planes[0].buffer
-                   val uBuffer = test.planes[1].buffer
-                   val vBuffer = test.planes[2].buffer
 
-                   val ySize = yBuffer.remaining()
-                   val uSize = uBuffer.remaining()
-                   val vSize = uBuffer.remaining()
-
-                   nv21_2 = ByteArray(ySize + uSize + vSize)
-
-                   yBuffer.get(nv21_2, 0, ySize)
-                   vBuffer.get(nv21_2, ySize, vSize)
-                   uBuffer.get(nv21_2, ySize + vSize, uSize)*/
-                // and nv21_2.all{ it.toFloat() != 0.0f }
-                //if(nv21.all { it.toFloat() != 0.0f }) {
-//
-//                    val outputStream = ByteArrayOutputStream()
-//                    val yuvImage = YuvImage(nv21, ImageFormat.NV21, test.width, test.height, null)
-//                    var success = yuvImage.compressToJpeg(Rect(0, 0, test.width, test.height), 100, outputStream)
-//
-//                    success = false
-//
-//                    val outputStream2 = ByteArrayOutputStream()
-//                    val yuvImage2 = YuvImage(nv211, ImageFormat.NV21, test.width, test.height, null)
-//                    val success2 = yuvImage2.compressToJpeg(Rect(0, 0, test.width, test.height), 100, outputStream2)
-//
-//                    val output0 = outputStream.toByteArray()
-//                    val output1 = outputStream2.toByteArray()
-//
-//                    val bm1 = BitmapFactory.decodeByteArray(
-//                        output0,
-//                        0,
-//                        output0.size
-//                    )
-//
-//                    val bm2 = BitmapFactory.decodeByteArray(
-//                        output1,
-//                        0,
-//                        output1.size
-//                    )
-//
-//                    val mat0 = IntArray(bm0.height * bm0.width)
-//                    val mat1 = IntArray(bm1.height * bm1.width)
-//                    val mat2 = IntArray(bm2.height * bm2.width)
-//
-//                    for(i in 0 until bm0.width){
-//                        for(j in 0 until bm0.height){
-//                            mat0[i + j] = bm0.getPixel(i,j)
-//                        }
-//                    }
-//                    for(i in 0 until bm1.width){
-//                        for(j in 0 until bm1.height){
-//                            mat1[i + j] = bm1.getPixel(i,j)
-//                        }
-//                    }
-//
-//                    for(i in 0 until bm2.width){
-//                        for(j in 0 until bm2.height){
-//                            mat2[i + j] = bm2.getPixel(i,j)
-//                        }
-//                    }
-
-
-
-//                    if(success)
-//                    {
-//                        //val output = outputStream.toByteArray()
-//                        /*  val outputStream2 = ByteArrayOutputStream()
-//                          val yuvImage2 = YuvImage(nv21_2, ImageFormat.NV21, test.width, test.height, null)
-//                          yuvImage2.compressToJpeg(Rect(0, 0, test.width, test.height), 80, outputStream2)
-//
-//                          val output2 = outputStream2.toByteArray()*/
-//
-//                        /*  val bitmap = Bitmap.createBitmap(
-//                              test.width,
-//                              test.height,
-//                              Bitmap.Config.ARGB_8888
-//                          )
-//                          bitmap.copyPixelsFromBuffer(ob)*/
-//
-////                        val bitmap = BitmapFactory.decodeByteArray(
-////                            output,
-////                            0,
-////                            output.size
-////                        )
-//
-//                        //outputStream.close()
 ////
 ////                        val INPUT_MEAN = 0f
 ////                        val INPUT_STANDARD_DEVIATION = 255f
@@ -1154,13 +966,14 @@ class ARGISRenderer(val activity: ARGISActivity):
                 Log.e(TAG, "Camera not available during onDrawFrame", e)
                 return
             }
-            catch (cpe: SessionPausedException){
-                Log.e(TAG, "Can't update paused session!!!")
+            catch (spe: SessionPausedException){
+                Log.e(TAG, "Can't update paused session!!!", spe)
                 return
             }
 
         val camera = frame.camera
 
+        runInference(frame)
 
         try{
             backgroundRenderer.setUseDepthVisualization(renderer!!,
@@ -1215,9 +1028,6 @@ class ARGISRenderer(val activity: ARGISActivity):
         if(frame.timestamp != 0L){
             //Suppress rendering if the camera did not produce the first frame yet.
             backgroundRenderer.drawBackground(renderer)
-
-
-
         }
 
         if(camera.trackingState == TrackingState.PAUSED){
@@ -1339,7 +1149,7 @@ class ARGISRenderer(val activity: ARGISActivity):
 
         backgroundRenderer.drawVirtualScene(renderer, virtualSceneFrameBuffer, Z_Near, Z_Far)
 
-        //runInference(frame)
+
 
     }
 
