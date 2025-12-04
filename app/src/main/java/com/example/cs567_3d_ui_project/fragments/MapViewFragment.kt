@@ -25,6 +25,7 @@ import com.arcgismaps.mapping.view.LocationDisplay
 import com.arcgismaps.mapping.view.MapView
 import com.example.cs567_3d_ui_project.R
 import com.example.cs567_3d_ui_project.activities.ARGISActivity
+import com.example.cs567_3d_ui_project.activities.DetectionActivity
 import com.example.cs567_3d_ui_project.arcgis_map_operations.GraphicsOverlayOperations
 import com.example.cs567_3d_ui_project.databinding.FragmentMapViewBinding
 import com.example.cs567_3d_ui_project.qgis_driver.QGisClient
@@ -47,6 +48,7 @@ class MapViewFragment: Fragment(R.layout.fragment_map_view) {
     private lateinit var locationCallBack: LocationCallback
     private lateinit var fusedLocationClient: FusedLocationProviderClient
     private lateinit var arExperienceButton: Button
+    private lateinit var objectDetectionDemoButton: Button
 
     private lateinit var latestGetFeaturesResponse: GetFeatureResponse
     private lateinit var latestGetFeaturesResponseWGS84: GetFeatureResponse
@@ -83,7 +85,6 @@ class MapViewFragment: Fragment(R.layout.fragment_map_view) {
             setupMap()
 
             arExperienceButton = view.findViewById(R.id.arExperienceButton)
-
             arExperienceButton.setOnClickListener{
 
                 val intent = Intent(requireActivity(), ARGISActivity::class.java)
@@ -96,6 +97,14 @@ class MapViewFragment: Fragment(R.layout.fragment_map_view) {
                 intent.putExtras(bundle)
                 startActivity(intent)
             }
+
+            objectDetectionDemoButton = view.findViewById(R.id.detectionDemo)
+            objectDetectionDemoButton.setOnClickListener{
+                val intent2 = Intent(requireActivity(), DetectionActivity::class.java)
+                startActivity(intent2)
+            }
+
+
 
         }catch (e: Exception){
             Log.e("Error During onViewCreated", e.message, e)

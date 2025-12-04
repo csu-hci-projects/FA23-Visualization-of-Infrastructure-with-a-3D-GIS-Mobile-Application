@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layout>
+    <data>
+        <variable
+            name="cameraFragment"
+            type="com.example.cs567_3d_ui_project.fragments.CameraFragment" />
+    </data>
+
+
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/detection_camera"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <androidx.camera.view.PreviewView
+        android:id="@+id/camera_view"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        app:scaleType="fillStart"/>
+
+    <Button
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:id="@+id/camera_capture_button"
+        app:layout_constraintRight_toRightOf="parent"
+        app:layout_constraintBaseline_toTopOf="parent"
+        />
+
+</androidx.constraintlayout.widget.ConstraintLayout>
+
+</layout>

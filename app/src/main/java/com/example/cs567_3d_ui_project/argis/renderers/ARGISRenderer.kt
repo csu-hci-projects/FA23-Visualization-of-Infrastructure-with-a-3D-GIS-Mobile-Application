@@ -1,12 +1,13 @@
 package com.example.cs567_3d_ui_project.argis.renderers
 
-import android.content.ContentValues
-import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.graphics.ImageFormat
+import android.graphics.Rect
+import android.graphics.YuvImage
 import android.media.Image
 import android.opengl.GLES30
 import android.opengl.Matrix
 import android.os.Build
-import android.provider.MediaStore
 import android.util.DisplayMetrics
 import android.util.Log
 import androidx.lifecycle.DefaultLifecycleObserver
@@ -45,8 +46,7 @@ import com.google.ar.core.exceptions.SessionPausedException
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import java.io.BufferedReader
-import java.io.File
-import java.io.FileOutputStream
+import java.io.ByteArrayOutputStream
 import java.io.IOException
 import java.io.InputStream
 import java.io.InputStreamReader
@@ -106,6 +106,8 @@ class ARGISRenderer(val activity: ARGISActivity):
     val modelViewMatrix = FloatArray(16)
     var rotationMatrix = FloatArray(16)
     var scaleMatrix = FloatArray(16)
+
+    private var imageRotationDegrees: Int = 0
 
     val modelViewProjectionMatrix = FloatArray(16)
 
@@ -370,20 +372,28 @@ class ARGISRenderer(val activity: ARGISActivity):
 
                 val converter = YuvToRgbConverter(activity)
 
-                val bm0 = Bitmap.createBitmap(image.width, image.height, Bitmap.Config.ARGB_8888).apply {
-                    converter.yuvToRgb(image, this)
+                val matrix = android.graphics.Matrix().apply {
+                    postRotate(imageRotationDegrees.toFloat())
                 }
+
+//                val bm0 = Bitmap.createBitmap(image.width, image.height, Bitmap.Config.ARGB_8888).apply {
+//                    converter.yuvToRgb(image, this)
+//                }
+
+                //bm0.
+
 
                 //val bm1 = converter.yuvToRgb3(image)
 
                 //val bm1 = converter.yuvToRgb2(image)
+                //Log.i("Test", "Test")
 
-//                val nv21 = converter.imageToByteArray2(image)
+                val nv21 = converter.imageToByteArray2(image)
 //                val nv211 = converter.imageToByteArray3(image)
 //
-//                val outputStream = ByteArrayOutputStream()
-//                val yuvImage = YuvImage(nv21, ImageFormat.NV21, image.width, image.height, null)
-//                var success = yuvImage.compressToJpeg(Rect(0, 0, image.width, image.height), 100, outputStream)
+                val outputStream = ByteArrayOutputStream()
+                val yuvImage = YuvImage(nv21, ImageFormat.NV21, image.width, image.height, null)
+                var success = yuvImage.compressToJpeg(Rect(0, 0, image.width, image.height), 100, outputStream)
 //
 //                success = false
 //
@@ -391,14 +401,14 @@ class ARGISRenderer(val activity: ARGISActivity):
 //                val yuvImage2 = YuvImage(nv211, ImageFormat.NV21, image.width, image.height, null)
 //                val success2 = yuvImage2.compressToJpeg(Rect(0, 0, image.width, image.height), 100, outputStream2)
 //
-//                val output0 = outputStream.toByteArray()
+                val output0 = outputStream.toByteArray()
 //                val output1 = outputStream2.toByteArray()
 //
-//                val bm1 = BitmapFactory.decodeByteArray(
-//                    output0,
-//                    0,
-//                    output0.size
-//                )
+                val bm1 = BitmapFactory.decodeByteArray(
+                    output0,
+                    0,
+                    output0.size
+                )
 //
 //                val bm2 = BitmapFactory.decodeByteArray(
 //                    output1,
@@ -406,7 +416,7 @@ class ARGISRenderer(val activity: ARGISActivity):
 //                    output1.size
 //                )
 //
-//                outputStream.close()
+                outputStream.close()
 //                outputStream2.close()
 //
 //                val mat0 = IntArray(bm0.height * bm0.width)
@@ -432,27 +442,28 @@ class ARGISRenderer(val activity: ARGISActivity):
 //                    }
 //                }
 
-                try {
-
-                    val photoDirectory = File("/storage/emulated/0/Download").apply { mkdirs() }
-                    val timestamp = System.currentTimeMillis()
-                    val photoFile = File(photoDirectory, "image_conv_$timestamp.jpg")
-
-                    FileOutputStream(photoFile).use { out ->
-                        bm0.compress(Bitmap.CompressFormat.JPEG, 100, out)
-                        out.flush()
-                    }
-
-                    val values = ContentValues().apply {
-                        put(MediaStore.Images.Media.DISPLAY_NAME, photoFile.name)
-                        put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg")
-                        put(MediaStore.Images.Media.DATA, photoFile.absolutePath)
-                    }
-                    activity.contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values)
-                    Log.d("CameraX", "Image added to gallery: ${photoFile.absolutePath}")
-                } catch (e: Exception) {
-                    Log.e("CameraX", "Error adding image to gallery: ${e.message}", e)
-                }
+//                try {
+//
+//                    val photoDirectory = File("/storage/emulated/0/Download").apply { mkdirs() }
+//                    val timestamp = System.currentTimeMillis()
+//                    val photoFile = File(photoDirectory, "image_conv_$timestamp.jpg")
+//
+//                    FileOutputStream(photoFile).use { out ->
+//                        bm0.compress(Bitmap.CompressFormat.JPEG, 100, out)
+//                        out.flush()
+//                        out.close()
+//                    }
+//
+//                    val values = ContentValues().apply {
+//                        put(MediaStore.Images.Media.DISPLAY_NAME, photoFile.name)
+//                        put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg")
+//                        put(MediaStore.Images.Media.DATA, photoFile.absolutePath)
+//                    }
+//                    activity.contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values)
+//                    Log.d("CameraX", "Image added to gallery: ${photoFile.absolutePath}")
+//                } catch (e: Exception) {
+//                    Log.e("CameraX", "Error adding image to gallery: ${e.message}", e)
+//                }
 
 
                 //test = frame.acquireCameraImage()
@@ -1328,7 +1339,7 @@ class ARGISRenderer(val activity: ARGISActivity):
 
         backgroundRenderer.drawVirtualScene(renderer, virtualSceneFrameBuffer, Z_Near, Z_Far)
 
-        runInference(frame)
+        //runInference(frame)
 
     }
 

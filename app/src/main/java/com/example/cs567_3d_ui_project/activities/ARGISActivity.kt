@@ -52,30 +52,6 @@ class ARGISActivity: AppCompatActivity() {
         }
     }
 
-//    val takePictureLauncher =
-//        registerForActivityResult(ActivityResultContracts.TakePicture()) {
-//            if (it) {
-//                var bitmap = BitmapFactory.decodeFile(currentPhotoPath)
-//                val exifInterface = ExifInterface(currentPhotoPath)
-//                bitmap =
-//                    when (
-//                        exifInterface.getAttributeInt(
-//                            ExifInterface.TAG_ORIENTATION,
-//                            ExifInterface.ORIENTATION_UNDEFINED
-//                        )
-//                    ) {
-//                        ExifInterface.ORIENTATION_ROTATE_90 -> rotateBitmap(bitmap, 90f)
-//                        ExifInterface.ORIENTATION_ROTATE_180 -> rotateBitmap(bitmap, 180f)
-//                        ExifInterface.ORIENTATION_ROTATE_270 -> rotateBitmap(bitmap, 270f)
-//                        else -> bitmap
-//                    }
-//
-//                CoroutineScope(Dispatchers.Default).launch {
-//                    val (depthMap, inferenceTime) = depthAnythingV2.predict(bitmap)
-//                }
-//            }
-//        }
-
     fun getFilePlaybackIntent(): ActivityResultContracts.StartActivityForResult {
         val videoCollection: Uri = if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q){
             MediaStore.Video.Media.getContentUri(
