@@ -253,9 +253,6 @@ class ObjectDetectionHelper(
 
         val outputShape = interpreter!!.getOutputTensor(0).shape()
 
-        val inputImageHeight = tensorHeight.toFloat()
-        val inputImageWidth = tensorWidth.toFloat()
-
         val batchSize = outputShape[0]
         val numDetections = outputShape[1]
         val numFeatures = outputShape[2]
@@ -281,13 +278,9 @@ class ObjectDetectionHelper(
 
                 //https://github.com/android/camera-samples/blob/main/CameraXAdvanced/tflite/src/main/java/com/example/android/camerax/tflite/CameraActivity.kt
                 //Following this example for scaling the results
-                x0 *= originalImageWidth
-                y0 *= originalImageHeight
-                x1 *= originalImageWidth
-                y1 *= originalImageHeight
-
                 val obb = OrientedBoundingBoxNMS(x0, y0, x1, y1, classLabel.toInt(), angleInRadians)
-                detections.add(OBBDetectionNMS(obb, confidence, labels()[classLabel.toInt()]))
+                val mappedCoordinates = mapOutputCoordinates(obb, originalImageWidth, originalImageHeight)
+                detections.add(OBBDetectionNMS(obb, confidence, labels()[classLabel.toInt()], mappedCoordinates))
             }
         }
         return detections
@@ -471,6 +464,50 @@ class ObjectDetectionHelper(
         }
 
         return detections
+    }
+
+    /**
+     * Helper function used to map the coordinates for objects coming out of
+     * the model into the coordinates that the user sees on the screen.
+     */
+    private fun mapOutputCoordinates(location: OrientedBoundingBoxNMS, originalImageWidth: Float, originalImageHeight: Float): RectF {
+
+       // Step 1: map location to the preview coordinates
+        val previewLocation = RectF(
+            location.x0 * originalImageWidth,
+            location.y0 * originalImageHeight,
+            location.x1 * originalImageWidth,
+            location.y1 * originalImageHeight
+        )
+
+        // Step 2: compensate for camera sensor orientation and mirroring
+        //Note: We skipped step two because we only support back camera views
+
+        // Step 3: compensate for 1:1 to 4:3 aspect ratio conversion + small margin
+        val margin = 0.1f
+        val requestedRatio = 4f / 3f
+
+        val midX = (previewLocation.left + previewLocation.right) / 2f
+        val midY = (previewLocation.top + previewLocation.bottom) / 2f
+
+        return if (originalImageWidth < originalImageHeight) {
+            RectF(
+                midX - (1f + margin) * requestedRatio * previewLocation.width() / 2f,
+                midY - (1f - margin) * previewLocation.height() / 2f,
+                midX + (1f + margin) * requestedRatio * previewLocation.width() / 2f,
+                midY + (1f - margin) * previewLocation.height() / 2f
+            )
+        }
+        else{
+            RectF(
+                midX - (1f - margin) * previewLocation.width() / 2f,
+                midY - (1f + margin) * requestedRatio * previewLocation.height() / 2f,
+                midX + (1f - margin) * previewLocation.width() / 2f,
+                midY + (1f + margin) * requestedRatio * previewLocation.height() / 2f
+            )
+        }
+
+        return previewLocation
     }
 
 
