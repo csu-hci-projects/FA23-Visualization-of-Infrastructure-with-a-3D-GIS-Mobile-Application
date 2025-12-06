@@ -6,5 +6,12 @@ package com.example.cs567_3d_ui_project.argis.mlutils
 data class OBBDetection (
     val box: OrientedBoundingBox,
     val confidence: Float,
-    val classId: Int
+    val classId: Int,
+    val className: String
+)
+
+data class OBBDetectionNMS (
+    val box: OrientedBoundingBoxNMS,
+    val confidence: Float,
+    val className: String
 )

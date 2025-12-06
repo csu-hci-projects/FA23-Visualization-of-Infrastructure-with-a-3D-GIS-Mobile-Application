@@ -20,8 +20,8 @@ import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.lifecycleScope
 import com.example.cs567_3d_ui_project.R
 import com.example.cs567_3d_ui_project.activities.DetectionActivity
-import com.example.cs567_3d_ui_project.argis.helpers.ObjectDetectionHelper
 import com.example.cs567_3d_ui_project.argis.mlutils.DepthAnything
+import com.example.cs567_3d_ui_project.argis.mlutils.ObjectDetectionHelper
 import com.example.cs567_3d_ui_project.ml.Yolov1111725Float32
 import kotlinx.coroutines.launch
 import org.tensorflow.lite.DataType

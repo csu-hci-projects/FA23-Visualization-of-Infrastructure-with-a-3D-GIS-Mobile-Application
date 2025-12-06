@@ -1,7 +1,6 @@
 package com.example.cs567_3d_ui_project.argis.mlutils
 
 import androidx.compose.runtime.Immutable
-import com.example.cs567_3d_ui_project.argis.helpers.ObjectDetectionHelper
 
 @Immutable
 class UiState(

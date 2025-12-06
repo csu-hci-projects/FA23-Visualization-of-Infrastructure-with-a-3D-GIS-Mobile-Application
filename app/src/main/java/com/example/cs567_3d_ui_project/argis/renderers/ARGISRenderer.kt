@@ -5,10 +5,12 @@ import android.media.Image
 import android.opengl.GLES30
 import android.opengl.Matrix
 import android.os.Build
+import android.os.SystemClock
 import android.util.DisplayMetrics
 import android.util.Log
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
+import androidx.lifecycle.lifecycleScope
 import com.example.cs567_3d_ui_project.R
 import com.example.cs567_3d_ui_project.activities.ARGISActivity
 import com.example.cs567_3d_ui_project.argis.Axis
@@ -19,10 +21,14 @@ import com.example.cs567_3d_ui_project.argis.Texture
 import com.example.cs567_3d_ui_project.argis.buffers.Framebuffer
 import com.example.cs567_3d_ui_project.argis.helpers.AnchorHelper
 import com.example.cs567_3d_ui_project.argis.helpers.DisplayRotationHelper
-import com.example.cs567_3d_ui_project.argis.helpers.ObjectDetectionHelper
 import com.example.cs567_3d_ui_project.argis.helpers.TrackingStateHelper
 import com.example.cs567_3d_ui_project.argis.helpers.WrappedLineEarthAnchor
+import com.example.cs567_3d_ui_project.argis.mlutils.ObjectDetectionHelper
 import com.example.cs567_3d_ui_project.argis.mlutils.YuvToRgbConverter
+import com.example.cs567_3d_ui_project.ml.Yolov1111725Float16
+import com.example.cs567_3d_ui_project.ml.Yolov1111725Float16Nms
+import com.example.cs567_3d_ui_project.ml.Yolov1111725Float32
+import com.example.cs567_3d_ui_project.ml.Yolov1111725Float32Nms
 import com.example.cs567_3d_ui_project.qgis_driver.resource_objects.wfs_resources.LineGeometry
 import com.example.cs567_3d_ui_project.qgis_driver.resource_objects.wfs_resources.PointGeometry
 import com.google.ar.core.Anchor
@@ -40,8 +46,15 @@ import com.google.ar.core.TrackingState
 import com.google.ar.core.exceptions.CameraNotAvailableException
 import com.google.ar.core.exceptions.NotYetAvailableException
 import com.google.ar.core.exceptions.SessionPausedException
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.launch
+import org.tensorflow.lite.DataType
+import org.tensorflow.lite.support.common.ops.CastOp
+import org.tensorflow.lite.support.common.ops.NormalizeOp
+import org.tensorflow.lite.support.image.ImageProcessor
+import org.tensorflow.lite.support.image.TensorImage
 import java.io.BufferedReader
 import java.io.IOException
 import java.io.InputStream
@@ -93,6 +106,9 @@ class ARGISRenderer(val activity: ARGISActivity):
     private val EPSILON = 0.00001f;
     private val DEG2RAD = 3.141593f / 180.0f;
     private val RAD2DEG = 180.0f / 3.141593f;
+
+    val width = 640
+    val height = 480
 
     var earthAnchor: Anchor? = null
 
@@ -369,91 +385,78 @@ class ARGISRenderer(val activity: ARGISActivity):
 
                 val rotatedBitmap = Bitmap.createBitmap(bm0, 0, 0, bm0.width, bm0.height, matrix, true)
 
-                if(rotatedBitmap != bm0){
-                    bm0.recycle()
-                }
+//                if(rotatedBitmap != bm0){
+//                    bm0.recycle()
+//                }
 
                 val resizedBitmap = Bitmap.createScaledBitmap(rotatedBitmap, 640, 640, false)
 
-                if(resizedBitmap != rotatedBitmap){
-                    rotatedBitmap.recycle()
-                }
+//                if(resizedBitmap != rotatedBitmap){
+//                    rotatedBitmap.recycle()
+//                }
 
                 Log.i("Resized Image", "Stop")
 
-//                this.activity.lifecycleScope.launch (Dispatchers.IO){
-//                    var interfaceTime = SystemClock.uptimeMillis()
-//
-//                    var objectDetectionHelper = ObjectDetectionHelper(activity)
-//
-//                    objectDetectionHelper.setupObjectDetector()
-//                    var model: Yolov1111725Float32? = null
-//                    var model2: Yolov1111725Float16? = null
-//
-//                    try{
+                val INPUT_MEAN = 0f
+                val INPUT_STANDARD_DEVIATION = 255f
+                val INPUT_IMAGE_TYPE = DataType.FLOAT32
+                val CONFIDENCE_THRESHOLD = 0.3F
+                val IOU_THRESHOLD = 0.5F
+
+                val imageProcessor = ImageProcessor.Builder()
+                    .add(NormalizeOp(INPUT_MEAN, INPUT_STANDARD_DEVIATION))
+                    .add(CastOp(INPUT_IMAGE_TYPE))
+                    .build()
+
+                val tensorImage = TensorImage(INPUT_IMAGE_TYPE)
+                tensorImage.load(resizedBitmap)
+                val processedImage = imageProcessor.process(tensorImage)
+
+                this.activity.lifecycleScope.launch (Dispatchers.Default){
+                    var objectDetectionHelper = ObjectDetectionHelper(activity)
+                    var model: Yolov1111725Float32? = null
+                    var model2: Yolov1111725Float16? = null
+                    var model3: Yolov1111725Float32Nms? = null
+                    var model4: Yolov1111725Float16Nms? = null
+                    try
+                    {
+                        var interfaceTime = SystemClock.uptimeMillis()
+                        objectDetectionHelper.setupObjectDetector()
+
+                        //model = Yolov1111725Float32.newInstance(activity)
+                        //model2 = Yolov1111725Float16.newInstance(activity)
+                        //model3 = Yolov1111725Float32Nms.newInstance(activity)
+                        model4 = Yolov1111725Float16Nms.newInstance(activity)
+
+                        val outputs = model4.process(processedImage.tensorBuffer)
+                        val outputFeature0 = outputs.outputFeature0AsTensorBuffer
+
+                        Log.i(TAG, "Result: Size ${outputFeature0.floatArray.size}")
+
+                       // Reversed width and height since we rotated the image
+                        //val bb1 = objectDetectionHelper.postProcess(outputFeature0.floatArray, height.toFloat(), width.toFloat())
+                        val bb1 = objectDetectionHelper.postProcessNMS(outputFeature0.floatArray, height.toFloat(), width.toFloat())
+
 //                        val depthResults = activity.depthAnythingV2.predict(bm0)
 //                        Log.i(TAG, "Inference Time: ${depthResults.second}")
-//
-//                        val photoDirectory = File("/storage/emulated/0/Download").apply { mkdirs() }
-//                        val timestamp = System.currentTimeMillis()
-//                        val photoFile = File(photoDirectory, "depth_result_$timestamp.jpg")
-//
-//
-//                        FileOutputStream(photoFile).use { out ->
-//                            depthResults.first.compress(Bitmap.CompressFormat.JPEG, 100, out)
-//                            out.flush()
-//                        }
-//
-//                        val values = ContentValues().apply {
-//                            put(MediaStore.Images.Media.DISPLAY_NAME, photoFile.name)
-//                            put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg")
-//                            put(MediaStore.Images.Media.DATA, photoFile.absolutePath)
-//                        }
-//                        activity.contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values)
-//                    }
-//                    catch (e: Exception){
-//                        Log.e("INFERENCE", "Failed to run inference", e)
-//                    }
-//                    finally {
-//                        interfaceTime = SystemClock.uptimeMillis() - interfaceTime
-//                        Log.i(TAG, "Inference Time: ${interfaceTime / 1000.0f} seconds")
-//                                //model?.close();
-//                    }
-//                }
+
+                    }
+                    catch (e: Exception){
+                        Log.e(TAG, "Inference hit an exception", e)
+                    }
+                    finally {
+                        model?.close()
+                        model2?.close()
+                        model3?.close()
+                        model4?.close()
+                    }
 
 
-////
-////                        val INPUT_MEAN = 0f
-////                        val INPUT_STANDARD_DEVIATION = 255f
-////                        val INPUT_IMAGE_TYPE = DataType.FLOAT32
-////                        val OUTPUT_IMAGE_TYPE = DataType.FLOAT32
-////                        val CONFIDENCE_THRESHOLD = 0.3F
-////                        val IOU_THRESHOLD = 0.5F
-////
-////                        val imageProcessor = ImageProcessor.Builder()
-////                            .add(NormalizeOp(INPUT_MEAN, INPUT_STANDARD_DEVIATION))
-////                            .add(CastOp(INPUT_IMAGE_TYPE))
-////                            .add(Rot90Op(90))
-////                            .build()
-////
-////                        val resizedBitmap = Bitmap.createScaledBitmap(bitmap, 640, 640, false)
-////
-////                        val tensorImage = TensorImage(INPUT_IMAGE_TYPE)
-////                        tensorImage.load(resizedBitmap)
-////
-////                        val processedImage = imageProcessor.process(tensorImage)
-//
-//                        /* val matrix = android.graphics.Matrix()
-//                         matrix.postRotate(90.0f)
-//
-//                         val rotatedBitmap = Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
-//
-//                         if (rotatedBitmap != bitmap) {
-//                             bitmap.recycle();
-//                         }*/
-//                        val width = test.width.toFloat()
-//                        val height = test.height.toFloat()
-//
+
+
+                }
+
+
 //                        this.activity.lifecycleScope.launch (Dispatchers.IO){
 //                            var interfaceTime = SystemClock.uptimeMillis()
 //

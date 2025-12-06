@@ -15,7 +15,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
-import com.example.cs567_3d_ui_project.argis.helpers.ObjectDetectionHelper
+import com.example.cs567_3d_ui_project.argis.mlutils.ObjectDetectionHelper
 
 @Composable
 fun ResultsOverlay(
