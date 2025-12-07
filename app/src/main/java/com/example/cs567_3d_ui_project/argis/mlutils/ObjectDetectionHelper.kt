@@ -51,7 +51,7 @@ class ObjectDetectionHelper(
         private const val INPUT_STANDARD_DEVIATION = 255f
         private val INPUT_IMAGE_TYPE = DataType.FLOAT32
         private val OUTPUT_IMAGE_TYPE = DataType.FLOAT32
-        private const val CONFIDENCE_THRESHOLD = 0.20F
+        private const val CONFIDENCE_THRESHOLD = 0.25F
         private const val IOU_THRESHOLD = 0.5F
 
         const val TAG = "ObjectDetectorHelper"
@@ -238,6 +238,8 @@ class ObjectDetectionHelper(
     * https://www.reddit.com/r/Ultralytics/comments/1jwl6se/ultralytics_postprocessing_guide/
     * https://github.com/ultralytics/ultralytics/issues/19088
     * https://docs.ultralytics.com/datasets/obb/#yolo-obb-format
+    * https://github.com/surendramaran/YOLO/blob/main/YOLOv9-Object-Detector-Android-Tflite/app/src/main/java/com/surendramaran/yolov9tflite/OverlayView.kt
+    *
     *
     * Post processing with NMS has the shape of below
     *
@@ -269,10 +271,10 @@ class ObjectDetectionHelper(
         for (c in 0 until numDetections step batchSize * numFeatures) {
             val confidence = array[c+4]
             if(confidence > CONFIDENCE_THRESHOLD){
-                var x0 = array[c]
-                var y0 = array[c+1]
-                var x1 = array[c+2]
-                var y1 = array[c+3]
+                val x0 = array[c]
+                val y0 = array[c+1]
+                val x1 = array[c+2]
+                val y1 = array[c+3]
                 val classLabel = array[c+5]
                 val angleInRadians = array[c+6]
 
@@ -467,18 +469,38 @@ class ObjectDetectionHelper(
     }
 
     /**
+     * https://github.com/HumanSignal/label-studio-sdk/blob/master/src/label_studio_sdk/converter/converter.py
      * Helper function used to map the coordinates for objects coming out of
      * the model into the coordinates that the user sees on the screen.
      */
     private fun mapOutputCoordinates(location: OrientedBoundingBoxNMS, originalImageWidth: Float, originalImageHeight: Float): RectF {
 
        // Step 1: map location to the preview coordinates
+        //You need to multiply with the x1 and x2 with input width and y1 and y2 with input height to denormalize it.
+//        val dX0 = location.x0 * originalImageWidth
+//        val dY0 = location.y0 * originalImageHeight
+//
+//        val dX1 = location.x1 * originalImageWidth
+//        val dY1 = location.y1 * originalImageHeight
+//
+//        val boxWidth = abs(dX0 - dX1)
+//        val boxHeight = abs(dY0 - dY1)
+
         val previewLocation = RectF(
             location.x0 * originalImageWidth,
             location.y0 * originalImageHeight,
             location.x1 * originalImageWidth,
             location.y1 * originalImageHeight
         )
+
+//        val previewLocation = RectF(
+//            location.x0,
+//            location.y0,
+//            location.x1,
+//            location.y1
+//        )
+
+        //return previewLocation
 
         // Step 2: compensate for camera sensor orientation and mirroring
         //Note: We skipped step two because we only support back camera views
@@ -487,8 +509,13 @@ class ObjectDetectionHelper(
         val margin = 0.1f
         val requestedRatio = 4f / 3f
 
-        val midX = (previewLocation.left + previewLocation.right) / 2f
-        val midY = (previewLocation.top + previewLocation.bottom) / 2f
+//        val midX = (previewLocation.left + previewLocation.right) / 2f
+//        val midY = (previewLocation.top + previewLocation.bottom) / 2f
+
+        val midX = (previewLocation.left) / 2f
+        val midY = (previewLocation.top) / 2f
+
+        //return previewLocation
 
         return if (originalImageWidth < originalImageHeight) {
             RectF(
@@ -506,11 +533,7 @@ class ObjectDetectionHelper(
                 midY + (1f + margin) * requestedRatio * previewLocation.height() / 2f
             )
         }
-
-        return previewLocation
     }
-
-
 
     fun bestBox(array: FloatArray) : List<BoundingBox> {
 

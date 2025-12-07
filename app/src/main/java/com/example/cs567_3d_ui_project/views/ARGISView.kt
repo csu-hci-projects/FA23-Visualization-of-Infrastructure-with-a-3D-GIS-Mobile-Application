@@ -31,6 +31,8 @@ class ARGISView(val activity: ARGISActivity): DefaultLifecycleObserver {
     var allModelsRotate = false
     var alignAssets = true
 
+    var detectingObjects = false
+
     var modelRotationAxis = Axis.Y
     var modelScaleAxis = Axis.Y
 
@@ -49,7 +51,7 @@ class ARGISView(val activity: ARGISActivity): DefaultLifecycleObserver {
 
     private val scaleFactorTextView: TextView = root.findViewById(R.id.scaleFactor)
 
-    private val locationAccuracyTextView: TextView = root.findViewById(R.id.location_accuracy)
+//    private val locationAccuracyTextView: TextView = root.findViewById(R.id.location_accuracy)
 
     val session
         get() = activity.arGISSessionHelper.mySession
@@ -191,7 +193,7 @@ class ARGISView(val activity: ARGISActivity): DefaultLifecycleObserver {
     val scaleAssetsButton: ImageButton = root.findViewById<ImageButton>(R.id.scaleAll).apply {
         setOnClickListener {
             v ->
-            xAxis.visibility = View.VISIBLE
+            xAxis.visibility = View.GONE
             yAxis.visibility = View.VISIBLE
             zAxis.visibility = View.VISIBLE
             scaleUpButton.visibility = View.VISIBLE
@@ -202,6 +204,12 @@ class ARGISView(val activity: ARGISActivity): DefaultLifecycleObserver {
             v.visibility = View.GONE
             eraseTransformationsButton.visibility = View.GONE
             rotateButton.visibility = View.GONE
+        }
+    }
+
+    val detectionButton: ImageButton = root.findViewById<ImageButton>(R.id.objectDetection). apply {
+        setOnClickListener{
+            detectingObjects = !detectingObjects
         }
     }
 
@@ -240,9 +248,9 @@ class ARGISView(val activity: ARGISActivity): DefaultLifecycleObserver {
             scaleDownButton.visibility = View.GONE
             scaleFactorTextView.visibility = View.GONE
 
-            scaleAssetsButton.visibility = View.VISIBLE
-            eraseTransformationsButton.visibility = View.VISIBLE
-            rotateButton.visibility = View.VISIBLE
+            scaleAssetsButton.visibility = View.GONE
+            eraseTransformationsButton.visibility = View.GONE
+            rotateButton.visibility = View.GONE
         }
     }
 
@@ -308,14 +316,14 @@ class ARGISView(val activity: ARGISActivity): DefaultLifecycleObserver {
         }
     }
 
-    fun updateLocationAccuracy(locationAccuracyStatus: String){
-        if(locationAccuracyTextView.text == locationAccuracyStatus){
-            return
-        }
-        activity.runOnUiThread {
-            locationAccuracyTextView.text = locationAccuracyStatus
-        }
-    }
+//    fun updateLocationAccuracy(locationAccuracyStatus: String){
+//        if(locationAccuracyTextView.text == locationAccuracyStatus){
+//            return
+//        }
+//        activity.runOnUiThread {
+//            locationAccuracyTextView.text = locationAccuracyStatus
+//        }
+//    }
 
     fun onClickPlayback(){
         Log.d(TAG, "onClickPlayback")
