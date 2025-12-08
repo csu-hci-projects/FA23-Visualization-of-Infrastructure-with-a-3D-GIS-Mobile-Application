@@ -593,6 +593,9 @@ class ARGISRenderer(val activity: ARGISActivity):
             {
                 anchorHelper.detachBoundingBoxAnchors()
                 objectResults = null
+
+                activity.arGISSurfaceView.updateObjectDetectionResults(detections)
+
                 for (bb in detections) {
                     val paint = Paint()
                     paint.style = Paint.Style.STROKE
@@ -662,7 +665,7 @@ class ARGISRenderer(val activity: ARGISActivity):
 
                         val anchor = result.trackable.createAnchor(result.hitPose)
                         anchorHelper.boundingBoxAnchors.add(anchor)
-                        renderer.renderBoundingBoxAtAnchor(anchor, colorCode)
+                        //renderer.renderBoundingBoxAtAnchor(anchor, colorCode)
                     }
                     catch (e: Exception){
                         Log.e(TAG, "Failed to Render Bounding Box", e)

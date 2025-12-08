@@ -17,6 +17,7 @@ import com.example.cs567_3d_ui_project.R
 import com.example.cs567_3d_ui_project.activities.ARGISActivity
 import com.example.cs567_3d_ui_project.argis.Axis
 import com.example.cs567_3d_ui_project.argis.helpers.TapHelper
+import com.example.cs567_3d_ui_project.argis.mlutils.OBBDetectionNMS
 import com.google.ar.core.Earth
 import com.google.ar.core.GeospatialPose
 import com.google.ar.core.PlaybackStatus
@@ -456,6 +457,35 @@ class ARGISView(val activity: ARGISActivity): DefaultLifecycleObserver {
                 poseText
             )
         }
+    }
+
+    val inferenceResults = root.findViewById<TextView>(R.id.inferenceResults)
+
+    fun updateObjectDetectionResults(obbDetectionNMSResults: List<OBBDetectionNMS>){
+        var insulators = 0
+        var poles = 0
+        var wires = 0
+
+        for(obbNMS in obbDetectionNMSResults){
+            when(obbNMS.box.classIndex) {
+                0 ->
+                    insulators+=1
+                1 ->
+                    poles+=1
+                2 ->
+                    wires+=1
+            }
+        }
+
+        activity.runOnUiThread{
+            inferenceResults.text = activity.getString(
+                R.string.inferenceResults,
+                insulators,
+                poles,
+                wires
+            )
+        }
+
     }
 
 }
