@@ -13,6 +13,7 @@ import com.example.cs567_3d_ui_project.argis.helpers.ARGISSessionLifecycleHelper
 import com.example.cs567_3d_ui_project.argis.helpers.DepthSettings
 import com.example.cs567_3d_ui_project.argis.helpers.FullScreenHelper
 import com.example.cs567_3d_ui_project.argis.mlutils.DepthAnything
+import com.example.cs567_3d_ui_project.argis.mlutils.ObjectDetectionHelper
 import com.example.cs567_3d_ui_project.argis.renderers.ARGISRenderer
 import com.example.cs567_3d_ui_project.argis.renderers.ARRenderer
 import com.example.cs567_3d_ui_project.qgis_driver.resource_objects.wfs_resources.GetFeatureResponse
@@ -35,6 +36,7 @@ class ARGISActivity: AppCompatActivity() {
     val depthSettings = DepthSettings()
 
     lateinit var depthAnythingV2: DepthAnything
+    lateinit var objectDetectionHelper: ObjectDetectionHelper
 
     companion object{
         private const val TAG = "ARGISActivity"
@@ -72,7 +74,6 @@ class ARGISActivity: AppCompatActivity() {
         startActivityForResult.createIntent(this, intent)
         return startActivityForResult
     }
-
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -115,8 +116,9 @@ class ARGISActivity: AppCompatActivity() {
 
         depthAnythingV2 = DepthAnything(this)
         Log.i(ARGISRenderer.TAG, "Model Load Success!")
-    }
 
+        objectDetectionHelper = ObjectDetectionHelper(this)
+    }
 
     private fun createSession(session: Session){
         session.configure(session.config.apply {
@@ -138,7 +140,7 @@ class ARGISActivity: AppCompatActivity() {
     }
 
     fun recreateSession(){
-        var session = arGISSessionHelper.recreateSession()
+        val session = arGISSessionHelper.recreateSession()
         createSession(session!!)
 
         lifecycle.removeObserver(argisRenderer)

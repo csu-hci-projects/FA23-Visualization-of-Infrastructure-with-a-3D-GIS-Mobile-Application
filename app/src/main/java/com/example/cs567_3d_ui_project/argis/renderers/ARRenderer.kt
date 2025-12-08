@@ -52,6 +52,11 @@ class ARRenderer(glSurfaceView: GLSurfaceView, renderer: Renderer, assetManager:
         glSurfaceView.setWillNotDraw(false)
     }
 
+    fun draw(shader: Shader?, frameBuffer: Framebuffer? = null){
+        useFrameBuffer(frameBuffer)
+        shader!!.lowLevelUse()
+    }
+
     fun draw(mesh: Mesh?, shader: Shader?, frameBuffer: Framebuffer? = null){
         useFrameBuffer(frameBuffer)
         shader!!.lowLevelUse()

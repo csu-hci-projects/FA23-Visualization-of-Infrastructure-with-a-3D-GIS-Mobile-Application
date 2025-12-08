@@ -1,6 +1,6 @@
 #version 300 es
 /*
- * Copyright 2022 Google LLC
+ * Copyright 2017 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,26 +15,13 @@
  * limitations under the License.
  */
 
-uniform mat4 u_ModelView;
-uniform mat4 u_ModelViewProjection;
-uniform vec3 u_Color;
+//https://github.com/googlesamples/arcore-ml-sample/blob/main/app/src/main/assets/shaders/point_cloud.frag
+precision mediump float;
 
-layout(location = 0) in vec4 a_Position;
-layout(location = 1) in vec2 a_TexCoord;
-layout(location = 2) in vec3 a_Normal;
+uniform vec4 u_Color;
 
-
-out vec3 ourColor;
-out vec2 v_TexCoord;
+out vec4 o_FragColor;
 
 void main() {
-  v_TexCoord = a_TexCoord;
-  gl_Position = u_ModelViewProjection * a_Position;
-  ourColor = u_Color;
+  o_FragColor = u_Color;
 }
-
-
-//TODO Find the frame where the prediction did really well
-//and compare where center is since the
-
-//finish color work with the fragment shader

@@ -33,7 +33,6 @@ class ObjectDetectionHelper(
     var model: Model = MODEL_DEFAULT
 ) {
 
-
     private var interpreter: Interpreter? = null
 
     private val _detectionResult = MutableSharedFlow<DetectionResult>()
@@ -41,6 +40,8 @@ class ObjectDetectionHelper(
 
     private val _error = MutableSharedFlow<Throwable>()
     val error: SharedFlow<Throwable> = _error
+
+    private var isInitialized: Boolean = false
 
     companion object {
         val MODEL_DEFAULT = Model.Yolov1111725float16NMS
@@ -73,6 +74,11 @@ class ObjectDetectionHelper(
     // that are created on the main thread and used on a background thread, but
     // the GPU delegate needs to be used on the thread that initialized the detector
     suspend fun setupObjectDetector() {
+
+        if(isInitialized){
+            return
+        }
+
         try {
             val litertBuffer = FileUtil.loadMappedFile(context, model.fileName)
             /*labels = getModelMetadata(litertBuffer)*/
@@ -82,6 +88,7 @@ class ObjectDetectionHelper(
             })
             Log.i(TAG, "Successfully init Interpreter!")
 
+            isInitialized = true
 
          /*   val (_, tensorHeight, tensorWidth, _) = interpreter!!.getInputTensor(0).shape()
             Log.i(TAG, "Input tensor shape Height: $tensorHeight, Width: $tensorWidth")
@@ -313,9 +320,6 @@ class ObjectDetectionHelper(
         val inputImageHeight = tensorHeight.toFloat()
         val inputImageWidth = tensorWidth.toFloat()
 
-//        val originalImageWidth = originalImage.width.toFloat()
-//        val originalImageHeight = originalImage.height.toFloat()
-
         val batchSize = outputShape[0]
         val numFeatures = outputShape[1]
         val numDetections = outputShape[2]
@@ -507,13 +511,14 @@ class ObjectDetectionHelper(
 
         // Step 3: compensate for 1:1 to 4:3 aspect ratio conversion + small margin
         val margin = 0.1f
-        val requestedRatio = 4f / 3f
+        //val requestedRatio = 4f / 3f
+        val requestedRatio = 19.5f / 9f
 
 //        val midX = (previewLocation.left + previewLocation.right) / 2f
 //        val midY = (previewLocation.top + previewLocation.bottom) / 2f
 
-        val midX = (previewLocation.left) / 2f
-        val midY = (previewLocation.top) / 2f
+        val midX = (previewLocation.left + previewLocation.right) / 2f
+        val midY = (previewLocation.top + previewLocation.bottom) / 2f
 
         //return previewLocation
 

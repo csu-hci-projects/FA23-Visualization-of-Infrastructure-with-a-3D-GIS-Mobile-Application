@@ -10,10 +10,20 @@ import com.google.ar.core.GeospatialPose
 class AnchorHelper {
     val wrappedAnchors = mutableListOf<WrappedEarthAnchor>()
     val wrappedLineEarthAnchors = mutableListOf<WrappedLineEarthAnchor>()
+    val boundingBoxAnchors = mutableListOf<Anchor>()
 
     //This is a magic number and i am not happy about its use but it will
     //have to do for now. More precise selection would require more research.
     val tolerance = 0.0001
+
+    fun detachBoundingBoxAnchors()
+    {
+        boundingBoxAnchors.forEach {
+            a ->
+            a.detach()
+        }
+
+    }
 
     fun detachAnchors(){
         wrappedAnchors.forEach {
@@ -104,11 +114,6 @@ class AnchorHelper {
         return vectorArray.toFloatArray()
     }
 
-    fun interpolateLineGeometry(lineGeometry: LineGeometry, stepsPerSegment: Int = 1){
-
-
-    }
-
     fun getCenterVertexOfLineGeometry(lineGeometry: LineGeometry): Int{
         //We will round the value we calculated for the index up for now.
         if(lineGeometry.lineRoute.isEmpty()){
@@ -119,10 +124,7 @@ class AnchorHelper {
 
     fun createEarthAnchorFromPointFeature(earth: Earth, pointFeature: Feature, geospatialPose: GeospatialPose){
         val pointGeometry = pointFeature.geometry.toPointGeometry()
-
         Log.i("Point Feature Geometry", "${pointGeometry!!.y},${pointGeometry.x}")
-
-
         val earthAnchor = earth.createAnchor(
             pointGeometry.y,
             pointGeometry.x,
@@ -141,8 +143,6 @@ class AnchorHelper {
             val wrappedAnchor = WrappedEarthAnchor(earthAnchor, earth, pointFeature.id)
             wrappedAnchors.add(wrappedAnchor)
         }
-
-
     }
 
     //TODO: Need better collision detection, we should try to account for

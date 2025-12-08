@@ -26,6 +26,7 @@ import com.example.cs567_3d_ui_project.argis.helpers.AnchorHelper
 import com.example.cs567_3d_ui_project.argis.helpers.DisplayRotationHelper
 import com.example.cs567_3d_ui_project.argis.helpers.TrackingStateHelper
 import com.example.cs567_3d_ui_project.argis.helpers.WrappedLineEarthAnchor
+import com.example.cs567_3d_ui_project.argis.mlutils.OBBDetectionNMS
 import com.example.cs567_3d_ui_project.argis.mlutils.ObjectDetectionHelper
 import com.example.cs567_3d_ui_project.argis.mlutils.YuvToRgbConverter
 import com.example.cs567_3d_ui_project.ml.Yolov1111725Float16
@@ -98,6 +99,8 @@ class ARGISRenderer(val activity: ARGISActivity):
 
     lateinit var pipeObjectAlbedoTexture: Texture
     lateinit var pipeObjectRoughnessTexture: Texture
+
+    lateinit var boundingBoxShader: Shader
 
     private val displayRotationHelper: DisplayRotationHelper = DisplayRotationHelper(activity)
 
@@ -201,9 +204,6 @@ class ARGISRenderer(val activity: ARGISActivity):
                 buffer)
             GLError.maybeThrowGLException("Failed to populate DFG texture", "glTexImage2D")
 
-
-            //models/spatial_marker_baked.png
-
             mapMarkerObjectTexture = Texture.createFromAsset(
                 render,
                 "models/BakedBox2.png",
@@ -211,6 +211,7 @@ class ARGISRenderer(val activity: ARGISActivity):
                 Texture.ColorFormat.SRGB
             )
 
+            //models/spatial_marker_baked.png
             //models/geospatial_marker.obj
             //models/Cube.obj
             //"models/Pipe_Blenderkt.obj
@@ -295,8 +296,23 @@ class ARGISRenderer(val activity: ARGISActivity):
                 .setTexture("u_DfgTexture", dfgTexture)
 
 
+//            boundingBoxShader = Shader.createFromAssets(
+//                render,
+//                "shaders/oriented_bounding_box.vert",
+//                "shaders/oriented_bounding_box.frag",
+//                null
+//            )
+
+            boundingBoxShader = Shader.createFromAssets(
+                render,
+                "shaders/ar_unlit_object.vert",
+                "shaders/ar_unlit_object.frag",
+                null
+            ).setTexture("u_Texture", mapMarkerObjectTexture)
+
             backgroundRenderer.setUseDepthVisualization(render, false)
             backgroundRenderer.setUseOcclusion(render, false)
+
         }
         catch (e:Exception){
             Log.e(TAG, "Failed to read a required asset file: ${e.message}")
@@ -332,138 +348,136 @@ class ARGISRenderer(val activity: ARGISActivity):
         reader.close()
         return list
     }
+    var objectResults: List<OBBDetectionNMS>? = null
 
-
+    // https://github.com/googlesamples/arcore-ml-sample/blob/main/app/src/main/java/com/google/ar/core/examples/java/ml/classification/MLKitObjectDetector.kt
+    // https://developer.android.com/reference/kotlin/android/graphics/Color
     fun runInference(frame: Frame) {
+        var image: Image? = null
+        var inferenceTime = SystemClock.uptimeMillis()
+
         try {
-            var image: Image? = null
+            image = frame.acquireCameraImage()
 
-            try {
-                image = frame.acquireCameraImage()
+            val converter = YuvToRgbConverter(activity)
 
-                val converter = YuvToRgbConverter(activity)
+            val matrix = android.graphics.Matrix().apply {
+                postRotate(imageRotationDegrees.toFloat())
+            }
 
-                val matrix = android.graphics.Matrix().apply {
-                    postRotate(imageRotationDegrees.toFloat())
+            val bm0 =
+                Bitmap.createBitmap(image.width, image.height, Bitmap.Config.ARGB_8888).apply {
+                    converter.yuvToRgb(image, this)
                 }
 
-                val bm0 =
-                    Bitmap.createBitmap(image.width, image.height, Bitmap.Config.ARGB_8888).apply {
-                        converter.yuvToRgb(image, this)
-                    }
+            val rotatedBitmap =
+                Bitmap.createBitmap(bm0, 0, 0, bm0.width, bm0.height, matrix, true)
 
-                val rotatedBitmap =
-                    Bitmap.createBitmap(bm0, 0, 0, bm0.width, bm0.height, matrix, true)
+            val resizedBitmap = Bitmap.createScaledBitmap(rotatedBitmap, 640, 640, false)
 
-                val resizedBitmap = Bitmap.createScaledBitmap(rotatedBitmap, 640, 640, false)
+            Log.i("Resized Image", "Stop")
 
-                Log.i("Resized Image", "Stop")
+            val INPUT_MEAN = 0f
+            val INPUT_STANDARD_DEVIATION = 255f
+            val INPUT_IMAGE_TYPE = DataType.FLOAT32
 
-                val INPUT_MEAN = 0f
-                val INPUT_STANDARD_DEVIATION = 255f
-                val INPUT_IMAGE_TYPE = DataType.FLOAT32
+            val imageProcessor = ImageProcessor.Builder()
+                .add(NormalizeOp(INPUT_MEAN, INPUT_STANDARD_DEVIATION))
+                .add(CastOp(INPUT_IMAGE_TYPE))
+                .build()
 
-                val imageProcessor = ImageProcessor.Builder()
-                    .add(NormalizeOp(INPUT_MEAN, INPUT_STANDARD_DEVIATION))
-                    .add(CastOp(INPUT_IMAGE_TYPE))
-                    .build()
+            val tensorImage = TensorImage(INPUT_IMAGE_TYPE)
+            tensorImage.load(resizedBitmap)
+            val processedImage = imageProcessor.process(tensorImage)
 
-                val tensorImage = TensorImage(INPUT_IMAGE_TYPE)
-                tensorImage.load(resizedBitmap)
-                val processedImage = imageProcessor.process(tensorImage)
+            this.activity.lifecycleScope.launch(Dispatchers.IO) {
+                val model: Yolov1111725Float32? = null
+                val model2: Yolov1111725Float16? = null
+                val model3: Yolov1111725Float32Nms? = null
+                var model4: Yolov1111725Float16Nms? = null
+                val canvas = Canvas(rotatedBitmap)
+                val height = canvas.height
+                val width = canvas.width
+                try {
 
-                this.activity.lifecycleScope.launch(Dispatchers.Default) {
-                    var objectDetectionHelper = ObjectDetectionHelper(activity)
-                    var model: Yolov1111725Float32? = null
-                    var model2: Yolov1111725Float16? = null
-                    var model3: Yolov1111725Float32Nms? = null
-                    var model4: Yolov1111725Float16Nms? = null
-                    var canvas = Canvas(rotatedBitmap)
-                    val height = canvas.height
-                    val width = canvas.width
-                    try {
-                        var interfaceTime = SystemClock.uptimeMillis()
-                        objectDetectionHelper.setupObjectDetector()
+                    activity.objectDetectionHelper.setupObjectDetector()
 
-                        //model = Yolov1111725Float32.newInstance(activity)
-                        //model2 = Yolov1111725Float16.newInstance(activity)
-                        //model3 = Yolov1111725Float32Nms.newInstance(activity)
-                        model4 = Yolov1111725Float16Nms.newInstance(activity)
+                    //model = Yolov1111725Float32.newInstance(activity)
+                    //model2 = Yolov1111725Float16.newInstance(activity)
+                    //model3 = Yolov1111725Float32Nms.newInstance(activity)
+                    model4 = Yolov1111725Float16Nms.newInstance(activity)
 
-                        val outputs = model4.process(processedImage.tensorBuffer)
-                        val outputFeature0 = outputs.outputFeature0AsTensorBuffer
+                    val outputs = model4.process(processedImage.tensorBuffer)
+                    val outputFeature0 = outputs.outputFeature0AsTensorBuffer
 
-                        Log.i(TAG, "Result: Size ${outputFeature0.floatArray.size}")
+                    Log.i(TAG, "Result: Size ${outputFeature0.floatArray.size}")
 
-                        // Reversed width and height since we rotated the image
-                        //val bb1 = objectDetectionHelper.postProcess(outputFeature0.floatArray, height.toFloat(), width.toFloat())
-                        val bbs = objectDetectionHelper.postProcessNMS(
-                            outputFeature0.floatArray,
-                            width.toFloat(),
-                            height.toFloat()
-                        )
+                    val bbs = activity.objectDetectionHelper.postProcessNMS(
+                        outputFeature0.floatArray,
+                        width.toFloat(),
+                        height.toFloat()
+                    )
 
-                        for (bb in bbs) {
-                            val paint = Paint()
-                            paint.style = Paint.Style.STROKE
-                            paint.strokeWidth = 2F
+                    objectResults = bbs
 
-                            when (bb.className) {
-                                // https://developer.android.com/reference/kotlin/android/graphics/Color
-                                objectDetectionHelper.labels()[0] -> {
-                                    //Set Color to Green as this is an Insulator
-                                    paint.color = Color.GREEN
-                                }
+                    for (bb in bbs) {
+                        val paint = Paint()
+                        paint.style = Paint.Style.STROKE
+                        paint.strokeWidth = 2F
 
-                                objectDetectionHelper.labels()[1] -> {
-                                    //Set Color to Blue as this is a Pole
-                                    paint.color = Color.BLUE
-                                }
+                        when (bb.className) {
 
-                                else -> {
-                                    //Set Color to Red as this is a Wire
-                                    paint.color = Color.RED
-                                }
+                            activity.objectDetectionHelper.labels()[0] -> {
+                                //Set Color to Green as this is an Insulator
+                                paint.color = Color.GREEN
                             }
 
-                            //https://github.com/hamhanry/label-studio-converter-for-YOLO-OBB/blob/main/yolo_obb_converter.py
-                            val midX = (bb.mappedCoordinates.left) / 2f
-                            val midY = (bb.mappedCoordinates.top) / 2f
-                            val angleInDegrees = -bb.box.angle * (180 / Math.PI)
-                            canvas.save()
-                            canvas.rotate(angleInDegrees.toFloat(), midX, midY)
-                            canvas.drawRect(bb.mappedCoordinates, paint)
-                            canvas.restore()
+                            activity.objectDetectionHelper.labels()[1] -> {
+                                //Set Color to Blue as this is a Pole
+                                paint.color = Color.BLUE
+                            }
 
-                            Log.i(TAG, "$rotatedBitmap")
-                            Log.i(TAG, "Test Bitmap Draw")
+                            else -> {
+                                //Set Color to Red as this is a Wire
+                                paint.color = Color.RED
+                            }
                         }
-                        Log.i(TAG, "Test Bitmap Draw ALL Done")
+
+                        //https://github.com/hamhanry/label-studio-converter-for-YOLO-OBB/blob/main/yolo_obb_converter.py
+                        //https://stackoverflow.com/questions/57568716/draw-rectf-on-canvas
+                        val midX = (bb.mappedCoordinates.left + bb.mappedCoordinates.right) / 2f
+                        val midY = (bb.mappedCoordinates.top + bb.mappedCoordinates.bottom) / 2f
+                        val angleInDegrees = bb.box.angle * (180 / Math.PI)
+                        canvas.save()
+                        canvas.rotate(angleInDegrees.toFloat(), midX, midY)
+                        canvas.drawRect(bb.mappedCoordinates, paint)
+                        canvas.restore()
+
+                        Log.i(TAG, "$rotatedBitmap")
+                        Log.i(TAG, "Test Bitmap Draw")
+
+                    }
+                    Log.i(TAG, "Test Bitmap Draw ALL Done")
 //                        val depthResults = activity.depthAnythingV2.predict(bm0)
 //                        Log.i(TAG, "Inference Time: ${depthResults.second}")
 
-                    } catch (e: Exception) {
-                        Log.e(TAG, "Inference hit an exception", e)
-                    } finally {
-                        model?.close()
-                        model2?.close()
-                        model3?.close()
-                        model4?.close()
-                        image.close()
-                    }
+                } catch (e: Exception) {
+                    Log.e(TAG, "Inference hit an exception", e)
+                } finally {
+                    model?.close()
+                    model2?.close()
+                    model3?.close()
+                    model4?.close()
+                    image.close()
                 }
+            }
 
-            } catch (e: Exception) {
-                Log.e(TAG, "Failed to execute inferencing", e)
-            }
-            finally {
-                image?.close()
-            }
-        }catch (e: Exception){
+        } catch (e: Exception) {
             Log.e(TAG, "Failed to execute inferencing", e)
         }
-
-
+        finally {
+            image?.close()
+        }
     }
 
     override fun onDrawFrame(renderer: ARRenderer?) {
@@ -490,10 +504,6 @@ class ARGISRenderer(val activity: ARGISActivity):
             }
 
         val camera = frame.camera
-
-        if(activity.arGISSurfaceView.detectingObjects){
-            runInference(frame)
-        }
 
         try{
             backgroundRenderer.setUseDepthVisualization(renderer!!,
@@ -565,12 +575,100 @@ class ARGISRenderer(val activity: ARGISActivity):
 
         render.clear(virtualSceneFrameBuffer, 0f,0f,0f,0f)
 
+        //Run model inferencing if the user clicked the button
+        if(activity.arGISSurfaceView.detectingObjects){
+            runInference(frame)
+        }
+
         //Get the user's Geospatial info
         earth = session.earth!!
 
         if(earth.trackingState == TrackingState.TRACKING){
+
             val cameraGeospatialPose = earth.cameraGeospatialPose
             Log.i("Camera Location", "${cameraGeospatialPose.latitude},${cameraGeospatialPose.longitude},${cameraGeospatialPose.altitude}")
+
+            val detections = objectResults
+            if(detections != null)
+            {
+                anchorHelper.detachBoundingBoxAnchors()
+                objectResults = null
+                for (bb in detections) {
+                    val paint = Paint()
+                    paint.style = Paint.Style.STROKE
+                    paint.strokeWidth = 2F
+
+                    //https://www.rapidtables.com/web/color/RGB_Color.html
+                    val colorCode: FloatArray
+
+                    when (bb.className) {
+
+                        activity.objectDetectionHelper.labels()[0] -> {
+                            //Set Color to Green as this is an Insulator
+                            paint.color = Color.GREEN
+                            colorCode = floatArrayOf(0f, 255f, 0f)
+                        }
+
+                        activity.objectDetectionHelper.labels()[1] -> {
+                            //Set Color to Blue as this is a Pole
+                            paint.color = Color.BLUE
+                            colorCode = floatArrayOf(0f, 0f, 255f)
+                        }
+
+                        else -> {
+                            //Set Color to Red as this is a Wire
+                            paint.color = Color.RED
+                            colorCode = floatArrayOf(255f, 0f, 0f)
+                        }
+                    }
+
+                    //https://github.com/hamhanry/label-studio-converter-for-YOLO-OBB/blob/main/yolo_obb_converter.py
+                    //https://stackoverflow.com/questions/57568716/draw-rectf-on-canvas
+                    val cx = (bb.mappedCoordinates.left + bb.mappedCoordinates.right) / 2f
+                    val cy = (bb.mappedCoordinates.top + bb.mappedCoordinates.left) / 2f
+                    val cz = cameraGeospatialPose.altitude
+                    val w = 1.0f
+                    val dx = abs(bb.mappedCoordinates.left + bb.mappedCoordinates.right)
+                    val dy = abs(bb.mappedCoordinates.top - bb.mappedCoordinates.bottom)
+
+//                val matrix = FloatArray(16)
+//                anchor.pose?.toMatrix(matrix, 0)
+//
+//                Matrix.multiplyMM(modelViewMatrix, 0, viewMatrix, 0, matrix, 0)
+//                Matrix.multiplyMM(modelViewProjectionMatrix, 0, projectionMatrix, 0, modelViewMatrix, 0)
+//
+//                val aPos = floatArrayOf(cx, cy, cz, w)
+//                val angleInDegrees = -bb.box.angle * (180 / Math.PI)
+//
+//                val cos_angle = cos(angleInDegrees)
+//                val sin_angle = sin(angleInDegrees)
+
+//                val xyxyxyxy = bb.box.xyxyxyxy(bb.mappedCoordinates)
+//                val cpuCoordinates = ArrayList<Float>()
+//
+//                for (p in xyxyxyxy){
+//                    cpuCoordinates.add(p.x)
+//                    cpuCoordinates.add(p.y)
+//                    cpuCoordinates.add(p.z)
+//                }
+
+                    //val coordArray = cpuCoordinates.toFloatArray()
+
+                    val COORDS_PER_VERTEX = 3
+                    try{
+                        //https://github.com/googlesamples/arcore-ml-sample/blob/main/app/src/main/java/com/google/ar/core/examples/java/ml/AppRenderer.kt#L257
+                        val hits = frame.hitTest(cx, cy)
+                        val result = hits.getOrNull(0) ?: continue
+
+                        val anchor = result.trackable.createAnchor(result.hitPose)
+                        anchorHelper.boundingBoxAnchors.add(anchor)
+                        renderer.renderBoundingBoxAtAnchor(anchor, colorCode)
+                    }
+                    catch (e: Exception){
+                        Log.e(TAG, "Failed to Render Bounding Box", e)
+                    }
+                }
+            }
 
             //updateLocationAccuracy(cameraGeospatialPose)
             activity.arGISSurfaceView.updateEarthStatusText(earth, cameraGeospatialPose)
@@ -613,22 +711,6 @@ class ARGISRenderer(val activity: ARGISActivity):
 
                         render.renderAssetsAtVertices(wrappedLineEarthAnchor);
 
-                      /*  wrappedLineEarthAnchor.anchors.forEachIndexed{
-                            i,a ->
-                            if(a == null) return@forEach
-                            //TODO: Make use of the angles found in the theta array
-                            //Possibly adjust the wrappedLineEarthAnchor to store the theta array
-                            val theta = thetaArray[i]
-                            val scaleFactor = scaleFactorArray[i]
-
-                            if(activity.arGISSurfaceView.alignAssets){
-                                render.renderAssetAtAnchor(a, wrappedLineEarthAnchor.selected, theta, 1.0f)
-                            }else{
-                                render.renderAssetAtAnchor(a, wrappedLineEarthAnchor.selected, wrappedLineEarthAnchor.angle,
-                                    activity.arGISSurfaceView.scaleFactor)
-                            }
-                        }*/
-
                         if(activity.arGISSurfaceView.allModelsRotate){
                             //Set Next Angle for asset to rotate at
                             if(wrappedLineEarthAnchor.angle + 0.01f >= 360.0f){
@@ -639,22 +721,6 @@ class ARGISRenderer(val activity: ARGISActivity):
                                     wrappedLineEarthAnchor.angle + 0.01f)
                             }
                         }
-
-//                        anchorHelper.wrappedLineEarthAnchors.forEach {
-//                            it.anchors.forEachIndexed{
-//                                    i, a ->
-//                                if(a == null) return@forEach
-//                                //TODO: Make use of the angles found in the theta array
-//                                //Possibly adjust the wrappedLineEarthAnchor to store the theta array
-//                                val theta = thetaArray[i]
-//                                val scaleFactor = scaleFactorArray[i]
-//                                render.renderAssetAtAnchor(a, it.selected, theta, 1.75f)
-//                                //render.renderAssetAtAnchor(a, it.selected, it.angle, 2.0f)
-//                                //render.renderAssetAtAnchor(a, it.selected, it.angle)
-//                            }
-//
-//
-//                        }
                     }
                 }
             }
@@ -798,7 +864,7 @@ class ARGISRenderer(val activity: ARGISActivity):
         val xSquared = x.pow(2)
         val ySquared = y.pow(2)
 
-        return kotlin.math.sqrt(xSquared + ySquared).toFloat()
+        return sqrt(xSquared + ySquared).toFloat()
     }
 
     private fun scaleAsset(modelMatrix: FloatArray, transformationMatrix: FloatArray, scaleFactor: Float, axis: Axis): FloatArray{
@@ -902,7 +968,7 @@ class ARGISRenderer(val activity: ARGISActivity):
 
             if(anchor == null) return
             val matrix = FloatArray(16);
-            anchor?.pose?.toMatrix(matrix, 0);
+            anchor.pose?.toMatrix(matrix, 0);
 
             if(i + 1 < wrappedLineEarthAnchor.anchors.size)
             {
@@ -1033,6 +1099,38 @@ class ARGISRenderer(val activity: ARGISActivity):
             draw(pipeObjectMesh, pipeObjectShader, virtualSceneFrameBuffer)
             //draw(mapMarkerObjectMesh, mapMarkerObjectShader, virtualSceneFrameBuffer)
         }
+    }
+
+    private fun ARRenderer.renderBoundingBoxAtAnchor(anchor: Anchor, colorCode: FloatArray, selected: Boolean=false, theta: Float = 0.0f, scaleFactor: Float = 1.0f){
+
+        //Get the current pose of the anchor in world space.
+        //The Anchor pose is updated during calls to session.update()
+        anchor.pose.toMatrix(modelMatrix, 0)
+
+        Log.i("renderAssetAtAnchor", "Anchor Before Rotation")
+        prettyPrintMatrix(modelMatrix)
+
+        rotationMatrix = FloatArray(16)
+        val rotatedModelMatrix = rotateAsset(modelMatrix, rotationMatrix, theta, activity.arGISSurfaceView.modelRotationAxis)
+
+        Log.i("renderAssetAtAnchor", "Anchor After Rotation")
+        prettyPrintMatrix(rotatedModelMatrix)
+
+        //Scale Models (Must be last)
+        scaleMatrix = FloatArray(16)
+        val scaledRotatedModelMatrix = scaleAsset(rotatedModelMatrix, scaleMatrix, scaleFactor, activity.arGISSurfaceView.modelScaleAxis)
+
+        Log.i("renderAssetAtAnchor", "Anchor After Scaling")
+        prettyPrintMatrix(scaledRotatedModelMatrix)
+
+        //Calculate model/view/projection matrices
+        Matrix.multiplyMM(modelViewMatrix, 0, viewMatrix, 0, scaledRotatedModelMatrix, 0)
+        Matrix.multiplyMM(modelViewProjectionMatrix, 0, projectionMatrix, 0, modelViewMatrix, 0)
+
+        //Update shader properties and draw
+        boundingBoxShader.setMat4("u_ModelViewProjection", modelViewProjectionMatrix)
+        boundingBoxShader.setVec3("u_Color", colorCode)
+        draw(mapMarkerObjectMesh, boundingBoxShader, virtualSceneFrameBuffer)
     }
 
     private fun handleTap(frame: Frame, camera: Camera, geospatialPose: GeospatialPose){
