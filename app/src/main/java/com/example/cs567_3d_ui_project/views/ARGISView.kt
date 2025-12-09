@@ -461,7 +461,7 @@ class ARGISView(val activity: ARGISActivity): DefaultLifecycleObserver {
 
     val inferenceResults = root.findViewById<TextView>(R.id.inferenceResults)
 
-    fun updateObjectDetectionResults(obbDetectionNMSResults: List<OBBDetectionNMS>){
+    fun updateObjectDetectionResults(obbDetectionNMSResults: List<OBBDetectionNMS>, depthReading: Float){
         var insulators = 0
         var poles = 0
         var wires = 0
@@ -482,7 +482,8 @@ class ARGISView(val activity: ARGISActivity): DefaultLifecycleObserver {
                 R.string.inferenceResults,
                 insulators,
                 poles,
-                wires
+                wires,
+                depthReading
             )
         }
 

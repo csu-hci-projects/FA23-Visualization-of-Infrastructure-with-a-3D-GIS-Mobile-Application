@@ -7,6 +7,7 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Color
 import android.graphics.Matrix
+import android.util.Log
 import androidx.core.graphics.get
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -14,8 +15,8 @@ import java.nio.ByteBuffer
 import java.nio.FloatBuffer
 
 //Code for this class was found here: https://github.com/shubham0204/Depth-Anything-Android
-class DepthAnything(context: Context,
-                    model: Model = MODEL_DEFAULT
+class DepthAnything(val context: Context,
+                    val model: Model = MODEL_DEFAULT
 ) {
 
     private val ortEnvironment = OrtEnvironment.getEnvironment()
@@ -27,20 +28,26 @@ class DepthAnything(context: Context,
 
 
     companion object{
-        val MODEL_DEFAULT = Model.FusedModelQ4_F16_256
+        //val MODEL_DEFAULT = Model.FusedModelQ4_F16_256
         //val MODEL_DEFAULT = Model.DepthAnythingV2_VITS_Outdoor_Dynamic
+        val MODEL_DEFAULT = Model.DepthAnythingV2_VITS_256_Outdoor_Dynamic_NOPOST
+        //val MODEL_DEFAULT = Model.DepthAnythingV2_VITS_Outdoor_Dynamic_NOPOST
     }
 
     enum class Model(val fileName: String) {
         FusedModelQ4_F16_256("fused_model_q4f16_256.onnx"),
         //https://github.com/fabio-sim/Depth-Anything-ONNX/releases
-        DepthAnythingV2_VITS_Outdoor_Dynamic("depth_anything_v2_vits_outdoor_dynamic.onnx"),
-        DepthAnythingV2_VITS("depth_anything_v2_vits.onnx")
+        //Exported the outdoor model using onnx with preprocessing
+        DepthAnythingV2_VITS_256_Outdoor_Dynamic("fused_model_vits_256_outdoor_dynamic.onnx"),
+        //This No Post Processing version was derived by us through the use of these scripts
+        //https://github.com/shubham0204/Google_Colab_Notebooks/blob/main/Depth_Anything_FusedOps_ONNX_Model.ipynb
+        DepthAnythingV2_VITS_256_Outdoor_Dynamic_NOPOST("fused_model_vits_256_outdoor_dynamic_no_post.onnx"),
+        DepthAnythingV2_VITS_Outdoor_Dynamic_NOPOST("fused_model_vits_outdoor_dynamic_nopost.onnx")
     }
 
     init {
         when {
-            model.fileName.contains("_256") -> {
+            model.fileName.contains("fused_model_q4f16_256") -> {
                 inputDim = 256
                 outputDim = 252
             }
@@ -48,42 +55,146 @@ class DepthAnything(context: Context,
                 inputDim = 512
                 outputDim = 504
             }
-            model.fileName.contains("vit") -> {
-                inputDim = 512
-                outputDim = 512
+            model.fileName.contains("fused_model_vits_outdoor_dynamic") -> {
+                inputDim = 518
+                outputDim = 518
+            }
+            model.fileName.contains("fused_model_vits_256_outdoor_dynamic") -> {
+                inputDim = 256
+                outputDim = 252
             }
 
             else -> throw IllegalArgumentException("Unsupported model size")
         }
     }
 
-    private val rotateTransform = Matrix().apply { postRotate(180f) }
+    private val rotateTransform = Matrix().apply { postRotate(-90f) }
 
-    suspend fun predict(inputImage: Bitmap): Pair<Bitmap, Long> =
-        withContext(Dispatchers.Default) {
+    suspend fun predict(inputImage: Bitmap): DepthAnythingPrediction =
+        withContext(Dispatchers.IO) {
 
             val inputTensor: OnnxTensor
 
             when(MODEL_DEFAULT) {
-                Model.DepthAnythingV2_VITS_Outdoor_Dynamic ->
-                {
-                    val imagePixels = convert2(inputImage)
+//                Model.DepthAnythingV2_VITS_Outdoor_Dynamic ->
+//                {
+//                    val resizedImage = Bitmap.createScaledBitmap(
+//                        inputImage,
+//                        inputDim,
+//                        inputDim,
+//                        true)
+//
+//                    val imagePixels = convert(resizedImage)
+//                    inputTensor = OnnxTensor.createTensor(
+//                            ortEnvironment,
+//                            imagePixels,
+//                            longArrayOf(1, resizedImage.height.toLong(), resizedImage.width.toLong(),  3),
+//                            OnnxJavaType.UINT8
+//                        )
+//                    val t1 = System.currentTimeMillis()
+//                    val outputs = ortSession.run(mapOf(inputName to inputTensor))
+//                    val inferenceTime = System.currentTimeMillis() - t1
+//                    val outputTensor = outputs[0] as OnnxTensor
+//
+//                    var depthMap = Bitmap.createBitmap(resizedImage.height, resizedImage.width, Bitmap.Config.ALPHA_8)
+//                    depthMap.copyPixelsFromBuffer(outputTensor.byteBuffer)
+//                    depthMap = Bitmap.createBitmap(depthMap, 0, 0, resizedImage.height, resizedImage.width, rotateTransform, false)
+//                    depthMap = Bitmap.createScaledBitmap(depthMap, resizedImage.width, resizedImage.height, true)
+//
+//                    //https://stackoverflow.com/questions/36493977/flip-a-bitmap-image-horizontally-or-vertically
+//                    val cx = depthMap.width / 2f
+//                    val cy = depthMap.height / 2f
+//                    val matrix = Matrix().apply {
+//                        postScale(1f, -1f, cx, cy)
+//                    }
+//                    depthMap = Bitmap.createBitmap(depthMap, 0, 0, depthMap.width, depthMap.height, matrix, true)
+//                    return@withContext DepthAnythingPrediction(depthMap, inferenceTime, outputTensor)
+//                }
+
+                Model.DepthAnythingV2_VITS_Outdoor_Dynamic_NOPOST -> {
+
+                    val resizedImage = Bitmap.createScaledBitmap(
+                        inputImage,
+                        inputDim,
+                        inputDim,
+                        true)
+
+                    val imagePixels = convert(resizedImage)
+
                     inputTensor =
                         OnnxTensor.createTensor(
                             ortEnvironment,
                             imagePixels,
-                            longArrayOf(1, 3, inputImage.height.toLong(), inputImage.width.toLong()),
-                        )
+                            longArrayOf(1, inputDim.toLong(), inputDim.toLong(), 3),
+                            OnnxJavaType.UINT8)
+
                     val t1 = System.currentTimeMillis()
                     val outputs = ortSession.run(mapOf(inputName to inputTensor))
                     val inferenceTime = System.currentTimeMillis() - t1
                     val outputTensor = outputs[0] as OnnxTensor
+                    val buffer = outputTensor.floatBuffer
 
-                    var depthMap = Bitmap.createBitmap(inputImage.height, inputImage.width, Bitmap.Config.ALPHA_8)
-                    depthMap.copyPixelsFromBuffer(outputTensor.byteBuffer)
-                    depthMap = Bitmap.createBitmap(depthMap, 0, 0, inputImage.height, inputImage.width, rotateTransform, false)
-                    //depthMap = Bitmap.createScaledBitmap(depthMap, inputImage.width, inputImage.height, true)
-                    return@withContext Pair(depthMap, inferenceTime)
+//                    if(context.generateDepthBitmap){
+//                        var depthMap = Bitmap.createBitmap(outputDim, outputDim, Bitmap.Config.ALPHA_8)
+//                        depthMap.copyPixelsFromBuffer(outputTensor.byteBuffer)
+//                        depthMap = Bitmap.createBitmap(depthMap, 0, 0, outputDim, outputDim, rotateTransform, false)
+//                        depthMap = Bitmap.createScaledBitmap(depthMap, inputImage.width, inputImage.height, true)
+//
+//                        //https://stackoverflow.com/questions/36493977/flip-a-bitmap-image-horizontally-or-vertically
+//                        val cx = depthMap.width / 2f
+//                        val cy = depthMap.height / 2f
+//                        val matrix = Matrix().apply {
+//                            postScale(1f, -1f, cx, cy)
+//                        }
+//
+//                        depthMap = Bitmap.createBitmap(depthMap, 0, 0, depthMap.width, depthMap.height, matrix, true)
+//                        return@withContext DepthAnythingPrediction(depthMap, inferenceTime, outputTensor)
+//                    }
+                    Log.i("Test", "$buffer")
+                    return@withContext DepthAnythingPrediction(null, inferenceTime, outputTensor.floatBuffer)
+                }
+
+                Model.DepthAnythingV2_VITS_256_Outdoor_Dynamic_NOPOST -> {
+
+                    val resizedImage = Bitmap.createScaledBitmap(
+                        inputImage,
+                        inputDim,
+                        inputDim,
+                        true)
+
+                    val imagePixels = convert(resizedImage)
+
+                    inputTensor =
+                        OnnxTensor.createTensor(
+                            ortEnvironment,
+                            imagePixels,
+                            longArrayOf(1, inputDim.toLong(), inputDim.toLong(), 3),
+                            OnnxJavaType.UINT8)
+
+                    val t1 = System.currentTimeMillis()
+                    val outputs = ortSession.run(mapOf(inputName to inputTensor))
+                    val inferenceTime = System.currentTimeMillis() - t1
+                    val outputTensor = outputs[0] as OnnxTensor
+                    val buffer = outputTensor.floatBuffer
+
+//                    if(context.generateDepthBitmap){
+//                        var depthMap = Bitmap.createBitmap(outputDim, outputDim, Bitmap.Config.ALPHA_8)
+//                        depthMap.copyPixelsFromBuffer(outputTensor.byteBuffer)
+//                        depthMap = Bitmap.createBitmap(depthMap, 0, 0, outputDim, outputDim, rotateTransform, false)
+//                        depthMap = Bitmap.createScaledBitmap(depthMap, inputImage.width, inputImage.height, true)
+//
+//                        //https://stackoverflow.com/questions/36493977/flip-a-bitmap-image-horizontally-or-vertically
+//                        val cx = depthMap.width / 2f
+//                        val cy = depthMap.height / 2f
+//                        val matrix = Matrix().apply {
+//                            postScale(1f, -1f, cx, cy)
+//                        }
+//
+//                        depthMap = Bitmap.createBitmap(depthMap, 0, 0, depthMap.width, depthMap.height, matrix, true)
+//                        return@withContext DepthAnythingPrediction(depthMap, inferenceTime, outputTensor)
+//                    }
+                    Log.i("Test", "$buffer")
+                    return@withContext DepthAnythingPrediction(null, inferenceTime, outputTensor.floatBuffer)
                 }
 
                 else -> {
@@ -100,7 +211,6 @@ class DepthAnything(context: Context,
                             ortEnvironment,
                             imagePixels,
                             longArrayOf(1, inputDim.toLong(), inputDim.toLong(), 3),
-                            //OnnxJavaType.FLOAT16
                             OnnxJavaType.UINT8)
 
                     val t1 = System.currentTimeMillis()
@@ -121,12 +231,9 @@ class DepthAnything(context: Context,
                     }
 
                     depthMap = Bitmap.createBitmap(depthMap, 0, 0, depthMap.width, depthMap.height, matrix, true)
-                    return@withContext Pair(depthMap, inferenceTime)
+                    return@withContext DepthAnythingPrediction(depthMap, inferenceTime, outputTensor.floatBuffer)
                 }
             }
-
-
-
         }
 
     private fun convert(bitmap: Bitmap): ByteBuffer {
@@ -156,4 +263,10 @@ class DepthAnything(context: Context,
         imgData.rewind()
         return imgData
     }
+
+    data class DepthAnythingPrediction(
+        val depthImage: Bitmap?,
+        val inferenceTime: Long,
+        val depthReadings: FloatBuffer?
+    )
 }

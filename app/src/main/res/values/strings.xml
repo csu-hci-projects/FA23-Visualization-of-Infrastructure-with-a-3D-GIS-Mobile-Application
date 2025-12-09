@@ -12,5 +12,5 @@
     <string name="high_accuracy">Location Accuracy: High</string>
     <string name="unknown_accuracy">Location Accuracy: Unknown</string>
     <string name="scalefactor_1_0x">ScaleFactor: 1.0x</string>
-    <string translatable="false" name="inferenceResults">Insulators: %d\nPoles: %d\nWires: %d</string>
+    <string translatable="false" name="inferenceResults">Insulators: %d\nPoles: %d\nWires: %d\nDepth (meters): %.2f</string>
 </resources>

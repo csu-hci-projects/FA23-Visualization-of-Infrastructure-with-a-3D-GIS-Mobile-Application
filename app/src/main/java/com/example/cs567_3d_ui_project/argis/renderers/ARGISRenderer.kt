@@ -2,13 +2,10 @@ package com.example.cs567_3d_ui_project.argis.renderers
 
 import android.graphics.Bitmap
 import android.graphics.Canvas
-import android.graphics.Color
-import android.graphics.Paint
 import android.media.Image
 import android.opengl.GLES30
 import android.opengl.Matrix
 import android.os.Build
-import android.os.SystemClock
 import android.util.DisplayMetrics
 import android.util.Log
 import androidx.lifecycle.DefaultLifecycleObserver
@@ -60,6 +57,7 @@ import org.tensorflow.lite.support.common.ops.NormalizeOp
 import org.tensorflow.lite.support.image.ImageProcessor
 import org.tensorflow.lite.support.image.TensorImage
 import java.io.BufferedReader
+import java.io.File
 import java.io.IOException
 import java.io.InputStream
 import java.io.InputStreamReader
@@ -348,13 +346,37 @@ class ARGISRenderer(val activity: ARGISActivity):
         reader.close()
         return list
     }
+
+    //https://stackoverflow.com/questions/1756296/android-writing-logs-to-text-file
+    fun logData(data: String){
+        val path = activity.filesDir
+
+        var logFileName = "$path/inference_metrics.txt"
+        if(!File(logFileName).exists()){
+            try{
+                File(logFileName).createNewFile()
+            }
+            catch (io: IOException){
+                Log.e(TAG, "Failed to create log file ", io)
+                return
+            }
+        }
+        try{
+            File(logFileName).appendText(data)
+        }catch (e: Exception){
+            Log.e(TAG, "Failed to create log file ", e)
+        }
+
+    }
+
+
     var objectResults: List<OBBDetectionNMS>? = null
+    var centerDepthPixelInMeters: Float = 0.0f
 
     // https://github.com/googlesamples/arcore-ml-sample/blob/main/app/src/main/java/com/google/ar/core/examples/java/ml/classification/MLKitObjectDetector.kt
     // https://developer.android.com/reference/kotlin/android/graphics/Color
     fun runInference(frame: Frame) {
         var image: Image? = null
-        var inferenceTime = SystemClock.uptimeMillis()
 
         try {
             image = frame.acquireCameraImage()
@@ -391,14 +413,50 @@ class ARGISRenderer(val activity: ARGISActivity):
             val processedImage = imageProcessor.process(tensorImage)
 
             this.activity.lifecycleScope.launch(Dispatchers.IO) {
-                val model: Yolov1111725Float32? = null
-                val model2: Yolov1111725Float16? = null
-                val model3: Yolov1111725Float32Nms? = null
+                var model: Yolov1111725Float32? = null
+                var model2: Yolov1111725Float16? = null
+                var model3: Yolov1111725Float32Nms? = null
                 var model4: Yolov1111725Float16Nms? = null
-                val canvas = Canvas(rotatedBitmap)
+                val canvas = Canvas(resizedBitmap)
                 val height = canvas.height
                 val width = canvas.width
                 try {
+                    //Metric Gathering Code -- Start
+//                    val start = System.currentTimeMillis()
+//                    val inferenceTime = measureTimeMillis {
+//                        activity.objectDetectionHelper.setupObjectDetector()
+//
+//                        //model = Yolov1111725Float32.newInstance(activity)
+//                        //model2 = Yolov1111725Float16.newInstance(activity)
+//                        //model3 = Yolov1111725Float32Nms.newInstance(activity)
+//                        model4 = Yolov1111725Float16Nms.newInstance(activity)
+//
+//                        val outputs = model3!!.process(processedImage.tensorBuffer)
+//                        //val outputs = model4!!.process(processedImage.tensorBuffer)
+//                        val outputFeature0 = outputs.outputFeature0AsTensorBuffer
+//
+//                        Log.i(TAG, "Result: Size ${outputFeature0.floatArray.size}")
+//
+//                        val bbs = activity.objectDetectionHelper.postProcessNMS(
+//                            outputFeature0.floatArray,
+//                            width.toFloat(),
+//                            height.toFloat()
+//                        )
+//
+//                        objectResults = bbs
+//
+//
+//                        //val depthResults = activity.depthAnythingV2.predict(resizedBitmap)
+//
+//                    }
+//                    val end = System.currentTimeMillis()
+//                    val yolostat = "${activity.objectDetectionHelper.model},$start,$inferenceTime,$end"
+//
+//                    Log.i("YOLOV11_Inference_Time", yolostat)
+
+                    //val depthstat = "${activity.depthAnythingV2.model},$start,$inferenceTime,$end"
+                    //Log.i("DepthAnythingV2_Inference_Time", stat)
+                    //Metric Gathering Code -- End
 
                     activity.objectDetectionHelper.setupObjectDetector()
 
@@ -420,46 +478,86 @@ class ARGISRenderer(val activity: ARGISActivity):
 
                     objectResults = bbs
 
-                    for (bb in bbs) {
-                        val paint = Paint()
-                        paint.style = Paint.Style.STROKE
-                        paint.strokeWidth = 2F
+                    val depthResults = activity.depthAnythingV2.predict(resizedBitmap)
+                    val depthReadings = depthResults.depthReadings
+                    val test = depthReadings?.array()
+                    val numFeatures = 252
+                    //val middleRow = test!!.size / 2
+                    //centerDepthPixelInMeters = test[middleRow+numFeatures/2]
 
-                        when (bb.className) {
-
-                            activity.objectDetectionHelper.labels()[0] -> {
-                                //Set Color to Green as this is an Insulator
-                                paint.color = Color.GREEN
-                            }
-
-                            activity.objectDetectionHelper.labels()[1] -> {
-                                //Set Color to Blue as this is a Pole
-                                paint.color = Color.BLUE
-                            }
-
-                            else -> {
-                                //Set Color to Red as this is a Wire
-                                paint.color = Color.RED
-                            }
+                    for(d in 0 until test!!.size step numFeatures){
+                        if(d != test.size / 2){
+                            continue
                         }
-
-                        //https://github.com/hamhanry/label-studio-converter-for-YOLO-OBB/blob/main/yolo_obb_converter.py
-                        //https://stackoverflow.com/questions/57568716/draw-rectf-on-canvas
-                        val midX = (bb.mappedCoordinates.left + bb.mappedCoordinates.right) / 2f
-                        val midY = (bb.mappedCoordinates.top + bb.mappedCoordinates.bottom) / 2f
-                        val angleInDegrees = bb.box.angle * (180 / Math.PI)
-                        canvas.save()
-                        canvas.rotate(angleInDegrees.toFloat(), midX, midY)
-                        canvas.drawRect(bb.mappedCoordinates, paint)
-                        canvas.restore()
-
-                        Log.i(TAG, "$rotatedBitmap")
-                        Log.i(TAG, "Test Bitmap Draw")
-
+                        centerDepthPixelInMeters = test[d+numFeatures/2]
+                        break
                     }
+
+
+                    //Output size for 256 no-post processing model is 63504
+                    //The actual number of pixels per row ends up being 252
+                    //The middle row would be 252 * 128
+                    //And the middle of the middle would be the 128th element in this array
+
+//                    Log.i(TAG, "Inference Time: ${depthResults.inferenceTime}")
+//                    val depthImage = depthResults.depthImage
+//                    val outputTensor = depthResults.onnxTensor
+//
+//                    val output = outputTensor.byteBuffer
+//                    Log.i(TAG, "$output")
+//                    Log.i(TAG, "$output")
+//                    for (bb in bbs) {
+//                        val paint = Paint()
+//                        paint.style = Paint.Style.STROKE
+//                        paint.strokeWidth = 2F
+//
+//                        when (bb.className) {
+//
+//                            activity.objectDetectionHelper.labels()[0] -> {
+//                                //Set Color to Green as this is an Insulator
+//                                paint.color = Color.GREEN
+//                            }
+//
+//                            activity.objectDetectionHelper.labels()[1] -> {
+//                                //Set Color to Blue as this is a Pole
+//                                paint.color = Color.BLUE
+//                            }
+//
+//                            else -> {
+//                                //Set Color to Red as this is a Wire
+//                                paint.color = Color.RED
+//                            }
+//                        }
+//
+//                        //https://github.com/hamhanry/label-studio-converter-for-YOLO-OBB/blob/main/yolo_obb_converter.py
+//                        //https://stackoverflow.com/questions/57568716/draw-rectf-on-canvas
+//                        val midX = (bb.mappedCoordinates.left + bb.mappedCoordinates.right) / 2f
+//                        val midY = (bb.mappedCoordinates.top + bb.mappedCoordinates.bottom) / 2f
+//                        val angleInDegrees = bb.box.angle * (180 / Math.PI)
+//                        canvas.save()
+//                        canvas.rotate(angleInDegrees.toFloat(), midX, midY)
+//                        canvas.drawRect(bb.mappedCoordinates, paint)
+//                        canvas.restore()
+//
+//                        if(depthImage != null) {
+//                            val resizedDepthImage =
+//                                Bitmap.createScaledBitmap(depthImage, 640, 640, false)
+//                            val depthCanvas = Canvas(resizedDepthImage)
+//                            depthCanvas.save()
+//                            depthCanvas.rotate(angleInDegrees.toFloat(), midX, midY)
+//                            depthCanvas.drawRect(bb.mappedCoordinates, paint)
+//                            depthCanvas.restore()
+//                            Log.i(TAG, "$resizedBitmap")
+//                            Log.i(TAG, "$resizedDepthImage")
+//                            Log.i(TAG, "Test Bitmap Draw")
+//                        }
+//
+//                        Log.i(TAG, "$resizedBitmap")
+//                        Log.i(TAG, "Test Bitmap Draw")
+//
+//                    }
                     Log.i(TAG, "Test Bitmap Draw ALL Done")
-//                        val depthResults = activity.depthAnythingV2.predict(bm0)
-//                        Log.i(TAG, "Inference Time: ${depthResults.second}")
+
 
                 } catch (e: Exception) {
                     Log.e(TAG, "Inference hit an exception", e)
@@ -594,83 +692,83 @@ class ARGISRenderer(val activity: ARGISActivity):
                 anchorHelper.detachBoundingBoxAnchors()
                 objectResults = null
 
-                activity.arGISSurfaceView.updateObjectDetectionResults(detections)
+                activity.arGISSurfaceView.updateObjectDetectionResults(detections, centerDepthPixelInMeters)
 
-                for (bb in detections) {
-                    val paint = Paint()
-                    paint.style = Paint.Style.STROKE
-                    paint.strokeWidth = 2F
-
-                    //https://www.rapidtables.com/web/color/RGB_Color.html
-                    val colorCode: FloatArray
-
-                    when (bb.className) {
-
-                        activity.objectDetectionHelper.labels()[0] -> {
-                            //Set Color to Green as this is an Insulator
-                            paint.color = Color.GREEN
-                            colorCode = floatArrayOf(0f, 255f, 0f)
-                        }
-
-                        activity.objectDetectionHelper.labels()[1] -> {
-                            //Set Color to Blue as this is a Pole
-                            paint.color = Color.BLUE
-                            colorCode = floatArrayOf(0f, 0f, 255f)
-                        }
-
-                        else -> {
-                            //Set Color to Red as this is a Wire
-                            paint.color = Color.RED
-                            colorCode = floatArrayOf(255f, 0f, 0f)
-                        }
-                    }
-
-                    //https://github.com/hamhanry/label-studio-converter-for-YOLO-OBB/blob/main/yolo_obb_converter.py
-                    //https://stackoverflow.com/questions/57568716/draw-rectf-on-canvas
-                    val cx = (bb.mappedCoordinates.left + bb.mappedCoordinates.right) / 2f
-                    val cy = (bb.mappedCoordinates.top + bb.mappedCoordinates.left) / 2f
-                    val cz = cameraGeospatialPose.altitude
-                    val w = 1.0f
-                    val dx = abs(bb.mappedCoordinates.left + bb.mappedCoordinates.right)
-                    val dy = abs(bb.mappedCoordinates.top - bb.mappedCoordinates.bottom)
-
-//                val matrix = FloatArray(16)
-//                anchor.pose?.toMatrix(matrix, 0)
+//                for (bb in detections) {
+//                    val paint = Paint()
+//                    paint.style = Paint.Style.STROKE
+//                    paint.strokeWidth = 2F
 //
-//                Matrix.multiplyMM(modelViewMatrix, 0, viewMatrix, 0, matrix, 0)
-//                Matrix.multiplyMM(modelViewProjectionMatrix, 0, projectionMatrix, 0, modelViewMatrix, 0)
+//                    //https://www.rapidtables.com/web/color/RGB_Color.html
+//                    val colorCode: FloatArray
 //
-//                val aPos = floatArrayOf(cx, cy, cz, w)
-//                val angleInDegrees = -bb.box.angle * (180 / Math.PI)
+//                    when (bb.className) {
 //
-//                val cos_angle = cos(angleInDegrees)
-//                val sin_angle = sin(angleInDegrees)
-
-//                val xyxyxyxy = bb.box.xyxyxyxy(bb.mappedCoordinates)
-//                val cpuCoordinates = ArrayList<Float>()
+//                        activity.objectDetectionHelper.labels()[0] -> {
+//                            //Set Color to Green as this is an Insulator
+//                            paint.color = Color.GREEN
+//                            colorCode = floatArrayOf(0f, 255f, 0f)
+//                        }
 //
-//                for (p in xyxyxyxy){
-//                    cpuCoordinates.add(p.x)
-//                    cpuCoordinates.add(p.y)
-//                    cpuCoordinates.add(p.z)
+//                        activity.objectDetectionHelper.labels()[1] -> {
+//                            //Set Color to Blue as this is a Pole
+//                            paint.color = Color.BLUE
+//                            colorCode = floatArrayOf(0f, 0f, 255f)
+//                        }
+//
+//                        else -> {
+//                            //Set Color to Red as this is a Wire
+//                            paint.color = Color.RED
+//                            colorCode = floatArrayOf(255f, 0f, 0f)
+//                        }
+//                    }
+//
+//                    //https://github.com/hamhanry/label-studio-converter-for-YOLO-OBB/blob/main/yolo_obb_converter.py
+//                    //https://stackoverflow.com/questions/57568716/draw-rectf-on-canvas
+//                    val cx = (bb.mappedCoordinates.left + bb.mappedCoordinates.right) / 2f
+//                    val cy = (bb.mappedCoordinates.top + bb.mappedCoordinates.left) / 2f
+//                    val cz = cameraGeospatialPose.altitude
+//                    val w = 1.0f
+//                    val dx = abs(bb.mappedCoordinates.left + bb.mappedCoordinates.right)
+//                    val dy = abs(bb.mappedCoordinates.top - bb.mappedCoordinates.bottom)
+//
+////                val matrix = FloatArray(16)
+////                anchor.pose?.toMatrix(matrix, 0)
+////
+////                Matrix.multiplyMM(modelViewMatrix, 0, viewMatrix, 0, matrix, 0)
+////                Matrix.multiplyMM(modelViewProjectionMatrix, 0, projectionMatrix, 0, modelViewMatrix, 0)
+////
+////                val aPos = floatArrayOf(cx, cy, cz, w)
+////                val angleInDegrees = -bb.box.angle * (180 / Math.PI)
+////
+////                val cos_angle = cos(angleInDegrees)
+////                val sin_angle = sin(angleInDegrees)
+//
+////                val xyxyxyxy = bb.box.xyxyxyxy(bb.mappedCoordinates)
+////                val cpuCoordinates = ArrayList<Float>()
+////
+////                for (p in xyxyxyxy){
+////                    cpuCoordinates.add(p.x)
+////                    cpuCoordinates.add(p.y)
+////                    cpuCoordinates.add(p.z)
+////                }
+//
+//                    //val coordArray = cpuCoordinates.toFloatArray()
+//
+//                    val COORDS_PER_VERTEX = 3
+//                    try{
+//                        //https://github.com/googlesamples/arcore-ml-sample/blob/main/app/src/main/java/com/google/ar/core/examples/java/ml/AppRenderer.kt#L257
+//                        val hits = frame.hitTest(cx, cy)
+//                        val result = hits.getOrNull(0) ?: continue
+//
+//                        val anchor = result.trackable.createAnchor(result.hitPose)
+//                        anchorHelper.boundingBoxAnchors.add(anchor)
+//                        //renderer.renderBoundingBoxAtAnchor(anchor, colorCode)
+//                    }
+//                    catch (e: Exception){
+//                        Log.e(TAG, "Failed to Render Bounding Box", e)
+//                    }
 //                }
-
-                    //val coordArray = cpuCoordinates.toFloatArray()
-
-                    val COORDS_PER_VERTEX = 3
-                    try{
-                        //https://github.com/googlesamples/arcore-ml-sample/blob/main/app/src/main/java/com/google/ar/core/examples/java/ml/AppRenderer.kt#L257
-                        val hits = frame.hitTest(cx, cy)
-                        val result = hits.getOrNull(0) ?: continue
-
-                        val anchor = result.trackable.createAnchor(result.hitPose)
-                        anchorHelper.boundingBoxAnchors.add(anchor)
-                        //renderer.renderBoundingBoxAtAnchor(anchor, colorCode)
-                    }
-                    catch (e: Exception){
-                        Log.e(TAG, "Failed to Render Bounding Box", e)
-                    }
-                }
             }
 
             //updateLocationAccuracy(cameraGeospatialPose)

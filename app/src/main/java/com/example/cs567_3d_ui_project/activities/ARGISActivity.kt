@@ -38,6 +38,8 @@ class ARGISActivity: AppCompatActivity() {
     lateinit var depthAnythingV2: DepthAnything
     lateinit var objectDetectionHelper: ObjectDetectionHelper
 
+    var generateDepthBitmap = false
+
     companion object{
         private const val TAG = "ARGISActivity"
     }

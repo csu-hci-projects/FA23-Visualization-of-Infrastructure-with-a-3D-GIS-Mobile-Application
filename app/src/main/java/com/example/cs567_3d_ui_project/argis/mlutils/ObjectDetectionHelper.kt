@@ -45,6 +45,7 @@ class ObjectDetectionHelper(
 
     companion object {
         val MODEL_DEFAULT = Model.Yolov1111725float16NMS
+        //val MODEL_DEFAULT = Model.Yolov1111725float32NMS
         const val MAX_RESULTS_DEFAULT = 10
         const val THRESHOLD_DEFAULT = 0.5F
 
@@ -246,7 +247,7 @@ class ObjectDetectionHelper(
     * https://github.com/ultralytics/ultralytics/issues/19088
     * https://docs.ultralytics.com/datasets/obb/#yolo-obb-format
     * https://github.com/surendramaran/YOLO/blob/main/YOLOv9-Object-Detector-Android-Tflite/app/src/main/java/com/surendramaran/yolov9tflite/OverlayView.kt
-    *
+    * https://github.com/ultralytics/ultralytics/blob/main/ultralytics/utils/ops.py#L361
     *
     * Post processing with NMS has the shape of below
     *
@@ -511,8 +512,8 @@ class ObjectDetectionHelper(
 
         // Step 3: compensate for 1:1 to 4:3 aspect ratio conversion + small margin
         val margin = 0.1f
-        //val requestedRatio = 4f / 3f
-        val requestedRatio = 19.5f / 9f
+        val requestedRatio = 4f / 3f
+//        val requestedRatio = 19.5f / 9f
 
 //        val midX = (previewLocation.left + previewLocation.right) / 2f
 //        val midY = (previewLocation.top + previewLocation.bottom) / 2f

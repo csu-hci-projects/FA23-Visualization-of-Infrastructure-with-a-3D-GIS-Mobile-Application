@@ -147,10 +147,8 @@ class DetectionView(val activity: DetectionActivity, val executor: ExecutorServi
                         val bb1 = objectDetectionHelper.postProcess(outputFeature0.floatArray, uprightImage.width.toFloat(), uprightImage.height.toFloat())
 
                         var out = depthAnything.predict(uprightImage)
-                        var image = out.first
+                        var image = out.depthImage
                         Log.i("MDE", "Test")
-
-
 
                     }
                     catch (e: Exception){
