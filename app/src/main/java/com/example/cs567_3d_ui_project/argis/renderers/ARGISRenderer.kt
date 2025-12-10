@@ -387,7 +387,9 @@ class ARGISRenderer(val activity: ARGISActivity):
         var model4: Yolov1111725Float16Nms? = null
 
         try {
-
+            if(mutex.isLocked){
+                return
+            }
             this.activity.lifecycleScope.launch(Dispatchers.Default) {
                 mutex.lock()
 
@@ -489,20 +491,23 @@ class ARGISRenderer(val activity: ARGISActivity):
 
                     val depthResults = activity.depthAnythingV2.predict(resizedBitmap)
                     val depthReadings = depthResults.depthReadings
-                    val test = depthReadings?.array()
 
-                    val numFeatures = 252
-                    //val middleRow = test!!.size / 2
-                    //centerDepthPixelInMeters = test[middleRow+numFeatures/2]
+                    if(depthReadings != null)
+                    {
+                        val test = depthReadings.array()
 
-                    for(d in 0 until test!!.size step numFeatures){
-                        if(d != test.size / 2){
-                            continue
+                        val numFeatures = 252
+                        //val middleRow = test!!.size / 2
+                        //centerDepthPixelInMeters = test[middleRow+numFeatures/2]
+
+                        for(d in 0 until test!!.size step numFeatures){
+                            if(d != test.size / 2){
+                                continue
+                            }
+                            centerDepthPixelInMeters = test[d+numFeatures/2]
+                            break
                         }
-                        centerDepthPixelInMeters = test[d+numFeatures/2]
-                        break
                     }
-
 
                     //Output size for 256 no-post processing model is 63504
                     //The actual number of pixels per row ends up being 252
@@ -511,11 +516,7 @@ class ARGISRenderer(val activity: ARGISActivity):
 
 //                    Log.i(TAG, "Inference Time: ${depthResults.inferenceTime}")
 //                    val depthImage = depthResults.depthImage
-//                    val outputTensor = depthResults.onnxTensor
 //
-//                    val output = outputTensor.byteBuffer
-//                    Log.i(TAG, "$output")
-//                    Log.i(TAG, "$output")
 //                    for (bb in bbs) {
 //                        val paint = Paint()
 //                        paint.style = Paint.Style.STROKE
@@ -564,9 +565,8 @@ class ARGISRenderer(val activity: ARGISActivity):
 //
 //                        Log.i(TAG, "$resizedBitmap")
 //                        Log.i(TAG, "Test Bitmap Draw")
-//
 //                    }
-                    Log.i(TAG, "Test Bitmap Draw ALL Done")
+//                    Log.i(TAG, "Test Bitmap Draw ALL Done")
 
                 } catch (e: Exception) {
                     Log.e(TAG, "Inference hit an exception", e)
