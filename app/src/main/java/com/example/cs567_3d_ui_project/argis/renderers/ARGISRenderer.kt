@@ -491,6 +491,7 @@ class ARGISRenderer(val activity: ARGISActivity):
                     val depthResults = activity.depthAnythingV2.predict(resizedBitmap)
                     val depthReadings = depthResults.depthReadings
                     val test = depthReadings?.array()
+
                     val numFeatures = 252
                     //val middleRow = test!!.size / 2
                     //centerDepthPixelInMeters = test[middleRow+numFeatures/2]
