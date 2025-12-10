@@ -51,6 +51,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
 import org.tensorflow.lite.DataType
 import org.tensorflow.lite.support.common.ops.CastOp
 import org.tensorflow.lite.support.common.ops.NormalizeOp
@@ -370,57 +371,66 @@ class ARGISRenderer(val activity: ARGISActivity):
     }
 
 
-    var objectResults: List<OBBDetectionNMS>? = null
-    var centerDepthPixelInMeters: Float = 0.0f
+    private var objectResults: List<OBBDetectionNMS>? = null
+    private var centerDepthPixelInMeters: Float = 0.0f
+
+    //https://gorkemkara.net/kotlin-coroutines-mutex-best-practices/
+    private val mutex = Mutex()
 
     // https://github.com/googlesamples/arcore-ml-sample/blob/main/app/src/main/java/com/google/ar/core/examples/java/ml/classification/MLKitObjectDetector.kt
     // https://developer.android.com/reference/kotlin/android/graphics/Color
     fun runInference(frame: Frame) {
         var image: Image? = null
+        var model: Yolov1111725Float32? = null
+        var model2: Yolov1111725Float16? = null
+        var model3: Yolov1111725Float32Nms? = null
+        var model4: Yolov1111725Float16Nms? = null
 
         try {
-            image = frame.acquireCameraImage()
 
-            val converter = YuvToRgbConverter(activity)
+            this.activity.lifecycleScope.launch(Dispatchers.Default) {
+                mutex.lock()
 
-            val matrix = android.graphics.Matrix().apply {
-                postRotate(imageRotationDegrees.toFloat())
-            }
-
-            val bm0 =
-                Bitmap.createBitmap(image.width, image.height, Bitmap.Config.ARGB_8888).apply {
-                    converter.yuvToRgb(image, this)
-                }
-
-            val rotatedBitmap =
-                Bitmap.createBitmap(bm0, 0, 0, bm0.width, bm0.height, matrix, true)
-
-            val resizedBitmap = Bitmap.createScaledBitmap(rotatedBitmap, 640, 640, false)
-
-            Log.i("Resized Image", "Stop")
-
-            val INPUT_MEAN = 0f
-            val INPUT_STANDARD_DEVIATION = 255f
-            val INPUT_IMAGE_TYPE = DataType.FLOAT32
-
-            val imageProcessor = ImageProcessor.Builder()
-                .add(NormalizeOp(INPUT_MEAN, INPUT_STANDARD_DEVIATION))
-                .add(CastOp(INPUT_IMAGE_TYPE))
-                .build()
-
-            val tensorImage = TensorImage(INPUT_IMAGE_TYPE)
-            tensorImage.load(resizedBitmap)
-            val processedImage = imageProcessor.process(tensorImage)
-
-            this.activity.lifecycleScope.launch(Dispatchers.IO) {
-                var model: Yolov1111725Float32? = null
-                var model2: Yolov1111725Float16? = null
-                var model3: Yolov1111725Float32Nms? = null
-                var model4: Yolov1111725Float16Nms? = null
-                val canvas = Canvas(resizedBitmap)
-                val height = canvas.height
-                val width = canvas.width
                 try {
+                    image = frame.acquireCameraImage()
+
+                    val converter = YuvToRgbConverter(activity)
+
+                    val matrix = android.graphics.Matrix().apply {
+                        postRotate(imageRotationDegrees.toFloat())
+                    }
+
+                    val bm0 =
+                        Bitmap.createBitmap(image!!.width, image!!.height, Bitmap.Config.ARGB_8888).apply {
+                            converter.yuvToRgb(image!!, this)
+                        }
+
+                    val rotatedBitmap =
+                        Bitmap.createBitmap(bm0, 0, 0, bm0.width, bm0.height, matrix, true)
+
+                    val resizedBitmap = Bitmap.createScaledBitmap(rotatedBitmap, 640, 640, false)
+
+                    Log.i("Resized Image", "Stop")
+
+                    val INPUT_MEAN = 0f
+                    val INPUT_STANDARD_DEVIATION = 255f
+                    val INPUT_IMAGE_TYPE = DataType.FLOAT32
+
+                    val imageProcessor = ImageProcessor.Builder()
+                        .add(NormalizeOp(INPUT_MEAN, INPUT_STANDARD_DEVIATION))
+                        .add(CastOp(INPUT_IMAGE_TYPE))
+                        .build()
+
+                    val tensorImage = TensorImage(INPUT_IMAGE_TYPE)
+                    tensorImage.load(resizedBitmap)
+                    val processedImage = imageProcessor.process(tensorImage)
+
+
+                    val canvas = Canvas(resizedBitmap)
+                    val height = canvas.height
+                    val width = canvas.width
+
+
                     //Metric Gathering Code -- Start
 //                    val start = System.currentTimeMillis()
 //                    val inferenceTime = measureTimeMillis {
@@ -462,10 +472,10 @@ class ARGISRenderer(val activity: ARGISActivity):
 
                     //model = Yolov1111725Float32.newInstance(activity)
                     //model2 = Yolov1111725Float16.newInstance(activity)
-                    //model3 = Yolov1111725Float32Nms.newInstance(activity)
-                    model4 = Yolov1111725Float16Nms.newInstance(activity)
+                    model3 = Yolov1111725Float32Nms.newInstance(activity)
+                    //model4 = Yolov1111725Float16Nms.newInstance(activity)
 
-                    val outputs = model4.process(processedImage.tensorBuffer)
+                    val outputs = model3!!.process(processedImage.tensorBuffer)
                     val outputFeature0 = outputs.outputFeature0AsTensorBuffer
 
                     Log.i(TAG, "Result: Size ${outputFeature0.floatArray.size}")
@@ -558,7 +568,6 @@ class ARGISRenderer(val activity: ARGISActivity):
 //                    }
                     Log.i(TAG, "Test Bitmap Draw ALL Done")
 
-
                 } catch (e: Exception) {
                     Log.e(TAG, "Inference hit an exception", e)
                 } finally {
@@ -566,15 +575,13 @@ class ARGISRenderer(val activity: ARGISActivity):
                     model2?.close()
                     model3?.close()
                     model4?.close()
-                    image.close()
+                    image?.close()
+                    mutex.unlock()
                 }
             }
 
         } catch (e: Exception) {
             Log.e(TAG, "Failed to execute inferencing", e)
-        }
-        finally {
-            image?.close()
         }
     }
 
@@ -675,6 +682,8 @@ class ARGISRenderer(val activity: ARGISActivity):
 
         //Run model inferencing if the user clicked the button
         if(activity.arGISSurfaceView.detectingObjects){
+            //TODO: Figure out a way to reduce the FPS that the models are used on
+            //I would like to run inferences on 1-5 frames per second
             runInference(frame)
         }
 

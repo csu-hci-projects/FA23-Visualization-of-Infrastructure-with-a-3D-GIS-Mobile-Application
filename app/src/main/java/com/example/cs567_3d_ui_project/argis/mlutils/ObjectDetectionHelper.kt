@@ -255,45 +255,47 @@ class ObjectDetectionHelper(
     *
     * With NMS included, the output shape of the tensor would be (BatchSize, NumberOfDetects, NumberOfFeatures(described above)
     * */
-    fun postProcessNMS(array: FloatArray, originalImageWidth: Float, originalImageHeight: Float): List<OBBDetectionNMS> {
-        val detections = ArrayList<OBBDetectionNMS>()
+    suspend fun postProcessNMS(array: FloatArray, originalImageWidth: Float, originalImageHeight: Float): List<OBBDetectionNMS> {
+        return withContext(Dispatchers.Default){
+            val detections = ArrayList<OBBDetectionNMS>()
 
-        val (_, tensorHeight, tensorWidth, _) = interpreter!!.getInputTensor(0).shape()
-        Log.i(TAG, "Input tensor shape Height: $tensorHeight, Width: $tensorWidth")
+            val (_, tensorHeight, tensorWidth, _) = interpreter!!.getInputTensor(0).shape()
+            Log.i(TAG, "Input tensor shape Height: $tensorHeight, Width: $tensorWidth")
 
-        val outputShape = interpreter!!.getOutputTensor(0).shape()
+            val outputShape = interpreter!!.getOutputTensor(0).shape()
 
-        val batchSize = outputShape[0]
-        val numDetections = outputShape[1]
-        val numFeatures = outputShape[2]
+            val batchSize = outputShape[0]
+            val numDetections = outputShape[1]
+            val numFeatures = outputShape[2]
 
-        if(numDetections == 0){
-            return detections
-        }
-
-        val numLabels = labels().size
-        if(numLabels <= 0){
-            return detections
-        }
-
-        for (c in 0 until numDetections step batchSize * numFeatures) {
-            val confidence = array[c+4]
-            if(confidence > CONFIDENCE_THRESHOLD){
-                val x0 = array[c]
-                val y0 = array[c+1]
-                val x1 = array[c+2]
-                val y1 = array[c+3]
-                val classLabel = array[c+5]
-                val angleInRadians = array[c+6]
-
-                //https://github.com/android/camera-samples/blob/main/CameraXAdvanced/tflite/src/main/java/com/example/android/camerax/tflite/CameraActivity.kt
-                //Following this example for scaling the results
-                val obb = OrientedBoundingBoxNMS(x0, y0, x1, y1, classLabel.toInt(), angleInRadians)
-                val mappedCoordinates = mapOutputCoordinates(obb, originalImageWidth, originalImageHeight)
-                detections.add(OBBDetectionNMS(obb, confidence, labels()[classLabel.toInt()], mappedCoordinates))
+            if(numDetections == 0){
+                return@withContext detections
             }
+
+            val numLabels = labels().size
+            if(numLabels <= 0){
+                return@withContext detections
+            }
+
+            for (c in 0 until numDetections step batchSize * numFeatures) {
+                val confidence = array[c+4]
+                if(confidence > CONFIDENCE_THRESHOLD){
+                    val x0 = array[c]
+                    val y0 = array[c+1]
+                    val x1 = array[c+2]
+                    val y1 = array[c+3]
+                    val classLabel = array[c+5]
+                    val angleInRadians = array[c+6]
+
+                    //https://github.com/android/camera-samples/blob/main/CameraXAdvanced/tflite/src/main/java/com/example/android/camerax/tflite/CameraActivity.kt
+                    //Following this example for scaling the results
+                    val obb = OrientedBoundingBoxNMS(x0, y0, x1, y1, classLabel.toInt(), angleInRadians)
+                    val mappedCoordinates = mapOutputCoordinates(obb, originalImageWidth, originalImageHeight)
+                    detections.add(OBBDetectionNMS(obb, confidence, labels()[classLabel.toInt()], mappedCoordinates))
+                }
+            }
+            return@withContext detections
         }
-        return detections
     }
 
     //https://docs.ultralytics.com/datasets/obb/#yolo-obb-format
