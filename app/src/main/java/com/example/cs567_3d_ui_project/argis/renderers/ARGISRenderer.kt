@@ -430,7 +430,6 @@ class ARGISRenderer(val activity: ARGISActivity):
                     val height = canvas.height
                     val width = canvas.width
 
-
                     //Metric Gathering Code -- Start
 //                    val start = System.currentTimeMillis()
 //                    val inferenceTime = measureTimeMillis {

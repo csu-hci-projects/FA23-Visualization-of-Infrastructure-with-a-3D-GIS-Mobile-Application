@@ -15,6 +15,12 @@
         android:layout_height="fill_parent"
         android:layout_gravity="top"/>
 
+    <View
+        android:layout_width="10dp"
+        android:layout_height="10dp"
+        android:background="@drawable/simple_reticle"
+        android:layout_centerInParent="true" />
+
     <TextView
         android:id="@+id/inferenceResults"
         android:layout_width="wrap_content"
